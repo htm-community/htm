@@ -21,12 +21,19 @@ type SpatialPooler struct {
 	MaxBoost                   int
 	SpVerbosity                int
 
-	//# Extra parameter settings
+	// Extra parameter settings
 	SynPermMin           float64
 	SynPermMax           float64
 	SynPermTrimThreshold float64
 	UpdatePeriod         int
 	InitConnectedPct     float64
+
+	// Internal state
+    Version float64
+    IterationNum int
+    IterationLearnNum int
+
+    
 }
 
 func (sp *SpatialPooler) NewSpatialPooler() {
@@ -112,8 +119,30 @@ func (sp *SpatialPooler) updateInhibitionRadius() {
 
 }
 
+// Updates the minimum duty cycles defining normal activity for a column. A
+// column with activity duty cycle below this minimum threshold is boosted.
 func (sp *SpatialPooler) updateMinDutyCycles() {
+	if sp.GlobalInhibition || sp.InhibitionRadius > sp.NumInputs {
+		sp.updateMinDutyCyclesGlobal()
+	} else {
+		sp.updateMinDutyCyclesLocal()
+	}
 
+}
+
+// Updates the minimum duty cycles in a global fashion. Sets the minimum duty
+// cycles for the overlap and activation of all columns to be a percent of the
+// maximum in the region, specified by minPctOverlapDutyCycle and
+// minPctActiveDutyCycle respectively. Functionaly it is equivalent to
+// _updateMinDutyCyclesLocal, but this function exploits the globalilty of the
+// compuation to perform it in a straightforward, and more efficient manner.
+func (sp *SpatialPooler) updateMinDutyCyclesGlobal() {
+	sp.minOverlapDutyCycles.fill(
+        sp.minPctOverlapDutyCycles * sp.overlapDutyCycles.max()
+      )
+    sp.minActiveDutyCycles.fill(
+        sp.minPctActiveDutyCycles * sp.activeDutyCycles.max()
+      )
 }
 
 func (sp *SpatialPooler) stripNeverLearned(activeColumns []bool) {
