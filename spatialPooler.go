@@ -29,11 +29,9 @@ type SpatialPooler struct {
 	InitConnectedPct     float64
 
 	// Internal state
-    Version float64
-    IterationNum int
-    IterationLearnNum int
-
-    
+	Version           float64
+	IterationNum      int
+	IterationLearnNum int
 }
 
 func (sp *SpatialPooler) NewSpatialPooler() {
@@ -137,12 +135,12 @@ func (sp *SpatialPooler) updateMinDutyCycles() {
 // _updateMinDutyCyclesLocal, but this function exploits the globalilty of the
 // compuation to perform it in a straightforward, and more efficient manner.
 func (sp *SpatialPooler) updateMinDutyCyclesGlobal() {
-	sp.minOverlapDutyCycles.fill(
-        sp.minPctOverlapDutyCycles * sp.overlapDutyCycles.max()
-      )
-    sp.minActiveDutyCycles.fill(
-        sp.minPctActiveDutyCycles * sp.activeDutyCycles.max()
-      )
+	// sp.minOverlapDutyCycles.fill(
+	//        sp.minPctOverlapDutyCycles * sp.overlapDutyCycles.max()
+	//      )
+	//    sp.minActiveDutyCycles.fill(
+	//        sp.minPctActiveDutyCycles * sp.activeDutyCycles.max()
+	//      )
 }
 
 func (sp *SpatialPooler) stripNeverLearned(activeColumns []bool) {

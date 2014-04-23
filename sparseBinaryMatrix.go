@@ -1,5 +1,9 @@
 package htm
 
+import (
+	"math"
+)
+
 //Items are index of non-zero columns
 type SparseRow []int
 
@@ -7,8 +11,8 @@ type SparseRow []int
 //to conserve space
 //Rows is map of non-zero rows indexed by row index
 type SparseBinaryMatrix struct {
-	Cols              int
-	Rows              int
+	Width             int
+	Height            int
 	TotalNonZeroCount int
 	//NonZeroRows       []int
 	Rows map[int][]SparseRow
@@ -16,20 +20,18 @@ type SparseBinaryMatrix struct {
 
 func NewSparseBinaryMatrix(width int, height int) SparseBinaryMatrix {
 	m := SparseBinaryMatrix{}
-	m.Rows = height
-	m.Cols = width
-	m.Rows = make(map[int][]SparseRow, height*.03)
+	m.Height = height
+	m.Width = width
+	m.Rows = make(map[int][]SparseRow, int(math.Ceil(height*0.03)))
 
 	return m
 }
 
-func NewRandSparseBinaryMatrix() *SparseBinaryMatrix {
+// func NewRandSparseBinaryMatrix() *SparseBinaryMatrix {
+// }
 
-}
-
-func (sm *SparseBinaryMatrix) Resize(width int, height int) {
-
-}
+// func (sm *SparseBinaryMatrix) Resize(width int, height int) {
+// }
 
 //Get value at col,row position
 func (sm *SparseBinaryMatrix) Get(col int, row int) bool {
