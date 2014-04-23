@@ -19,7 +19,7 @@ func TestGetSet(t *testing.T) {
 		t.Errorf("Was false expected true @ [6,5]")
 	}
 
-	if sm.Get(2, 4) {
+	if sm.Get(7, 5) {
 		t.Errorf("Was true expected false @ [7,5]")
 	}
 

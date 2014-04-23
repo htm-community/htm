@@ -1,29 +1,30 @@
 package htm
 
 import (
-	"math"
+//"math"
 )
 
-//Items are index of non-zero columns
-type SparseRow []int
+//Entries are positions of non-zero values
+type SparseEntry struct {
+	Row int
+	Col int
+}
 
 //Sparse binary matrix stores indexes of non-zero entries in matrix
 //to conserve space
-//Rows is map of non-zero rows indexed by row index
 type SparseBinaryMatrix struct {
 	Width             int
 	Height            int
 	TotalNonZeroCount int
-	//NonZeroRows       []int
-	Rows map[int][]SparseRow
+	Entries           []SparseEntry
 }
 
 func NewSparseBinaryMatrix(width int, height int) SparseBinaryMatrix {
 	m := SparseBinaryMatrix{}
 	m.Height = height
 	m.Width = width
-	m.Rows = make(map[int][]SparseRow, int(math.Ceil(height*0.03)))
-
+	//Intialize with 70% sparsity
+	//m.Entries = make([]SparseEntry, int(math.Ceil(width*height*0.3)))
 	return m
 }
 
@@ -35,41 +36,38 @@ func NewSparseBinaryMatrix(width int, height int) SparseBinaryMatrix {
 
 //Get value at col,row position
 func (sm *SparseBinaryMatrix) Get(col int, row int) bool {
-	if r, ok := sm.Rows[row]; ok {
-		for x := 0; x < len(r); x++ {
-			if r[x] == col {
-				return true
-			}
+	for _, val := range sm.Entries {
+		if val.Row == row && val.Col == col {
+			return true
 		}
 	}
 	return false
 }
 
 func (sm *SparseBinaryMatrix) delete(col int, row int) {
-	if r, ok := sm.Rows[row]; ok {
-		for x := 0; x < len(r); x++ {
-			if r[x] == col {
-				sm.Rows[row] = append(r[:x], r[x+1:])
-				break
-			}
-		}
-		if len(sm.Rows[row]) < 1 {
-			//delete row entry
-			delete(sm.Rows, row)
+	for idx, val := range sm.Entries {
+		if val.Row == row && val.Col == col {
+			sm.Entries = append(sm.Entries[:idx], sm.Entries[idx+1:]...)
+			break
 		}
 	}
+
 }
 
 //Set value at col,row position
 func (sm *SparseBinaryMatrix) Set(col int, row int, value bool) {
-	if value {
-		if r, ok := sm.Rows[row]; ok {
-			sm.Rows[row] = append(sm.Rows[row], col)
-		} else {
-			sm.Rows[row] = SparseRow{col}
-		}
-	} else {
+	if !value {
 		sm.delete(col, row)
+		return
 	}
+
+	if sm.Get(col, row) {
+		return
+	}
+
+	newEntry := SparseEntry{}
+	newEntry.Col = col
+	newEntry.Row = row
+	sm.Entries = append(sm.Entries, newEntry)
 
 }

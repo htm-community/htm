@@ -1,5 +1,10 @@
 package htm
 
+type ITuple struct {
+	A int
+	B int
+}
+
 type SpatialPooler struct {
 	NumInputs                  int
 	NumColumns                 int
@@ -32,6 +37,39 @@ type SpatialPooler struct {
 	Version           float64
 	IterationNum      int
 	IterationLearnNum int
+
+	//random seed
+	Seed int
+
+	
+    potentialPools SparseBinaryMatrix
+    permanences SparseBinaryMatrix
+    tieBreaker float64
+
+    connectedSynapses SparseBinaryMatrix
+    //redundant 
+    connectedCounts []int
+
+}
+
+type SpParams struct {
+	InputDimensions ITuple
+    ColumnDimensions ITuple
+    PotentialRadius int
+    PotentialPct float64
+    GlobalInhibition bool
+    LocalAreaDensity float64
+    NumActiveColumnsPerInhArea float64
+    StimulusThreshold int
+    SynPermInactiveDec float64
+    SynPermActiveInc float64
+    SynPermConnected float64
+    MinPctOverlapDutyCycle float64
+    MinPctActiveDutyCycle float64
+    DutyCyclePeriod int
+    MaxBoost int
+    Seed int
+    SpVerbosity int
 }
 
 func (sp *SpatialPooler) NewSpatialPooler() {
@@ -135,12 +173,12 @@ func (sp *SpatialPooler) updateMinDutyCycles() {
 // _updateMinDutyCyclesLocal, but this function exploits the globalilty of the
 // compuation to perform it in a straightforward, and more efficient manner.
 func (sp *SpatialPooler) updateMinDutyCyclesGlobal() {
-	// sp.minOverlapDutyCycles.fill(
-	//        sp.minPctOverlapDutyCycles * sp.overlapDutyCycles.max()
-	//      )
-	//    sp.minActiveDutyCycles.fill(
-	//        sp.minPctActiveDutyCycles * sp.activeDutyCycles.max()
-	//      )
+		sp.minOverlapDutyCycles.fill(
+	       sp.minPctOverlapDutyCycles * sp.overlapDutyCycles.max()
+	     )
+	   sp.minActiveDutyCycles.fill(
+	       sp.minPctActiveDutyCycles * sp.activeDutyCycles.max()
+	     )
 }
 
 func (sp *SpatialPooler) stripNeverLearned(activeColumns []bool) {
