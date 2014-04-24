@@ -1,5 +1,9 @@
 package htm
 
+import (
+	"math"
+)
+
 type ITuple struct {
 	A int
 	B int
@@ -41,39 +45,120 @@ type SpatialPooler struct {
 	//random seed
 	Seed int
 
-	
-    potentialPools SparseBinaryMatrix
-    permanences SparseBinaryMatrix
-    tieBreaker float64
+	potentialPools SparseBinaryMatrix
+	permanences    SparseBinaryMatrix
+	tieBreaker     float64
 
-    connectedSynapses SparseBinaryMatrix
-    //redundant 
-    connectedCounts []int
+	connectedSynapses SparseBinaryMatrix
+	//redundant
+	connectedCounts []int
 
+	overlapDutyCycles    []bool
+	activeDutyCycles     []bool
+	minOverlapDutyCycles []bool
+	minActiveDutyCycles  []bool
+	boostFactors         []bool
+
+	inhibitionRadius int
 }
 
 type SpParams struct {
-	InputDimensions ITuple
-    ColumnDimensions ITuple
-    PotentialRadius int
-    PotentialPct float64
-    GlobalInhibition bool
-    LocalAreaDensity float64
-    NumActiveColumnsPerInhArea float64
-    StimulusThreshold int
-    SynPermInactiveDec float64
-    SynPermActiveInc float64
-    SynPermConnected float64
-    MinPctOverlapDutyCycle float64
-    MinPctActiveDutyCycle float64
-    DutyCyclePeriod int
-    MaxBoost int
-    Seed int
-    SpVerbosity int
+	InputDimensions            ITuple
+	ColumnDimensions           ITuple
+	PotentialRadius            int
+	PotentialPct               float64
+	GlobalInhibition           bool
+	LocalAreaDensity           float64
+	NumActiveColumnsPerInhArea float64
+	StimulusThreshold          int
+	SynPermInactiveDec         float64
+	SynPermActiveInc           float64
+	SynPermConnected           float64
+	MinPctOverlapDutyCycle     float64
+	MinPctActiveDutyCycle      float64
+	DutyCyclePeriod            int
+	MaxBoost                   int
+	Seed                       int
+	SpVerbosity                int
 }
 
-func (sp *SpatialPooler) NewSpatialPooler() {
+//Initializes default spatial pooler params
+func NewSpParams() {
+	sp := SpParams{}
 
+	sp.InputDimensions = ITuple{32, 32}
+	sp.ColumnDimensions = ITuple{64, 64}
+	sp.PotentialRadius = 16
+	sp.PotentialPct = 0.5
+	sp.GlobalInhibition = False
+	sp.LocalAreaDensity = -1.0
+	sp.NumActiveColumnsPerInhArea = 10.0
+	sp.StimulusThreshold = 0
+	sp.SynPermInactiveDec = 0.01
+	sp.SynPermActiveInc = 0.1
+	sp.SynPermConnected = 0.10
+	sp.MinPctOverlapDutyCycle = 0.001
+	sp.MinPctActiveDutyCycle = 0.001
+	sp.DutyCyclePeriod = 1000
+	sp.MaxBoost = 10.0
+	sp.Seed = -1
+	sp.SpVerbosity = 0
+
+	return sp
+}
+
+//Creates a new spatial pooler
+func NewSpatialPooler(spParams SpParams) *SpatialPooler {
+	//Validate inputs
+	numColumns := spParams.ColumnDimensions.A * spParams.ColumnDimensions.B
+	numInputs := spParams.InputDimensions.A * spParams.InputDimensions.B
+
+	if numColums < 16 {
+		panic("Column dimensions must be at least 4x4")
+	}
+	if numInputs < 16 {
+		panic("Input area must be at least 16")
+	}
+	if spParams.NumActiveColumnsPerInhArea < 1 && (spParams.LocalAreaDensity < 1) && (spParams.LocalAreaDensity >= 0.5) {
+		panic("Num active colums invalid")
+	}
+
+	sp := SpatialPooler{}
+	sp.InputDimensions = spParams.InputDimensions
+	sp.ColumnDimensions = spParams.ColumnDimensions
+	sp.PotentialRadius = int(math.Min(spParams.PotentialRadius, numInputs))
+	sp.PotentialPct = spParams.PotentialPct
+	sp.GlobalInhibition = spParams.GlobalInhibition
+	sp.LocalAreaDensity = spParams.LocalAreaDensity
+	sp.NumActiveColumnsPerInhArea = spParams.NumActiveColumnsPerInhArea
+	sp.StimulusThreshold = spParams.StimulusThreshold
+	sp.SynPermInactiveDec = spParams.SynPermInactiveDec
+	sp.SynPermActiveInc = spParams.SynPermConnected / 10.0
+	sp.SynPermConnected = spParams.SynPermConnected
+	sp.MinPctOverlapDutyCycle = spParams.MinPctOverlapDutyCycle
+	sp.MinPctActiveDutyCycle = spParams.MinPctActiveDutyCycle
+	sp.DutyCyclePeriod = spParams.DutyCyclePeriod
+	sp.MaxBoost = spParams.MaxBoost
+	sp.Seed = spParams.Seed
+	sp.SpVerbosity = spParams.SpVerbosity
+
+	// Extra parameter settings
+	sp.SynPermMin = 0.0
+	sp.SynPermMax = 1.0
+	sp.SynPermTrimThreshold = synPermActiveInc / 2.0
+	assert(self._synPermTrimThreshold < self._synPermConnected)
+	sp.UpdatePeriod = 50
+	//initConnectedPct = 0.5
+
+	sp.PotentialPools = NewSparseBinaryMatrix(numColumns, numInputs)
+	sp.Permanences = NewSparseMatrix(numColumns, numInputs)
+
+	//sp.TieBreaker = 0.01*numpy.array([self._random.getReal64() for i in
+	//                                    xrange(self._numColumns)])
+
+	sp.ConnectedSynapses = NewSparseBinaryMatrix(numColumns, numInputs)
+
+	return sp
 }
 
 //Main func, returns active array
@@ -96,7 +181,7 @@ func (sp *SpatialPooler) Compute(inputVector []bool, learn bool) []bool {
 	}
 
 	// Apply inhibition to determine the winning columns
-	activeColumns = self._inhibitColumns(boostedOverlaps)
+	activeColumns = sp.inhibitColumns(boostedOverlaps)
 
 	if learn {
 		self._adaptSynapses(inputVector, activeColumns)
@@ -173,12 +258,8 @@ func (sp *SpatialPooler) updateMinDutyCycles() {
 // _updateMinDutyCyclesLocal, but this function exploits the globalilty of the
 // compuation to perform it in a straightforward, and more efficient manner.
 func (sp *SpatialPooler) updateMinDutyCyclesGlobal() {
-		sp.minOverlapDutyCycles.fill(
-	       sp.minPctOverlapDutyCycles * sp.overlapDutyCycles.max()
-	     )
-	   sp.minActiveDutyCycles.fill(
-	       sp.minPctActiveDutyCycles * sp.activeDutyCycles.max()
-	     )
+	sp.minOverlapDutyCycles.fill(sp.minPctOverlapDutyCycles * sp.overlapDutyCycles.max())
+	sp.minActiveDutyCycles.fill(sp.minPctActiveDutyCycles * sp.activeDutyCycles.max())
 }
 
 func (sp *SpatialPooler) stripNeverLearned(activeColumns []bool) {
