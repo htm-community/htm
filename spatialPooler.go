@@ -60,6 +60,9 @@ type SpatialPooler struct {
 	boostFactors         []bool
 
 	inhibitionRadius int
+
+	numColumns int
+	numInputs int
 }
 
 type SpParams struct {
@@ -109,21 +112,21 @@ func NewSpParams() {
 
 //Creates a new spatial pooler
 func NewSpatialPooler(spParams SpParams) *SpatialPooler {
+	sp := SpatialPooler{}
 	//Validate inputs
-	numColumns := spParams.ColumnDimensions.A * spParams.ColumnDimensions.B
-	numInputs := spParams.InputDimensions.A * spParams.InputDimensions.B
+	sp.numColumns = spParams.ColumnDimensions.A * spParams.ColumnDimensions.B
+	sp.numInputs = spParams.InputDimensions.A * spParams.InputDimensions.B
 
-	if numColums < 16 {
+	if sp.numColums < 16 {
 		panic("Column dimensions must be at least 4x4")
 	}
-	if numInputs < 16 {
+	if sp.numInputs < 16 {
 		panic("Input area must be at least 16")
 	}
 	if spParams.NumActiveColumnsPerInhArea < 1 && (spParams.LocalAreaDensity < 1) && (spParams.LocalAreaDensity >= 0.5) {
 		panic("Num active colums invalid")
 	}
-
-	sp := SpatialPooler{}
+	
 	sp.InputDimensions = spParams.InputDimensions
 	sp.ColumnDimensions = spParams.ColumnDimensions
 	sp.PotentialRadius = int(math.Min(spParams.PotentialRadius, numInputs))
@@ -150,15 +153,165 @@ func NewSpatialPooler(spParams SpParams) *SpatialPooler {
 	sp.UpdatePeriod = 50
 	//initConnectedPct = 0.5
 
-	sp.PotentialPools = NewSparseBinaryMatrix(numColumns, numInputs)
-	sp.Permanences = NewSparseMatrix(numColumns, numInputs)
+	/*
+			# Internal state
+		    self._version = 1.0
+		    self._iterationNum = 0
+		    self._iterationLearnNum = 0
+	*/
 
+	/*
+			 Store the set of all inputs that are within each column's potential pool.
+		     'potentialPools' is a matrix, whose rows represent cortical columns, and
+		     whose columns represent the input bits. if potentialPools[i][j] == 1,
+		     then input bit 'j' is in column 'i's potential pool. A column can only be
+		     connected to inputs in its potential pool. The indices refer to a
+		     falttenned version of both the inputs and columns. Namely, irrespective
+		     of the topology of the inputs and columns, they are treated as being a
+		     one dimensional array. Since a column is typically connected to only a
+		     subset of the inputs, many of the entries in the matrix are 0. Therefore
+		     the the potentialPool matrix is stored using the SparseBinaryMatrix
+		     class, to reduce memory footprint and compuation time of algorithms that
+		     require iterating over the data strcuture.
+	*/
+	sp.PotentialPools = NewSparseBinaryMatrix(sp.numColumns, sp.numInputs)
+
+	/*
+			 Initialize the permanences for each column. Similar to the
+		     'potentialPools', the permances are stored in a matrix whose rows
+		     represent the cortial columns, and whose columns represent the input
+		     bits. if permanences[i][j] = 0.2, then the synapse connecting
+		     cortical column 'i' to input bit 'j' has a permanence of 0.2. Here we
+		     also use the SparseMatrix class to reduce the memory footprint and
+		     computation time of algorithms that require iterating over the data
+		     structure. This permanence matrix is only allowed to have non-zero
+		     elements where the potential pool is non-zero.
+	*/
+	sp.Permanences = NewSparseMatrix(sp.numColumns, sp.numInputs)
+
+	/*
+			 Initialize a tiny random tie breaker. This is used to determine winning
+		     columns where the overlaps are identical.
+	*/
 	//sp.TieBreaker = 0.01*numpy.array([self._random.getReal64() for i in
 	//                                    xrange(self._numColumns)])
 
-	sp.ConnectedSynapses = NewSparseBinaryMatrix(numColumns, numInputs)
+	/*
+			 'connectedSynapses' is a similar matrix to 'permanences'
+		     (rows represent cortial columns, columns represent input bits) whose
+		     entries represent whether the cortial column is connected to the input
+		     bit, i.e. its permanence value is greater than 'synPermConnected'. While
+		     this information is readily available from the 'permanence' matrix,
+		     it is stored separately for efficiency purposes.
+	*/
+	sp.ConnectedSynapses = NewSparseBinaryMatrix(sp.numColumns, sp.numInputs)
+
+	/*
+			 Stores the number of connected synapses for each column. This is simply
+		     a sum of each row of 'ConnectedSynapses'. again, while this
+		     information is readily available from 'ConnectedSynapses', it is
+		     stored separately for efficiency purposes.
+	*/
+	sp.ConnectedCounts = make([]int, sp.numColumns)
+
+	/*
+	 Initialize the set of permanence values for each columns. Ensure that
+     each column is connected to enough input bits to allow it to be
+     activated
+	*/
+    for i in xrange(numColumns):
+      potential := sp.mapPotential(i, true)
+      self._potentialPools.replaceSparseRow(i, potential.nonzero()[0])
+      perm = self._initPermanence(potential, initConnectedPct)
+      self._updatePermanencesForColumn(perm, i, raisePerm=True)
 
 	return sp
+}
+
+
+/*
+ Maps a column to its input bits. This method encapsultes the topology of
+the region. It takes the index of the column as an argument and determines
+what are the indices of the input vector that are located within the
+column's potential pool. The return value is a list containing the indices
+of the input bits. The current implementation of the base class only
+supports a 1 dimensional topology of columsn with a 1 dimensional topology
+of inputs. To extend this class to support 2-D topology you will need to
+override this method. Examples of the expected output of this method:
+* If the potentialRadius is greater than or equal to the entire input
+space, (global visibility), then this method returns an array filled with
+all the indices
+* If the topology is one dimensional, and the potentialRadius is 5, this
+method will return an array containing 5 consecutive values centered on
+the index of the column (wrapping around if necessary).
+* If the topology is two dimensional (not implemented), and the
+potentialRadius is 5, the method should return an array containing 25
+'1's, where the exact indices are to be determined by the mapping from
+1-D index to 2-D position.
+
+Parameters:
+----------------------------
+index: The index identifying a column in the permanence, potential
+and connectivity matrices.
+wrapAround: A boolean value indicating that boundaries should be
+region boundaries ignored.
+*/
+func (sp *SpatialPooler) mapPotential(index int, wrapAround bool) []int {
+	// Distribute column over inputs uniformly
+    ratio := float64(index) / max((sp.numColumns - 1), 1)
+    index = int((sp.numInputs - 1) * ratio)
+
+    var indices []int
+    indLen := 2 * sp.PotentialRadius + 1
+    
+    for i=0; i < indLen; i++{
+    	temp := (i + index - sp.PotentialRadius)
+    	if(wrapAround){
+    		temp = temp % sp.numInputs
+    	} else {
+    		if !(temp >= 0 && temp < sp.numInputs){
+    			continue
+    		}
+    	}
+    	//no dupes
+    	exists := false
+    	for ind, val := range indices{
+    		if(val == temp){
+    			exists = true
+    			break;
+    		}
+    	}
+    	if(!exists){
+    		indices = append(indices,temp)
+    	}
+    }
+        
+    
+    // Select a subset of the receptive field to serve as the
+    // the potential pool
+        
+    //shuffle indices
+    for i := range indices {
+    	j := rand.Intn(i + 1)
+    	indices[i], indices[j] = indices[j], indices[i]
+	}
+
+    sampleLen := int(round(len(indices)*sp.PotentialPct))
+	sample := indices[:len(sampleLen)]
+	//project indices onto input mask
+	mask := make([]bool,sp.numInputs)
+	for i,val := range mask{
+		found := false
+		for x := 0; x < len(sample); x++ {
+			if(sample[x] == i){
+				found = true
+				break
+			}
+		}
+		mask[i] = found
+	}
+    
+    return mask
 }
 
 //Main func, returns active array
