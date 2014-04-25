@@ -2,6 +2,7 @@ package htm
 
 import (
 	"math"
+	"math/rand"
 )
 
 type ITuple struct {
@@ -62,7 +63,7 @@ type SpatialPooler struct {
 	inhibitionRadius int
 
 	numColumns int
-	numInputs int
+	numInputs  int
 }
 
 type SpParams struct {
@@ -126,7 +127,7 @@ func NewSpatialPooler(spParams SpParams) *SpatialPooler {
 	if spParams.NumActiveColumnsPerInhArea < 1 && (spParams.LocalAreaDensity < 1) && (spParams.LocalAreaDensity >= 0.5) {
 		panic("Num active colums invalid")
 	}
-	
+
 	sp.InputDimensions = spParams.InputDimensions
 	sp.ColumnDimensions = spParams.ColumnDimensions
 	sp.PotentialRadius = int(math.Min(spParams.PotentialRadius, numInputs))
@@ -151,7 +152,7 @@ func NewSpatialPooler(spParams SpParams) *SpatialPooler {
 	sp.SynPermTrimThreshold = synPermActiveInc / 2.0
 	assert(self._synPermTrimThreshold < self._synPermConnected)
 	sp.UpdatePeriod = 50
-	//initConnectedPct = 0.5
+	sp.initConnectedPct = 0.5
 
 	/*
 			# Internal state
@@ -215,19 +216,19 @@ func NewSpatialPooler(spParams SpParams) *SpatialPooler {
 	sp.ConnectedCounts = make([]int, sp.numColumns)
 
 	/*
-	 Initialize the set of permanence values for each columns. Ensure that
-     each column is connected to enough input bits to allow it to be
-     activated
+		 Initialize the set of permanence values for each columns. Ensure that
+	     each column is connected to enough input bits to allow it to be
+	     activated
 	*/
-    for i in xrange(numColumns):
-      potential := sp.mapPotential(i, true)
-      self._potentialPools.replaceSparseRow(i, potential.nonzero()[0])
-      perm = self._initPermanence(potential, initConnectedPct)
-      self._updatePermanencesForColumn(perm, i, raisePerm=True)
+	for i := 0; i < numColumns; i++ {
+		potential := sp.mapPotential(i, true)
+		sp.PotentialPools.ReplaceSparseRow(i, potential)
+		perm := sp.initPermanence(potential, sp.initConnectedPct)
+		sp.updatePermanencesForColumn(perm, i, true)
+	}
 
 	return sp
 }
-
 
 /*
  Maps a column to its input bits. This method encapsultes the topology of
@@ -256,62 +257,145 @@ and connectivity matrices.
 wrapAround: A boolean value indicating that boundaries should be
 region boundaries ignored.
 */
-func (sp *SpatialPooler) mapPotential(index int, wrapAround bool) []int {
+func (sp *SpatialPooler) mapPotential(index int, wrapAround bool) []bool {
 	// Distribute column over inputs uniformly
-    ratio := float64(index) / max((sp.numColumns - 1), 1)
-    index = int((sp.numInputs - 1) * ratio)
+	ratio := float64(index) / max((sp.numColumns-1), 1)
+	index = int((sp.numInputs - 1) * ratio)
 
-    var indices []int
-    indLen := 2 * sp.PotentialRadius + 1
-    
-    for i=0; i < indLen; i++{
-    	temp := (i + index - sp.PotentialRadius)
-    	if(wrapAround){
-    		temp = temp % sp.numInputs
-    	} else {
-    		if !(temp >= 0 && temp < sp.numInputs){
-    			continue
-    		}
-    	}
-    	//no dupes
-    	exists := false
-    	for ind, val := range indices{
-    		if(val == temp){
-    			exists = true
-    			break;
-    		}
-    	}
-    	if(!exists){
-    		indices = append(indices,temp)
-    	}
-    }
-        
-    
-    // Select a subset of the receptive field to serve as the
-    // the potential pool
-        
-    //shuffle indices
-    for i := range indices {
-    	j := rand.Intn(i + 1)
-    	indices[i], indices[j] = indices[j], indices[i]
+	var indices []int
+	indLen := 2*sp.PotentialRadius + 1
+
+	for i = 0; i < indLen; i++ {
+		temp := (i + index - sp.PotentialRadius)
+		if wrapAround {
+			temp = temp % sp.numInputs
+		} else {
+			if !(temp >= 0 && temp < sp.numInputs) {
+				continue
+			}
+		}
+		//no dupes
+		exists := false
+		for ind, val := range indices {
+			if val == temp {
+				exists = true
+				break
+			}
+		}
+		if !exists {
+			indices = append(indices, temp)
+		}
 	}
 
-    sampleLen := int(round(len(indices)*sp.PotentialPct))
+	// Select a subset of the receptive field to serve as the
+	// the potential pool
+
+	//shuffle indices
+	for i := range indices {
+		j := rand.Intn(i + 1)
+		indices[i], indices[j] = indices[j], indices[i]
+	}
+
+	sampleLen := int(round(len(indices) * sp.PotentialPct))
 	sample := indices[:len(sampleLen)]
 	//project indices onto input mask
-	mask := make([]bool,sp.numInputs)
-	for i,val := range mask{
+	mask := make([]bool, sp.numInputs)
+	for i, val := range mask {
 		found := false
 		for x := 0; x < len(sample); x++ {
-			if(sample[x] == i){
+			if sample[x] == i {
 				found = true
 				break
 			}
 		}
 		mask[i] = found
 	}
-    
-    return mask
+
+	return mask
+}
+
+/*
+ Returns a randomly generated permanence value for a synapses that is
+initialized in a connected state. The basic idea here is to initialize
+permanence values very close to synPermConnected so that a small number of
+learning steps could make it disconnected or connected.
+
+Note: experimentation was done a long time ago on the best way to initialize
+permanence values, but the history for this particular scheme has been lost.
+*/
+
+func (sp *SpatialPooler) initPermConnected() int {
+
+	p := sp.SynPermConnected + rand.float64()*sp.SynPermActiveInc/4.0
+	//p = (self._synPermConnected + self._random.getReal64() *
+	//  self._synPermActiveInc / 4.0)
+
+	// Ensure we don't have too much unnecessary precision. A full 64 bits of
+	// precision causes numerical stability issues across platforms and across
+	// implementations
+	p = int(p*100000) / 100000.0
+	return p
+}
+
+/*
+ Returns a randomly generated permanence value for a synapses that is to be
+	initialized in a non-connected state.
+*/
+
+func (sp *SpatialPooler) initPermNonConnected() int {
+	p := sp.SynPermConnected * rand.float64()
+
+	// Ensure we don't have too much unnecessary precision. A full 64 bits of
+	// precision causes numerical stability issues across platforms and across
+	// implementations
+	p = int(p*100000) / 100000.0
+	return p
+}
+
+/*
+ Initializes the permanences of a column. The method
+returns a 1-D array the size of the input, where each entry in the
+array represents the initial permanence value between the input bit
+at the particular index in the array, and the column represented by
+the 'index' parameter.
+
+Parameters:
+----------------------------
+potential: A numpy array specifying the potential pool of the column.
+Permanence values will only be generated for input bits
+corresponding to indices for which the mask value is 1.
+connectedPct: A value between 0 or 1 specifying the percent of the input
+bits that will start off in a connected state.
+*/
+
+func (sp *SpatialPooler) initPermanence(potential []bool, connectedPct bool) []int {
+	// Determine which inputs bits will start out as connected
+	// to the inputs. Initially a subset of the input bits in a
+	// column's potential pool will be connected. This number is
+	// given by the parameter "connectedPct"
+
+	perm := make([]int, sp.numInputs)
+	//var perm []int
+
+	for i := 0; i < sp.numInputs; i++ {
+		if !potential[i] {
+			continue
+		}
+		var temp int
+		if rand.Float64() < connectedPct {
+			temp = sp.initPermConnected()
+		} else {
+			temp = sp.initPermNonConnected()
+		}
+		//Exclude low values to save memory
+		if temp < sp.SynPermTrimThreshold {
+			temp = 0
+		}
+
+		perm[i] = temp
+	}
+
+	return perm
 }
 
 //Main func, returns active array

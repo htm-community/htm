@@ -71,3 +71,30 @@ func (sm *SparseBinaryMatrix) Set(col int, row int, value bool) {
 	sm.Entries = append(sm.Entries, newEntry)
 
 }
+
+//Replaces specified row with values, assumes values is ordered
+//correctly
+func (sm *SparseBinaryMatrix) ReplaceRow(row int, values []bool) {
+	sm.validateRowCol(row, len(values))
+
+	for i := 0; i < sm.Width; i++ {
+		sm.Set(i, row, values[i])
+	}
+}
+
+func (sm *SparseBinaryMatrix) validateCol(col int) {
+	if col > sm.Width {
+		panic("Specified row is wider than matrix.")
+	}
+}
+
+func (sm *SparseBinaryMatrix) validateRow(row int) {
+	if row > sm.Height {
+		panic("Specified row is out of bounds.")
+	}
+}
+
+func (sm *SparseBinaryMatrix) validateRowCol(row int, col int) {
+	sm.validateCol(col)
+	sm.validateRow(row)
+}
