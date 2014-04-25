@@ -82,6 +82,28 @@ func (sm *SparseBinaryMatrix) ReplaceRow(row int, values []bool) {
 	}
 }
 
+//Returns dense row
+func (sm *SparseBinaryMatrix) GetDenseRow(row int) []bool {
+	sm.validateRow(row)
+	result := make([]bool, sm.Width)
+
+	for i := 0; i < len(sm.Entries); i++ {
+		if sm.Entries[i].Row == row {
+			result[sm.Entries[i].Col] = true
+		}
+	}
+
+	return result
+}
+
+//Sets a sparse row from dense representation
+func (sm *SparseBinaryMatrix) SetRowFromDense(row int, denseRow []bool) {
+	sm.validateRowCol(row, len(denseRow))
+	for i := 0; i < sm.Width; i++ {
+		sm.Set(i, row, denseRow[i])
+	}
+}
+
 func (sm *SparseBinaryMatrix) validateCol(col int) {
 	if col > sm.Width {
 		panic("Specified row is wider than matrix.")

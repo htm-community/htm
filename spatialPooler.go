@@ -150,15 +150,15 @@ func NewSpatialPooler(spParams SpParams) *SpatialPooler {
 	sp.SynPermMin = 0.0
 	sp.SynPermMax = 1.0
 	sp.SynPermTrimThreshold = synPermActiveInc / 2.0
-	assert(self._synPermTrimThreshold < self._synPermConnected)
+	assert(synPermTrimThreshold < synPermConnected)
 	sp.UpdatePeriod = 50
 	sp.initConnectedPct = 0.5
 
 	/*
 			# Internal state
-		    self._version = 1.0
-		    self._iterationNum = 0
-		    self._iterationLearnNum = 0
+		    version = 1.0
+		    iterationNum = 0
+		    iterationLearnNum = 0
 	*/
 
 	/*
@@ -194,8 +194,8 @@ func NewSpatialPooler(spParams SpParams) *SpatialPooler {
 			 Initialize a tiny random tie breaker. This is used to determine winning
 		     columns where the overlaps are identical.
 	*/
-	//sp.TieBreaker = 0.01*numpy.array([self._random.getReal64() for i in
-	//                                    xrange(self._numColumns)])
+	//sp.TieBreaker = 0.01*numpy.array([random.getReal64() for i in
+	//                                    xrange(numColumns)])
 
 	/*
 			 'connectedSynapses' is a similar matrix to 'permanences'
@@ -216,9 +216,9 @@ func NewSpatialPooler(spParams SpParams) *SpatialPooler {
 	sp.ConnectedCounts = make([]int, sp.numColumns)
 
 	/*
-		 Initialize the set of permanence values for each columns. Ensure that
-	     each column is connected to enough input bits to allow it to be
-	     activated
+			 Initialize the set of permanence values for each columns. Ensure that
+		     each column is connected to enough input bits to allow it to be
+		     activated
 	*/
 	for i := 0; i < numColumns; i++ {
 		potential := sp.mapPotential(i, true)
@@ -327,8 +327,8 @@ permanence values, but the history for this particular scheme has been lost.
 func (sp *SpatialPooler) initPermConnected() int {
 
 	p := sp.SynPermConnected + rand.float64()*sp.SynPermActiveInc/4.0
-	//p = (self._synPermConnected + self._random.getReal64() *
-	//  self._synPermActiveInc / 4.0)
+	//p = (synPermConnected + random.getReal64() *
+	//  synPermActiveInc / 4.0)
 
 	// Ensure we don't have too much unnecessary precision. A full 64 bits of
 	// precision causes numerical stability issues across platforms and across
@@ -398,6 +398,65 @@ func (sp *SpatialPooler) initPermanence(potential []bool, connectedPct bool) []i
 	return perm
 }
 
+func (sp *SpatialPooler) raisePermanenceToThreshold(perm, maskPotential) {
+
+}
+
+/*
+ This method updates the permanence matrix with a column's new permanence
+values. The column is identified by its index, which reflects the row in
+the matrix, and the permanence is given in 'dense' form, i.e. a full
+arrray containing all the zeros as well as the non-zero values. It is in
+charge of implementing 'clipping' - ensuring that the permanence values are
+always between 0 and 1 - and 'trimming' - enforcing sparsity by zeroing out
+all permanence values below '_synPermTrimThreshold'. It also maintains
+the consistency between 'permanences' (the matrix storeing the
+permanence values), 'connectedSynapses', (the matrix storing the bits
+each column is connected to), and 'connectedCounts' (an array storing
+the number of input bits each column is connected to). Every method wishing
+to modify the permanence matrix should do so through this method.
+
+Parameters:
+----------------------------
+perm: An array of permanence values for a column. The array is
+"dense", i.e. it contains an entry for each input bit, even
+if the permanence value is 0.
+index: The index identifying a column in the permanence, potential
+and connectivity matrices
+raisePerm: a boolean value indicating whether the permanence values
+should be raised until a minimum number are synapses are in
+a connected state. Should be set to 'false' when a direct
+assignment is required.
+*/
+
+func (sp *SpatialPooler) updatePermanencesForColumn(perm []int, index int, raisePerm bool) {
+	//maskPotential :=
+	maskPotential := sp.potentialPools.GetDenseRow(index)
+	//maskPotential = numpy.where(potentialPools.getRow(index) > 0)[0]
+	if raisePerm {
+		sp.raisePermanenceToThreshold(perm, maskPotential)
+	}
+	var newConnected []int
+	for i := 0; i < len(perm); i++ {
+		if perm[i] < sp.SynPermTrimThreshold {
+			perm[i] = 0
+		}
+		if perm[i] < sp.SynPermMin {
+			perm[i] = sp.SynPermMin
+		}
+		if perm[i] > sp.SynPermMax {
+			perm[i] = sp.SynPermMax
+		}
+		if perm[i] >= sp.SynPermConnected {
+			newConnected = append(newConnected, perm[i])
+		}
+	}
+
+	sp.permanences.SetRowFromDense(index, perm)
+	sp.ConnectedSynapses.replaceSparseRow(index, newConnected)
+	sp.ConnectedCounts[index] = len(newConnected)
+}
+
 //Main func, returns active array
 //active arrays length is equal to # of columns
 func (sp *SpatialPooler) Compute(inputVector []bool, learn bool) []bool {
@@ -421,8 +480,8 @@ func (sp *SpatialPooler) Compute(inputVector []bool, learn bool) []bool {
 	activeColumns = sp.inhibitColumns(boostedOverlaps)
 
 	if learn {
-		self._adaptSynapses(inputVector, activeColumns)
-		self._updateDutyCycles(overlaps, activeColumns)
+		adaptSynapses(inputVector, activeColumns)
+		updateDutyCycles(overlaps, activeColumns)
 		sp.bumpUpWeakColumns()
 		sp.updateBoostFactors()
 		if sp.isUpdateRound() {
