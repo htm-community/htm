@@ -19,12 +19,29 @@ type SparseBinaryMatrix struct {
 	Entries           []SparseEntry
 }
 
-func NewSparseBinaryMatrix(width int, height int) SparseBinaryMatrix {
-	m := SparseBinaryMatrix{}
+//Create new sparse binary matrix of specified size
+func NewSparseBinaryMatrix(width int, height int) *SparseBinaryMatrix {
+	m := &SparseBinaryMatrix{}
 	m.Height = height
 	m.Width = width
 	//Intialize with 70% sparsity
 	//m.Entries = make([]SparseEntry, int(math.Ceil(width*height*0.3)))
+	return m
+}
+
+//Create sparse binary matrix from specified dense matrix
+func NewSparseBinaryMatrixFromDense(values [][]bool) *SparseBinaryMatrix {
+	if len(values) < 1 {
+		panic("No values specified.")
+	}
+	m := &SparseBinaryMatrix{}
+	m.Height = len(values)
+	m.Width = len(values[0])
+
+	for r := 0; r < len(values); r++ {
+		m.SetRowFromDense(r, values[r])
+	}
+
 	return m
 }
 
