@@ -78,7 +78,7 @@ func (sm *SparseBinaryMatrix) ReplaceRow(row int, values []bool) {
 	sm.validateRowCol(row, len(values))
 
 	for i := 0; i < sm.Width; i++ {
-		sm.Set(i, row, values[i])
+		sm.Set(row, i, values[i])
 	}
 }
 
@@ -89,12 +89,12 @@ func (sm *SparseBinaryMatrix) ReplaceRowByIndices(row int, indices []int) {
 	for i := 0; i < sm.Width; i++ {
 		val := false
 		for x := 0; x < len(indices); x++ {
-			if i == x {
+			if i == indices[x] {
 				val = true
 				break
 			}
 		}
-		sm.Set(i, row, val)
+		sm.Set(row, i, val)
 	}
 }
 
