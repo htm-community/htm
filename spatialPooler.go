@@ -2,6 +2,7 @@ package htm
 
 import (
 	"github.com/cznic/mathutil"
+	"github.com/skelterjohn/go.matrix"
 	"math"
 	"math/rand"
 )
@@ -48,7 +49,7 @@ type SpatialPooler struct {
 	Seed int
 
 	potentialPools SparseBinaryMatrix
-	permanences    SparseMatrix
+	permanences    *matrix.SparseMatrix
 	tieBreaker     float64
 
 	connectedSynapses SparseBinaryMatrix
@@ -188,7 +189,9 @@ func NewSpatialPooler(spParams SpParams) *SpatialPooler {
 		     structure. This permanence matrix is only allowed to have non-zero
 		     elements where the potential pool is non-zero.
 	*/
-	sp.permanences = NewSparseMatrix(sp.numColumns, sp.numInputs)
+	//Assumes 70% sparsity
+	elms := make(map[int]float64, int(float64(sp.numColumns*sp.numInputs)*0.3))
+	sp.permanences = matrix.MakeSparseMatrix(elms, sp.numColumns, sp.numInputs)
 
 	/*
 			 Initialize a tiny random tie breaker. This is used to determine winning
@@ -276,7 +279,7 @@ func (sp *SpatialPooler) mapPotential(index int, wrapAround bool) []bool {
 		}
 		//no dupes
 		exists := false
-		for ind, val := range indices {
+		for _, val := range indices {
 			if val == temp {
 				exists = true
 				break
@@ -300,7 +303,7 @@ func (sp *SpatialPooler) mapPotential(index int, wrapAround bool) []bool {
 	sample := indices[:sampleLen]
 	//project indices onto input mask
 	mask := make([]bool, sp.numInputs)
-	for i, val := range mask {
+	for i, _ := range mask {
 		found := false
 		for x := 0; x < len(sample); x++ {
 			if sample[x] == i {
@@ -450,8 +453,11 @@ func (sp *SpatialPooler) updatePermanencesForColumn(perm []float64, index int, r
 			newConnected = append(newConnected, i)
 		}
 	}
-
-	sp.permanences.SetRowFromDense(index, perm)
+	//TODO: replace with sparse matrix that indexes by rows
+	//sp.permanences.SetRowFromDense(index, perm)
+	for i := 0; i < len(perm); i++ {
+		sp.permanences.Set(index, i, perm[i])
+	}
 	sp.connectedSynapses.ReplaceRowByIndices(index, newConnected)
 	sp.connectedCounts[index] = len(newConnected)
 }
