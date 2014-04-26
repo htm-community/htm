@@ -82,6 +82,22 @@ func (sm *SparseBinaryMatrix) ReplaceRow(row int, values []bool) {
 	}
 }
 
+//Replaces row with true values at specified indices
+func (sm *SparseBinaryMatrix) ReplaceRowByIndices(row int, indices []int) {
+	sm.validateRow(row)
+
+	for i := 0; i < sm.Width; i++ {
+		val := false
+		for x := 0; x < len(indices); x++ {
+			if i == x {
+				val = true
+				break
+			}
+		}
+		sm.Set(i, row, val)
+	}
+}
+
 //Returns dense row
 func (sm *SparseBinaryMatrix) GetDenseRow(row int) []bool {
 	sm.validateRow(row)

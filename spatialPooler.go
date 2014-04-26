@@ -1,6 +1,7 @@
 package htm
 
 import (
+	"github.com/cznic/mathutil"
 	"math"
 	"math/rand"
 )
@@ -11,10 +12,10 @@ type ITuple struct {
 }
 
 type SpatialPooler struct {
-	NumInputs                  int
-	NumColumns                 int
-	ColumnDimensions           []int
-	InputDimensions            []int
+	numColumns                 int
+	numInputs                  int
+	ColumnDimensions           ITuple
+	InputDimensions            ITuple
 	PotentialRadius            int
 	PotentialPct               float64
 	GlobalInhibition           bool
@@ -47,7 +48,7 @@ type SpatialPooler struct {
 	Seed int
 
 	potentialPools SparseBinaryMatrix
-	permanences    SparseBinaryMatrix
+	permanences    SparseMatrix
 	tieBreaker     float64
 
 	connectedSynapses SparseBinaryMatrix
@@ -61,9 +62,6 @@ type SpatialPooler struct {
 	boostFactors         []bool
 
 	inhibitionRadius int
-
-	numColumns int
-	numInputs  int
 }
 
 type SpParams struct {
@@ -73,7 +71,7 @@ type SpParams struct {
 	PotentialPct               float64
 	GlobalInhibition           bool
 	LocalAreaDensity           float64
-	NumActiveColumnsPerInhArea float64
+	NumActiveColumnsPerInhArea int
 	StimulusThreshold          int
 	SynPermInactiveDec         float64
 	SynPermActiveInc           float64
@@ -87,14 +85,14 @@ type SpParams struct {
 }
 
 //Initializes default spatial pooler params
-func NewSpParams() {
+func NewSpParams() SpParams {
 	sp := SpParams{}
 
 	sp.InputDimensions = ITuple{32, 32}
 	sp.ColumnDimensions = ITuple{64, 64}
 	sp.PotentialRadius = 16
 	sp.PotentialPct = 0.5
-	sp.GlobalInhibition = False
+	sp.GlobalInhibition = false
 	sp.LocalAreaDensity = -1.0
 	sp.NumActiveColumnsPerInhArea = 10.0
 	sp.StimulusThreshold = 0
@@ -118,7 +116,7 @@ func NewSpatialPooler(spParams SpParams) *SpatialPooler {
 	sp.numColumns = spParams.ColumnDimensions.A * spParams.ColumnDimensions.B
 	sp.numInputs = spParams.InputDimensions.A * spParams.InputDimensions.B
 
-	if sp.numColums < 16 {
+	if sp.numColumns < 16 {
 		panic("Column dimensions must be at least 4x4")
 	}
 	if sp.numInputs < 16 {
@@ -130,7 +128,7 @@ func NewSpatialPooler(spParams SpParams) *SpatialPooler {
 
 	sp.InputDimensions = spParams.InputDimensions
 	sp.ColumnDimensions = spParams.ColumnDimensions
-	sp.PotentialRadius = int(math.Min(spParams.PotentialRadius, numInputs))
+	sp.PotentialRadius = int(mathutil.Min(spParams.PotentialRadius, sp.numInputs))
 	sp.PotentialPct = spParams.PotentialPct
 	sp.GlobalInhibition = spParams.GlobalInhibition
 	sp.LocalAreaDensity = spParams.LocalAreaDensity
@@ -139,20 +137,22 @@ func NewSpatialPooler(spParams SpParams) *SpatialPooler {
 	sp.SynPermInactiveDec = spParams.SynPermInactiveDec
 	sp.SynPermActiveInc = spParams.SynPermConnected / 10.0
 	sp.SynPermConnected = spParams.SynPermConnected
-	sp.MinPctOverlapDutyCycle = spParams.MinPctOverlapDutyCycle
-	sp.MinPctActiveDutyCycle = spParams.MinPctActiveDutyCycle
+	sp.MinPctOverlapDutyCycles = spParams.MinPctOverlapDutyCycle
+	sp.MinPctActiveDutyCycles = spParams.MinPctActiveDutyCycle
 	sp.DutyCyclePeriod = spParams.DutyCyclePeriod
 	sp.MaxBoost = spParams.MaxBoost
 	sp.Seed = spParams.Seed
 	sp.SpVerbosity = spParams.SpVerbosity
 
 	// Extra parameter settings
-	sp.SynPermMin = 0.0
-	sp.SynPermMax = 1.0
-	sp.SynPermTrimThreshold = synPermActiveInc / 2.0
-	assert(synPermTrimThreshold < synPermConnected)
+	sp.SynPermMin = 0
+	sp.SynPermMax = 1
+	sp.SynPermTrimThreshold = sp.SynPermActiveInc / 2.0
+	if sp.SynPermTrimThreshold < sp.SynPermConnected {
+		panic("Syn perm threshold less than connected.")
+	}
 	sp.UpdatePeriod = 50
-	sp.initConnectedPct = 0.5
+	sp.InitConnectedPct = 0.5
 
 	/*
 			# Internal state
@@ -175,7 +175,7 @@ func NewSpatialPooler(spParams SpParams) *SpatialPooler {
 		     class, to reduce memory footprint and compuation time of algorithms that
 		     require iterating over the data strcuture.
 	*/
-	sp.PotentialPools = NewSparseBinaryMatrix(sp.numColumns, sp.numInputs)
+	sp.potentialPools = NewSparseBinaryMatrix(sp.numColumns, sp.numInputs)
 
 	/*
 			 Initialize the permanences for each column. Similar to the
@@ -188,7 +188,7 @@ func NewSpatialPooler(spParams SpParams) *SpatialPooler {
 		     structure. This permanence matrix is only allowed to have non-zero
 		     elements where the potential pool is non-zero.
 	*/
-	sp.Permanences = NewSparseMatrix(sp.numColumns, sp.numInputs)
+	sp.permanences = NewSparseMatrix(sp.numColumns, sp.numInputs)
 
 	/*
 			 Initialize a tiny random tie breaker. This is used to determine winning
@@ -205,7 +205,7 @@ func NewSpatialPooler(spParams SpParams) *SpatialPooler {
 		     this information is readily available from the 'permanence' matrix,
 		     it is stored separately for efficiency purposes.
 	*/
-	sp.ConnectedSynapses = NewSparseBinaryMatrix(sp.numColumns, sp.numInputs)
+	sp.connectedSynapses = NewSparseBinaryMatrix(sp.numColumns, sp.numInputs)
 
 	/*
 			 Stores the number of connected synapses for each column. This is simply
@@ -213,21 +213,21 @@ func NewSpatialPooler(spParams SpParams) *SpatialPooler {
 		     information is readily available from 'ConnectedSynapses', it is
 		     stored separately for efficiency purposes.
 	*/
-	sp.ConnectedCounts = make([]int, sp.numColumns)
+	sp.connectedCounts = make([]int, sp.numColumns)
 
 	/*
 			 Initialize the set of permanence values for each columns. Ensure that
 		     each column is connected to enough input bits to allow it to be
 		     activated
 	*/
-	for i := 0; i < numColumns; i++ {
+	for i := 0; i < sp.numColumns; i++ {
 		potential := sp.mapPotential(i, true)
-		sp.PotentialPools.ReplaceSparseRow(i, potential)
-		perm := sp.initPermanence(potential, sp.initConnectedPct)
+		sp.potentialPools.ReplaceRow(i, potential)
+		perm := sp.initPermanence(potential, sp.InitConnectedPct)
 		sp.updatePermanencesForColumn(perm, i, true)
 	}
 
-	return sp
+	return &sp
 }
 
 /*
@@ -259,13 +259,13 @@ region boundaries ignored.
 */
 func (sp *SpatialPooler) mapPotential(index int, wrapAround bool) []bool {
 	// Distribute column over inputs uniformly
-	ratio := float64(index) / max((sp.numColumns-1), 1)
+	ratio := index / mathutil.Max((sp.numColumns-1), 1)
 	index = int((sp.numInputs - 1) * ratio)
 
 	var indices []int
 	indLen := 2*sp.PotentialRadius + 1
 
-	for i = 0; i < indLen; i++ {
+	for i := 0; i < indLen; i++ {
 		temp := (i + index - sp.PotentialRadius)
 		if wrapAround {
 			temp = temp % sp.numInputs
@@ -296,8 +296,8 @@ func (sp *SpatialPooler) mapPotential(index int, wrapAround bool) []bool {
 		indices[i], indices[j] = indices[j], indices[i]
 	}
 
-	sampleLen := int(round(len(indices) * sp.PotentialPct))
-	sample := indices[:len(sampleLen)]
+	sampleLen := int(float64(len(indices)) * sp.PotentialPct)
+	sample := indices[:sampleLen]
 	//project indices onto input mask
 	mask := make([]bool, sp.numInputs)
 	for i, val := range mask {
@@ -324,17 +324,15 @@ Note: experimentation was done a long time ago on the best way to initialize
 permanence values, but the history for this particular scheme has been lost.
 */
 
-func (sp *SpatialPooler) initPermConnected() int {
+func (sp *SpatialPooler) initPermConnected() float64 {
 
-	p := sp.SynPermConnected + rand.float64()*sp.SynPermActiveInc/4.0
-	//p = (synPermConnected + random.getReal64() *
-	//  synPermActiveInc / 4.0)
+	p := sp.SynPermConnected + rand.Float64()*sp.SynPermActiveInc/4.0
 
 	// Ensure we don't have too much unnecessary precision. A full 64 bits of
 	// precision causes numerical stability issues across platforms and across
 	// implementations
-	p = int(p*100000) / 100000.0
-	return p
+
+	return float64(int(p*100000)) / 100000.0
 }
 
 /*
@@ -342,14 +340,13 @@ func (sp *SpatialPooler) initPermConnected() int {
 	initialized in a non-connected state.
 */
 
-func (sp *SpatialPooler) initPermNonConnected() int {
-	p := sp.SynPermConnected * rand.float64()
+func (sp *SpatialPooler) initPermNonConnected() float64 {
+	p := sp.SynPermConnected * rand.Float64()
 
 	// Ensure we don't have too much unnecessary precision. A full 64 bits of
 	// precision causes numerical stability issues across platforms and across
 	// implementations
-	p = int(p*100000) / 100000.0
-	return p
+	return float64(int(p*100000)) / 100000.0
 }
 
 /*
@@ -364,32 +361,32 @@ Parameters:
 potential: A numpy array specifying the potential pool of the column.
 Permanence values will only be generated for input bits
 corresponding to indices for which the mask value is 1.
-connectedPct: A value between 0 or 1 specifying the percent of the input
+connectedPct: A value between 0 and 1 specifying the percent of the input
 bits that will start off in a connected state.
 */
 
-func (sp *SpatialPooler) initPermanence(potential []bool, connectedPct bool) []int {
+func (sp *SpatialPooler) initPermanence(potential []bool, connectedPct float64) []float64 {
 	// Determine which inputs bits will start out as connected
 	// to the inputs. Initially a subset of the input bits in a
 	// column's potential pool will be connected. This number is
 	// given by the parameter "connectedPct"
 
-	perm := make([]int, sp.numInputs)
+	perm := make([]float64, sp.numInputs)
 	//var perm []int
 
 	for i := 0; i < sp.numInputs; i++ {
 		if !potential[i] {
 			continue
 		}
-		var temp int
-		if rand.Float64() < connectedPct {
+		var temp float64
+		if randFloatRange(0.0, 1.0) < connectedPct {
 			temp = sp.initPermConnected()
 		} else {
 			temp = sp.initPermNonConnected()
 		}
 		//Exclude low values to save memory
 		if temp < sp.SynPermTrimThreshold {
-			temp = 0
+			temp = 0.0
 		}
 
 		perm[i] = temp
@@ -398,7 +395,7 @@ func (sp *SpatialPooler) initPermanence(potential []bool, connectedPct bool) []i
 	return perm
 }
 
-func (sp *SpatialPooler) raisePermanenceToThreshold(perm, maskPotential) {
+func (sp *SpatialPooler) raisePermanenceToThreshold(perm []float64, maskPotential []bool) {
 
 }
 
@@ -429,10 +426,8 @@ a connected state. Should be set to 'false' when a direct
 assignment is required.
 */
 
-func (sp *SpatialPooler) updatePermanencesForColumn(perm []int, index int, raisePerm bool) {
-	//maskPotential :=
+func (sp *SpatialPooler) updatePermanencesForColumn(perm []float64, index int, raisePerm bool) {
 	maskPotential := sp.potentialPools.GetDenseRow(index)
-	//maskPotential = numpy.where(potentialPools.getRow(index) > 0)[0]
 	if raisePerm {
 		sp.raisePermanenceToThreshold(perm, maskPotential)
 	}
@@ -440,7 +435,11 @@ func (sp *SpatialPooler) updatePermanencesForColumn(perm []int, index int, raise
 	for i := 0; i < len(perm); i++ {
 		if perm[i] < sp.SynPermTrimThreshold {
 			perm[i] = 0
+			continue
 		}
+
+		//output[i] = perm[i] > 0
+		//TODO: can be simplified if syn min/max are always 1/0
 		if perm[i] < sp.SynPermMin {
 			perm[i] = sp.SynPermMin
 		}
@@ -448,57 +447,57 @@ func (sp *SpatialPooler) updatePermanencesForColumn(perm []int, index int, raise
 			perm[i] = sp.SynPermMax
 		}
 		if perm[i] >= sp.SynPermConnected {
-			newConnected = append(newConnected, perm[i])
+			newConnected = append(newConnected, i)
 		}
 	}
 
 	sp.permanences.SetRowFromDense(index, perm)
-	sp.ConnectedSynapses.replaceSparseRow(index, newConnected)
-	sp.ConnectedCounts[index] = len(newConnected)
+	sp.connectedSynapses.ReplaceRowByIndices(index, newConnected)
+	sp.connectedCounts[index] = len(newConnected)
 }
 
 //Main func, returns active array
 //active arrays length is equal to # of columns
-func (sp *SpatialPooler) Compute(inputVector []bool, learn bool) []bool {
-	if len(inputVector) != sp.NumInputs {
-		panic("input != numimputs")
-	}
+// func (sp *SpatialPooler) Compute(inputVector []bool, learn bool) []bool {
+// 	if len(inputVector) != sp.numInputs {
+// 		panic("input != numimputs")
+// 	}
 
-	sp.updateBookeepingVars(learn)
-	//inputVector = numpy.array(inputVector, dtype=realDType)
-	//inputVector.reshape(-1)
+// sp.updateBookeepingVars(learn)
+// //inputVector = numpy.array(inputVector, dtype=realDType)
+// //inputVector.reshape(-1)
 
-	overlaps := sp.calculateOverlap(inputVector)
+// overlaps := sp.calculateOverlap(inputVector)
 
-	boostedOverlaps := overlaps
-	// Apply boosting when learning is on
-	if learn {
-		boostedOverlaps = sp.BoostFactors * overlaps
-	}
+// boostedOverlaps := overlaps
+// // Apply boosting when learning is on
+// if learn {
+// 	boostedOverlaps = sp.BoostFactors * overlaps
+// }
 
-	// Apply inhibition to determine the winning columns
-	activeColumns = sp.inhibitColumns(boostedOverlaps)
+// // Apply inhibition to determine the winning columns
+// activeColumns = sp.inhibitColumns(boostedOverlaps)
 
-	if learn {
-		adaptSynapses(inputVector, activeColumns)
-		updateDutyCycles(overlaps, activeColumns)
-		sp.bumpUpWeakColumns()
-		sp.updateBoostFactors()
-		if sp.isUpdateRound() {
-			sp.updateInhibitionRadius()
-			sp.updateMinDutyCycles()
-		}
+// if learn {
+// 	adaptSynapses(inputVector, activeColumns)
+// 	updateDutyCycles(overlaps, activeColumns)
+// 	sp.bumpUpWeakColumns()
+// 	sp.updateBoostFactors()
+// 	if sp.isUpdateRound() {
+// 		sp.updateInhibitionRadius()
+// 		sp.updateMinDutyCycles()
+// 	}
 
-	} else {
-		activeColumns = sp.stripNeverLearned(activeColumns)
-	}
+// } else {
+// 	activeColumns = sp.stripNeverLearned(activeColumns)
+// }
 
-	activeArray.fill(0)
-	if len(activeColumns) > 0 {
-		activeArray[activeColumns] = 1
-	}
+// activeArray.fill(0)
+// if len(activeColumns) > 0 {
+// 	activeArray[activeColumns] = 1
+// }
 
-}
+//}
 
 func (sp *SpatialPooler) updateBookeepingVars() {
 
@@ -538,14 +537,14 @@ func (sp *SpatialPooler) updateInhibitionRadius() {
 
 // Updates the minimum duty cycles defining normal activity for a column. A
 // column with activity duty cycle below this minimum threshold is boosted.
-func (sp *SpatialPooler) updateMinDutyCycles() {
-	if sp.GlobalInhibition || sp.InhibitionRadius > sp.NumInputs {
-		sp.updateMinDutyCyclesGlobal()
-	} else {
-		sp.updateMinDutyCyclesLocal()
-	}
+// func (sp *SpatialPooler) updateMinDutyCycles() {
+// 	if sp.GlobalInhibition || sp.inhibitionRadius > sp.numInputs {
+// 		sp.updateMinDutyCyclesGlobal()
+// 	} else {
+// 		sp.updateMinDutyCyclesLocal()
+// 	}
 
-}
+// }
 
 // Updates the minimum duty cycles in a global fashion. Sets the minimum duty
 // cycles for the overlap and activation of all columns to be a percent of the
@@ -553,11 +552,40 @@ func (sp *SpatialPooler) updateMinDutyCycles() {
 // minPctActiveDutyCycle respectively. Functionaly it is equivalent to
 // _updateMinDutyCyclesLocal, but this function exploits the globalilty of the
 // compuation to perform it in a straightforward, and more efficient manner.
-func (sp *SpatialPooler) updateMinDutyCyclesGlobal() {
-	sp.minOverlapDutyCycles.fill(sp.minPctOverlapDutyCycles * sp.overlapDutyCycles.max())
-	sp.minActiveDutyCycles.fill(sp.minPctActiveDutyCycles * sp.activeDutyCycles.max())
-}
+// func (sp *SpatialPooler) updateMinDutyCyclesGlobal() {
+// 	sp.minOverlapDutyCycles.fill(sp.minPctOverlapDutyCycles * sp.overlapDutyCycles.max())
+// 	sp.minActiveDutyCycles.fill(sp.minPctActiveDutyCycles * sp.activeDutyCycles.max())
+// }
 
 func (sp *SpatialPooler) stripNeverLearned(activeColumns []bool) {
 
+}
+
+func randFloatRange(min, max float64) float64 {
+	return rand.Float64()*(max-min) + min
+}
+
+func RoundPrec(x float64, prec int) float64 {
+	if math.IsNaN(x) || math.IsInf(x, 0) {
+		return x
+	}
+
+	sign := 1.0
+	if x < 0 {
+		sign = -1
+		x *= -1
+	}
+
+	var rounder float64
+	pow := math.Pow(10, float64(prec))
+	intermed := x * pow
+	_, frac := math.Modf(intermed)
+
+	if frac >= 0.5 {
+		rounder = math.Ceil(intermed)
+	} else {
+		rounder = math.Floor(intermed)
+	}
+
+	return rounder / pow * sign
 }
