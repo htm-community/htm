@@ -149,6 +149,51 @@ func TestRaisePermanenceThreshold(t *testing.T) {
 
 }
 
+func TestStripNever(t *testing.T) {
+	sp := SpatialPooler{}
+
+	sp.activeDutyCycles = []float64{0.5, 0.1, 0, 0.2, 0.4, 0}
+	activeColumns := []int{0, 1, 2, 4}
+	stripped := sp.stripNeverLearned(activeColumns)
+	trueStripped := []int{0, 1, 4}
+	t.Logf("stripped", stripped)
+	for i := 0; i < len(trueStripped); i++ {
+		if stripped[i] != trueStripped[i] {
+			t.Errorf("stripped %v was %v expected %v", i, stripped[i], trueStripped[i])
+		}
+	}
+
+	sp.activeDutyCycles = []float64{0.9, 0, 0, 0, 0.4, 0.3}
+	activeColumns = []int{0, 1, 2, 3, 4, 5}
+	stripped = sp.stripNeverLearned(activeColumns)
+	trueStripped = []int{0, 4, 5}
+	for i := 0; i < len(trueStripped); i++ {
+		if stripped[i] != trueStripped[i] {
+			t.Errorf("stripped %v was %v expected %v", i, stripped[i], trueStripped[i])
+		}
+	}
+
+	sp.activeDutyCycles = []float64{0, 0, 0, 0, 0, 0}
+	activeColumns = []int{0, 1, 2, 3, 4, 5}
+	stripped = sp.stripNeverLearned(activeColumns)
+	if len(stripped) != 0 {
+		t.Errorf("Expected empty stripped was %v", stripped)
+	}
+
+	sp.activeDutyCycles = []float64{1, 1, 1, 1, 1, 1}
+	activeColumns = []int{0, 1, 2, 3, 4, 5}
+	stripped = sp.stripNeverLearned(activeColumns)
+	trueStripped = []int{0, 1, 2, 3, 4, 5}
+	for i := 0; i < len(trueStripped); i++ {
+		if stripped[i] != trueStripped[i] {
+			t.Errorf("stripped %v was %v expected %v", i, stripped[i], trueStripped[i])
+		}
+	}
+
+}
+
+//----- Helper functions -------------
+
 func AlmostEqual(a, b float64) bool {
 	ar := RoundPrec(a, 2)
 	br := RoundPrec(b, 2)
