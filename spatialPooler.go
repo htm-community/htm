@@ -231,6 +231,29 @@ func NewSpatialPooler(spParams SpParams) *SpatialPooler {
 		sp.updatePermanencesForColumn(perm, i, true)
 	}
 
+	sp.overlapDutyCycles = make([]bool, sp.numColumns)
+	sp.activeDutyCycles = make([]float64, sp.numColumns)
+	sp.minOverlapDutyCycles = make([]float64, sp.numColumns)
+	sp.minActiveDutyCycles = make([]bool, sp.numColumns)
+	sp.boostFactors = make([]bool, sp.numColumns)
+	for i := 0; i < len(sp.boostFactors); i++ {
+		sp.boostFactors[i] = true
+	}
+
+	/*
+			The inhibition radius determines the size of a column's local
+		    neighborhood. of a column. A cortical column must overcome the overlap
+		    score of columns in his neighborhood in order to become actives. This
+		    radius is updated every learning round. It grows and shrinks with the
+		    average number of connected synapses per column.
+	*/
+	sp.inhibitionRadius = 0
+	sp.updateInhibitionRadius()
+
+	if sp.spVerbosity > 0 {
+		sp.printParameters()
+	}
+
 	return &sp
 }
 
@@ -626,6 +649,14 @@ func (sp *SpatialPooler) stripNeverLearned(activeColumns []int) []int {
 
 	return result
 }
+
+func (sp *SpatialPooler) printParameters() {
+	fmt.Println("numInputs", sp.numInputs)
+	fmt.Println("numColumns", sp.numColumns)
+
+}
+
+//----- Helper functions ----
 
 func randFloatRange(min, max float64) float64 {
 	return rand.Float64()*(max-min) + min
