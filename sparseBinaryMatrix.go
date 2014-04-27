@@ -52,7 +52,7 @@ func NewSparseBinaryMatrixFromDense(values [][]bool) *SparseBinaryMatrix {
 // }
 
 //Get value at col,row position
-func (sm *SparseBinaryMatrix) Get(col int, row int) bool {
+func (sm *SparseBinaryMatrix) Get(row int, col int) bool {
 	for _, val := range sm.Entries {
 		if val.Row == row && val.Col == col {
 			return true
@@ -61,7 +61,7 @@ func (sm *SparseBinaryMatrix) Get(col int, row int) bool {
 	return false
 }
 
-func (sm *SparseBinaryMatrix) delete(col int, row int) {
+func (sm *SparseBinaryMatrix) delete(row int, col int) {
 	for idx, val := range sm.Entries {
 		if val.Row == row && val.Col == col {
 			sm.Entries = append(sm.Entries[:idx], sm.Entries[idx+1:]...)
@@ -71,14 +71,14 @@ func (sm *SparseBinaryMatrix) delete(col int, row int) {
 
 }
 
-//Set value at col,row position
-func (sm *SparseBinaryMatrix) Set(col int, row int, value bool) {
+//Set value at row,col position
+func (sm *SparseBinaryMatrix) Set(row int, col int, value bool) {
 	if !value {
-		sm.delete(col, row)
+		sm.delete(row, col)
 		return
 	}
 
-	if sm.Get(col, row) {
+	if sm.Get(row, col) {
 		return
 	}
 
@@ -126,6 +126,17 @@ func (sm *SparseBinaryMatrix) GetDenseRow(row int) []bool {
 		}
 	}
 
+	return result
+}
+
+//Returns a rows "on" indices
+func (sm *SparseBinaryMatrix) GetRowIndices(row int) []int {
+	result := []int{}
+	for i := 0; i < len(sm.Entries); i++ {
+		if sm.Entries[i].Row == row {
+			result = append(result, sm.Entries[i].Col)
+		}
+	}
 	return result
 }
 
