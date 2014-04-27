@@ -7,58 +7,90 @@ import (
 	"testing"
 )
 
-/*
-def testInitPermanence1(self):
-    """
-test initial permanence generation. ensure that
-a correct amount of synapses are initialized in
-a connected state, with permanence values drawn from
-the correct ranges
-"""
-    sp = self._sp
-    sp._inputDimensions = numpy.array([10])
-    sp._numInputs = 10
-    sp._raisePermanenceToThreshold = Mock()
+func getConnected(perm []float64, sp *SpatialPooler) (int, []bool) {
+	numcon := 0
+	connected := make([]bool, len(perm))
+	for i := 0; i < len(perm); i++ {
+		if perm[i] >= sp.SynPermConnected {
+			numcon++
+			connected[i] = true
+		} else {
+			connected[i] = false
+		}
+	}
 
-    sp._potentialRadius = 2
-    connectedPct = 1
-    mask = numpy.array([1, 1, 1, 0, 0, 0, 0, 0, 1, 1])
-    perm = sp._initPermanence(mask, connectedPct)
-    connected = (perm >= sp._synPermConnected).astype(int)
-    numcon = (connected.nonzero()[0]).size
-    self.assertEqual(numcon, 5)
-    maxThresh = sp._synPermConnected + sp._synPermActiveInc/4
-    self.assertEqual((perm <= maxThresh).all(), True)
+	return numcon, connected
+}
 
-    connectedPct = 0
-    perm = sp._initPermanence(mask, connectedPct)
-    connected = (perm >= sp._synPermConnected).astype(int)
-    numcon = (connected.nonzero()[0]).size
-    self.assertEqual(numcon, 0)
+func TestPermanenceInit(t *testing.T) {
+	sp := SpatialPooler{}
+	sp.InputDimensions = ITuple{1, 10}
+	sp.numInputs = 10
+	sp.SynPermConnected = 0.1
+	sp.SynPermActiveInc = 0.1
+	//sp.raisePermanenceToThreshold = Mock()
 
-    connectedPct = 0.5
-    sp._potentialRadius = 100
-    sp._numInputs = 100
-    mask = numpy.ones(100)
-    perm = sp._initPermanence(mask, connectedPct)
-    connected = (perm >= sp._synPermConnected).astype(int)
-    numcon = (connected.nonzero()[0]).size
-    self.assertGreater(numcon, 0)
-    self.assertLess(numcon, sp._numInputs)
+	sp.PotentialRadius = 2
+	connectedPct := 1.0
+	mask := []bool{true, true, true, false, false, false, false, false, true, true}
+	perm := sp.initPermanence(mask, connectedPct)
+	numcon, connected := getConnected(perm, &sp)
 
-    minThresh = sp._synPermActiveInc / 2.0
-    connThresh = sp._synPermConnected
-    self.assertEqual(numpy.logical_and((perm >= minThresh),
-                                       (perm < connThresh)).any(), True)
-*/
+	if numcon != 5 {
+		t.Errorf("numcon was %v expected 5", numcon)
+	}
+	maxThresh := sp.SynPermConnected + sp.SynPermActiveInc/4
 
-// func TestPermanenceInit(t *testing.T){
-// 	sp = self._sp
-//     sp._inputDimensions = numpy.array([10])
-//     sp._numInputs = 10
-//     sp._raisePermanenceToThreshold = Mock()
+	for i := 0; i < len(perm); i++ {
+		if perm[i] > maxThresh {
+			t.Errorf("perm %v was %v higher than threshold", i, perm[i])
+		}
+	}
 
-// }
+	connectedPct = 0
+	numcon = 0
+	perm = sp.initPermanence(mask, connectedPct)
+	numcon, connected = getConnected(perm, &sp)
+	if numcon != 0 {
+		t.Errorf("numcon was %v expected 0", numcon)
+	}
+
+	if len(connected) != 5 {
+		return
+	}
+
+	connectedPct = 0.5
+	sp.PotentialRadius = 100
+	sp.numInputs = 100
+	mask = make([]bool, 100)
+	for i := 0; i < len(mask); i++ {
+		mask[i] = true
+	}
+
+	perm = sp.initPermanence(mask, connectedPct)
+	numcon, connected = getConnected(perm, &sp)
+
+	if !(numcon > 0) {
+		t.Errorf("numcon was %v expected greater than 0", numcon)
+	}
+
+	if numcon >= sp.numInputs {
+		t.Errorf("numcon was %v expected less than inputs count", numcon)
+	}
+
+	minThresh := sp.SynPermActiveInc / 2.0
+	connThresh := sp.SynPermConnected
+
+	for i := 0; i < len(perm); i++ {
+		if perm[i] < minThresh {
+			t.Errorf("perm %v was %v less than min threshold", i, perm[i])
+		}
+		if perm[i] >= connThresh {
+			t.Errorf("perm %v was %v not less than connection threshold", i, perm[i])
+		}
+	}
+
+}
 
 func TestRaisePermanenceThreshold(t *testing.T) {
 
@@ -85,8 +117,6 @@ func TestRaisePermanenceThreshold(t *testing.T) {
 	}
 	AddDenseToSparseHelper(p, sp.permanences)
 
-	fmt.Println("permanences vec", SparseMatrixToArray(sp.permanences.GetRowVector(2)))
-
 	sp.connectedSynapses = NewSparseBinaryMatrixFromDense([][]bool{
 		{false, true, false, false, false},
 		{true, true, false, true, false},
@@ -107,7 +137,6 @@ func TestRaisePermanenceThreshold(t *testing.T) {
 	maskPP := []int{0, 1, 2, 3, 4}
 
 	for i := 0; i < sp.numColumns; i++ {
-		fmt.Println("calling:", i)
 		perm := SparseMatrixToArray(sp.permanences.GetRowVector(i))
 		sp.raisePermanenceToThreshold(perm, maskPP)
 		for j := 0; j < sp.numInputs; j++ {
