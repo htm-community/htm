@@ -58,7 +58,7 @@ type SpatialPooler struct {
 	connectedCounts []int
 
 	overlapDutyCycles    []bool
-	activeDutyCycles     []bool
+	activeDutyCycles     []float64
 	minOverlapDutyCycles []bool
 	minActiveDutyCycles  []bool
 	boostFactors         []bool
@@ -606,8 +606,25 @@ func (sp *SpatialPooler) updateInhibitionRadius() {
 // 	sp.minActiveDutyCycles.fill(sp.minPctActiveDutyCycles * sp.activeDutyCycles.max())
 // }
 
-func (sp *SpatialPooler) stripNeverLearned(activeColumns []bool) {
+/*
+Removes the set of columns who have never been active from the set of
+active columns selected in the inhibition round. Such columns cannot
+represent learned pattern and are therefore meaningless if only inference
+is required.
 
+Parameters:
+----------------------------
+activeColumns: An array containing the indices of the active columns
+*/
+func (sp *SpatialPooler) stripNeverLearned(activeColumns []int) []int {
+	var result []int
+	for i := 0; i < len(activeColumns); i++ {
+		if sp.activeDutyCycles[activeColumns[i]] != 0 {
+			result = append(result, activeColumns[i])
+		}
+	}
+
+	return result
 }
 
 func randFloatRange(min, max float64) float64 {
