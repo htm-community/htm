@@ -1,9 +1,10 @@
 package htm
 
 import (
+	//"fmt"
 	"github.com/cznic/mathutil"
 	"github.com/skelterjohn/go.matrix"
-	"math"
+	//"math"
 	"math/rand"
 )
 
@@ -48,11 +49,11 @@ type SpatialPooler struct {
 	//random seed
 	Seed int
 
-	potentialPools SparseBinaryMatrix
+	potentialPools *SparseBinaryMatrix
 	permanences    *matrix.SparseMatrix
 	tieBreaker     float64
 
-	connectedSynapses SparseBinaryMatrix
+	connectedSynapses *SparseBinaryMatrix
 	//redundant
 	connectedCounts []int
 
@@ -117,11 +118,11 @@ func NewSpatialPooler(spParams SpParams) *SpatialPooler {
 	sp.numColumns = spParams.ColumnDimensions.A * spParams.ColumnDimensions.B
 	sp.numInputs = spParams.InputDimensions.A * spParams.InputDimensions.B
 
-	if sp.numColumns < 16 {
-		panic("Column dimensions must be at least 4x4")
+	if sp.numColumns < 1 {
+		panic("Must have at least 1 column")
 	}
-	if sp.numInputs < 16 {
-		panic("Input area must be at least 16")
+	if sp.numInputs < 1 {
+		panic("must have at least 1 input")
 	}
 	if spParams.NumActiveColumnsPerInhArea < 1 && (spParams.LocalAreaDensity < 1) && (spParams.LocalAreaDensity >= 0.5) {
 		panic("Num active colums invalid")
@@ -149,8 +150,8 @@ func NewSpatialPooler(spParams SpParams) *SpatialPooler {
 	sp.SynPermMin = 0
 	sp.SynPermMax = 1
 	sp.SynPermTrimThreshold = sp.SynPermActiveInc / 2.0
-	if sp.SynPermTrimThreshold < sp.SynPermConnected {
-		panic("Syn perm threshold less than connected.")
+	if sp.SynPermTrimThreshold >= sp.SynPermConnected {
+		panic("Syn perm threshold >= syn connected.")
 	}
 	sp.UpdatePeriod = 50
 	sp.InitConnectedPct = 0.5
@@ -398,7 +399,49 @@ func (sp *SpatialPooler) initPermanence(potential []bool, connectedPct float64) 
 	return perm
 }
 
-func (sp *SpatialPooler) raisePermanenceToThreshold(perm []float64, maskPotential []bool) {
+/*
+ This method ensures that each column has enough connections to input bits
+to allow it to become active. Since a column must have at least
+'stimulusThreshold' overlaps in order to be considered during the
+inhibition phase, columns without such minimal number of connections, even
+if all the input bits they are connected to turn on, have no chance of
+obtaining the minimum threshold. For such columns, the permanence values
+are increased until the minimum number of connections are formed.
+
+Parameters:
+----------------------------
+perm: An array of permanence values for a column. The array is
+"dense", i.e. it contains an entry for each input bit, even
+if the permanence value is 0.
+mask: the indices of the columns whose permanences need to be
+raised.
+*/
+
+func (sp *SpatialPooler) raisePermanenceToThreshold(perm []float64, mask []int) {
+
+	for i := 0; i < len(perm); i++ {
+		if perm[i] < sp.SynPermMin {
+			perm[i] = sp.SynPermMin
+		} else if perm[i] > sp.SynPermMax {
+			perm[i] = sp.SynPermMax
+		}
+	}
+
+	for {
+		numConnected := 0
+		for i := 0; i < len(perm); i++ {
+			if perm[i] > sp.SynPermConnected {
+				numConnected++
+			}
+		}
+		if numConnected >= sp.StimulusThreshold {
+			return
+		}
+		for i := 0; i < len(mask); i++ {
+			perm[mask[i]] += sp.SynPermBelowStimulusInc
+		}
+
+	}
 
 }
 
@@ -430,7 +473,7 @@ assignment is required.
 */
 
 func (sp *SpatialPooler) updatePermanencesForColumn(perm []float64, index int, raisePerm bool) {
-	maskPotential := sp.potentialPools.GetDenseRow(index)
+	maskPotential := sp.potentialPools.GetRowIndices(index)
 	if raisePerm {
 		sp.raisePermanenceToThreshold(perm, maskPotential)
 	}
@@ -569,29 +612,4 @@ func (sp *SpatialPooler) stripNeverLearned(activeColumns []bool) {
 
 func randFloatRange(min, max float64) float64 {
 	return rand.Float64()*(max-min) + min
-}
-
-func RoundPrec(x float64, prec int) float64 {
-	if math.IsNaN(x) || math.IsInf(x, 0) {
-		return x
-	}
-
-	sign := 1.0
-	if x < 0 {
-		sign = -1
-		x *= -1
-	}
-
-	var rounder float64
-	pow := math.Pow(10, float64(prec))
-	intermed := x * pow
-	_, frac := math.Modf(intermed)
-
-	if frac >= 0.5 {
-		rounder = math.Ceil(intermed)
-	} else {
-		rounder = math.Floor(intermed)
-	}
-
-	return rounder / pow * sign
 }
