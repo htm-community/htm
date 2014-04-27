@@ -80,3 +80,26 @@ func TestReplaceRowByIndices(t *testing.T) {
 		t.Errorf("Was true expected false @ [4,0]")
 	}
 }
+
+func TestGetRowIndices(t *testing.T) {
+	sm := NewSparseBinaryMatrix(10, 10)
+
+	indices := make([]int, 3)
+	indices[0] = 3
+	indices[1] = 6
+	indices[2] = 9
+	sm.ReplaceRowByIndices(4, indices)
+
+	indResult := sm.GetRowIndices(4)
+
+	if len(indResult) != len(indices) {
+		t.Errorf("Len was %v expected %v", len(indResult), len(indices))
+	}
+
+	for i := 0; i < 3; i++ {
+		if indResult[i] != indices[i] {
+			t.Errorf("Was %v expected %v", indResult, indices)
+		}
+	}
+
+}
