@@ -1,10 +1,10 @@
 package htm
 
 import (
-	//"fmt"
+	"fmt"
 	"github.com/cznic/mathutil"
 	"github.com/skelterjohn/go.matrix"
-	//"math"
+	"math"
 	"math/rand"
 )
 
@@ -59,11 +59,13 @@ type SpatialPooler struct {
 
 	overlapDutyCycles    []bool
 	activeDutyCycles     []float64
-	minOverlapDutyCycles []bool
-	minActiveDutyCycles  []bool
+	minOverlapDutyCycles []float64
+	minActiveDutyCycles  []float64
 	boostFactors         []bool
 
 	inhibitionRadius int
+
+	spVerbosity int
 }
 
 type SpParams struct {
@@ -234,7 +236,7 @@ func NewSpatialPooler(spParams SpParams) *SpatialPooler {
 	sp.overlapDutyCycles = make([]bool, sp.numColumns)
 	sp.activeDutyCycles = make([]float64, sp.numColumns)
 	sp.minOverlapDutyCycles = make([]float64, sp.numColumns)
-	sp.minActiveDutyCycles = make([]bool, sp.numColumns)
+	sp.minActiveDutyCycles = make([]float64, sp.numColumns)
 	sp.boostFactors = make([]bool, sp.numColumns)
 	for i := 0; i < len(sp.boostFactors); i++ {
 		sp.boostFactors[i] = true
@@ -603,8 +605,168 @@ func (sp *SpatialPooler) isUpdateRound() {
 
 }
 
+/*
+The range of connectedSynapses per column, averaged for each dimension.
+This vaule is used to calculate the inhibition radius. This variation of
+the function supports arbitrary column dimensions.
+
+Parameters:
+----------------------------
+index: The index identifying a column in the permanence, potential
+and connectivity matrices.
+*/
+
+func (sp *SpatialPooler) avgConnectedSpanForColumnND(index int) float64 {
+	dimensions := []int{sp.InputDimensions.A, sp.InputDimensions.B}
+
+	//Nupic was taking the product of 1 x last entry of dimension
+	//vector, I removed the multiplication
+	bounds := append(dimensions[len(dimensions)-1:], 1)
+
+	connected := sp.connectedSynapses.GetRowIndices(index)
+	if len(connected) == 0 {
+		return 0
+	}
+
+	//def toCoords(index):
+	//  return (index / bounds) % dimensions
+	maxCoord := make([]int, len(dimensions))
+	minCoord := make([]int, len(dimensions))
+	inputMax := 0
+	for i := 0; i < len(dimensions); i++ {
+		if dimensions[i] > inputMax {
+			inputMax = dimensions[i]
+		}
+	}
+	for i := 0; i < len(maxCoord); i++ {
+		maxCoord[i] = -1
+		minCoord[i] = inputMax
+	}
+	//calc min/max of (i/bounds) % dimensions
+	for i := 0; i < len(connected); i++ {
+		for j := 0; j < len(dimensions); j++ {
+			coord := (i / bounds[j]) % dimensions[j]
+			if coord > maxCoord[j] {
+				maxCoord[j] = coord
+			}
+			if coord < minCoord[j] {
+				minCoord[j] = coord
+			}
+		}
+	}
+
+	sum := 0
+	for i := 0; i < len(dimensions); i++ {
+		sum += maxCoord[i] - minCoord[i] + 1
+	}
+
+	return float64(sum) / float64(len(dimensions))
+}
+
+/*
+The average number of columns per input, taking into account the topology
+of the inputs and columns. This value is used to calculate the inhibition
+radius. This function supports an arbitrary number of dimensions. If the
+number of column dimensions does not match the number of input dimensions,
+we treat the missing, or phantom dimensions as 'ones'.
+*/
+
+func (sp *SpatialPooler) avgColumnsPerInput() float64 {
+
+	//TODO: extend to support different number of dimensions for inputs and
+	// columns
+	//numDim = max(self._columnDimensions.size, self._inputDimensions.size)
+	numDim := make([]int, 2)
+	if sp.ColumnDimensions.A > sp.InputDimensions.A {
+		numDim[0] = sp.ColumnDimensions.A
+	} else {
+		numDim[0] = sp.InputDimensions.A
+	}
+
+	if sp.ColumnDimensions.B > sp.InputDimensions.B {
+		numDim[1] = sp.ColumnDimensions.B
+	} else {
+		numDim[1] = sp.InputDimensions.B
+	}
+
+	//TODO: refactor out
+	columnDims := []int{sp.ColumnDimensions.A, sp.ColumnDimensions.B}
+	inputDims := []int{sp.InputDimensions.A, sp.InputDimensions.B}
+
+	//overlay column dimensions across 1's matrix
+	colDim := make([][]int, numDim[0])
+	for i := 0; i < len(colDim); i++ {
+		colDim[i] = make([]int, numDim[1])
+		for j := 0; j < len(colDim[i]); j++ {
+			if j < numDim[1] {
+				colDim[i][j] = columnDims[j]
+			} else {
+				colDim[i][j] = 1
+			}
+		}
+	}
+
+	inputDim := make([][]int, numDim[0])
+	for i := 0; i < len(inputDim); i++ {
+		inputDim[i] = make([]int, numDim[1])
+		for j := 0; j < len(inputDim[i]); j++ {
+			if j < numDim[1] {
+				inputDim[i][j] = inputDims[j]
+			} else {
+				inputDim[i][j] = 1
+			}
+		}
+	}
+
+	//columnsPerInput = colDim.astype(realDType) / inputDim
+	sum := 0.0
+	for i := 0; i < len(inputDim); i++ {
+		for j := 0; j < len(inputDim[i]); j++ {
+			sum += float64(colDim[i][j]) / float64(inputDim[i][j])
+		}
+	}
+
+	return sum / float64(numDim[0]*numDim[1])
+	//return numpy.average(columnsPerInput)
+}
+
+/*
+ Update the inhibition radius. The inhibition radius is a meausre of the
+square (or hypersquare) of columns that each a column is "conencted to"
+on average. Since columns are are not connected to each other directly, we
+determine this quantity by first figuring out how many *inputs* a column is
+connected to, and then multiplying it by the total number of columns that
+exist for each input. For multiple dimension the aforementioned
+calculations are averaged over all dimensions of inputs and columns. This
+value is meaningless if global inhibition is enabled.
+*/
 func (sp *SpatialPooler) updateInhibitionRadius() {
 
+	if sp.GlobalInhibition {
+		cmax := sp.ColumnDimensions.A
+		if sp.ColumnDimensions.B > sp.ColumnDimensions.A {
+			cmax = sp.ColumnDimensions.B
+		}
+		sp.inhibitionRadius = cmax
+		return
+	}
+
+	avgConnectedSpan := 0.0
+	for i := 0; i < sp.numColumns; i++ {
+		avgConnectedSpan += sp.avgConnectedSpanForColumnND(i)
+	}
+	avgConnectedSpan = avgConnectedSpan / float64(sp.numColumns)
+
+	// avgConnectedSpan = numpy.average(
+	//                       [self._avgConnectedSpanForColumnND(i)
+	//                       for i in xrange(self._numColumns)]
+	//                     )
+	columnsPerInput := sp.avgColumnsPerInput()
+	diameter := avgConnectedSpan * columnsPerInput
+	radius := (diameter - 1) / 2.0
+	radius = math.Max(1.0, radius)
+	//mathutil.Max
+	sp.inhibitionRadius = int(RoundPrec(radius, 0))
 }
 
 // Updates the minimum duty cycles defining normal activity for a column. A
