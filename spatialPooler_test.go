@@ -3,7 +3,7 @@ package htm
 import (
 	//"fmt"
 	"github.com/skelterjohn/go.matrix"
-	"math"
+	//"math"
 	"testing"
 )
 
@@ -24,7 +24,7 @@ func getConnected(perm []float64, sp *SpatialPooler) (int, []bool) {
 
 func TestPermanenceInit(t *testing.T) {
 	sp := SpatialPooler{}
-	sp.InputDimensions = ITuple{1, 10}
+	sp.InputDimensions = []int{1, 10}
 	sp.numInputs = 10
 	sp.SynPermConnected = 0.1
 	sp.SynPermActiveInc = 0.1
@@ -95,8 +95,8 @@ func TestPermanenceInit(t *testing.T) {
 func TestRaisePermanenceThreshold(t *testing.T) {
 
 	sp := SpatialPooler{}
-	sp.InputDimensions = ITuple{1, 5}
-	sp.ColumnDimensions = ITuple{1, 5}
+	sp.InputDimensions = []int{1, 5}
+	sp.ColumnDimensions = []int{1, 5}
 	sp.numColumns = 5
 	sp.numInputs = 5
 	sp.SynPermConnected = 0.1
@@ -192,6 +192,68 @@ func TestStripNever(t *testing.T) {
 
 }
 
+func TestAvgConnectedSpanForColumnND(t *testing.T) {
+	sp := SpatialPooler{}
+	sp.InputDimensions = []int{4, 4, 2, 5}
+	sp.numInputs = ProdInt(sp.InputDimensions)
+	sp.numColumns = 5
+	sp.ColumnDimensions = []int{0, 1, 2, 3, 4}
+
+	sp.connectedSynapses = NewSparseBinaryMatrix(sp.numColumns, sp.numInputs)
+
+	connected := make([]bool, sp.numInputs)
+	connected[(1*40)+(0*10)+(1*5)+(0*1)] = true
+	connected[(1*40)+(0*10)+(1*5)+(1*1)] = true
+	connected[(3*40)+(2*10)+(1*5)+(0*1)] = true
+	connected[(3*40)+(0*10)+(1*5)+(0*1)] = true
+	connected[(1*40)+(0*10)+(1*5)+(3*1)] = true
+	connected[(2*40)+(2*10)+(1*5)+(0*1)] = true
+
+	//# span: 3 3 1 4, avg = 11/4
+	sp.connectedSynapses.ReplaceRow(0, connected)
+
+	connected2 := make([]bool, sp.numInputs)
+	connected2[(2*40)+(0*10)+(1*5)+(0*1)] = true
+	connected2[(2*40)+(0*10)+(0*5)+(0*1)] = true
+	connected2[(3*40)+(0*10)+(0*5)+(0*1)] = true
+	connected2[(3*40)+(0*10)+(1*5)+(0*1)] = true
+	//spn: 2 1 2 1, avg = 6/4
+	sp.connectedSynapses.ReplaceRow(1, connected2)
+
+	connected3 := make([]bool, sp.numInputs)
+	connected3[(0*40)+(0*10)+(1*5)+(4*1)] = true
+	connected3[(0*40)+(0*10)+(0*5)+(3*1)] = true
+	connected3[(0*40)+(0*10)+(0*5)+(1*1)] = true
+	connected3[(1*40)+(0*10)+(0*5)+(2*1)] = true
+	connected3[(0*40)+(0*10)+(1*5)+(1*1)] = true
+	connected3[(3*40)+(3*10)+(1*5)+(1*1)] = true
+	// span: 4 4 2 4, avg = 14/4
+	sp.connectedSynapses.ReplaceRow(2, connected3)
+
+	connected4 := make([]bool, sp.numInputs)
+	connected4[(3*40)+(3*10)+(1*5)+(4*1)] = true
+	connected4[(0*40)+(0*10)+(0*5)+(0*1)] = true
+
+	// span: 4 4 2 5, avg = 15/4
+	sp.connectedSynapses.ReplaceRow(3, connected4)
+
+	connected5 := make([]bool, sp.numInputs)
+	//# span: 0 0 0 0, avg = 0
+	sp.connectedSynapses.ReplaceRow(4, connected5)
+
+	//t.Logf("width: %v", sp.connectedSynapses.Width)
+
+	trueAvgConnectedSpan := []float64{11.0 / 4.0, 6.0 / 4.0, 14.0 / 4.0, 15.0 / 4.0, 0.0}
+
+	for i, tspan := range trueAvgConnectedSpan {
+		connectedSpan := sp.avgConnectedSpanForColumnND(i)
+		if connectedSpan != tspan {
+			t.Errorf("Connected span was: %v expected: %v", connectedSpan, tspan)
+		}
+	}
+
+}
+
 //----- Helper functions -------------
 
 func AlmostEqual(a, b float64) bool {
@@ -214,29 +276,4 @@ func AddDenseToSparseHelper(dense [][]float64, m *matrix.SparseMatrix) {
 			m.Set(r, c, dense[r][c])
 		}
 	}
-}
-
-func RoundPrec(x float64, prec int) float64 {
-	if math.IsNaN(x) || math.IsInf(x, 0) {
-		return x
-	}
-
-	sign := 1.0
-	if x < 0 {
-		sign = -1
-		x *= -1
-	}
-
-	var rounder float64
-	pow := math.Pow(10, float64(prec))
-	intermed := x * pow
-	_, frac := math.Modf(intermed)
-
-	if frac >= 0.5 {
-		rounder = math.Ceil(intermed)
-	} else {
-		rounder = math.Floor(intermed)
-	}
-
-	return rounder / pow * sign
 }

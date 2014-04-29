@@ -20,7 +20,7 @@ type SparseBinaryMatrix struct {
 }
 
 //Create new sparse binary matrix of specified size
-func NewSparseBinaryMatrix(width int, height int) *SparseBinaryMatrix {
+func NewSparseBinaryMatrix(height, width int) *SparseBinaryMatrix {
 	m := &SparseBinaryMatrix{}
 	m.Height = height
 	m.Width = width

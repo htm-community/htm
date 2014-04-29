@@ -637,13 +637,13 @@ func (sp *SpatialPooler) avgConnectedSpanForColumnND(index int) float64 {
 		}
 	}
 	for i := 0; i < len(maxCoord); i++ {
-		maxCoord[i] = -1
+		maxCoord[i] = -1.0
 		minCoord[i] = inputMax
 	}
 	//calc min/max of (i/bounds) % dimensions
-	for i := 0; i < len(connected); i++ {
+	for _, val := range connected {
 		for j := 0; j < len(dimensions); j++ {
-			coord := (i / bounds[j]) % dimensions[j]
+			coord := (val / bounds[j]) % dimensions[j]
 			if coord > maxCoord[j] {
 				maxCoord[j] = coord
 			}
@@ -850,7 +850,7 @@ func CumProdInt(vals []int) []int {
 	result := make([]int, len(vals))
 	result[0] = vals[0]
 	for x := 1; x < len(vals); x++ {
-		result[x] = vals[x] * vals[x-1]
+		result[x] = vals[x] * result[x-1]
 	}
 
 	return result
@@ -864,7 +864,7 @@ func RevCumProdInt(vals []int) []int {
 	result := make([]int, len(vals))
 	result[len(vals)-1] = vals[len(vals)-1]
 	for x := len(vals) - 2; x >= 0; x-- {
-		result[x] = vals[x] * vals[x+1]
+		result[x] = vals[x] * result[x+1]
 	}
 
 	return result
