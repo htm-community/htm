@@ -6,6 +6,7 @@ import (
 	"github.com/skelterjohn/go.matrix"
 	"math"
 	"math/rand"
+	//"sort"
 )
 
 type ITuple struct {
@@ -619,17 +620,14 @@ and connectivity matrices.
 func (sp *SpatialPooler) avgConnectedSpanForColumnND(index int) float64 {
 	dimensions := sp.InputDimensions
 
-	//Nupic was taking the product of 1 x last entry of dimension
-	//vector, I removed the multiplication
-	bounds := append(dimensions[len(dimensions)-1:], 1)
+	bounds := append(dimensions[1:], 1)
+	bounds = RevCumProdInt(bounds)
 
 	connected := sp.connectedSynapses.GetRowIndices(index)
 	if len(connected) == 0 {
 		return 0
 	}
 
-	//def toCoords(index):
-	//  return (index / bounds) % dimensions
 	maxCoord := make([]int, len(dimensions))
 	minCoord := make([]int, len(dimensions))
 	inputMax := 0
@@ -833,7 +831,7 @@ func MaxIntSlice(values []int) int {
 //Returns product of set of integers
 func ProdInt(vals []int) int {
 	sum := 1
-	for x := 1; x < len(vals); x++ {
+	for x := 0; x < len(vals); x++ {
 		sum *= vals[x]
 	}
 
@@ -842,6 +840,34 @@ func ProdInt(vals []int) int {
 	} else {
 		return sum
 	}
+}
+
+//Returns cumulative product
+func CumProdInt(vals []int) []int {
+	if len(vals) < 2 {
+		return vals
+	}
+	result := make([]int, len(vals))
+	result[0] = vals[0]
+	for x := 1; x < len(vals); x++ {
+		result[x] = vals[x] * vals[x-1]
+	}
+
+	return result
+}
+
+//Returns cumulative product starting from end
+func RevCumProdInt(vals []int) []int {
+	if len(vals) < 2 {
+		return vals
+	}
+	result := make([]int, len(vals))
+	result[len(vals)-1] = vals[len(vals)-1]
+	for x := len(vals) - 2; x >= 0; x-- {
+		result[x] = vals[x] * vals[x+1]
+	}
+
+	return result
 }
 
 func RoundPrec(x float64, prec int) float64 {
