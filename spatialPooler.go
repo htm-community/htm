@@ -16,8 +16,8 @@ type ITuple struct {
 type SpatialPooler struct {
 	numColumns                 int
 	numInputs                  int
-	ColumnDimensions           ITuple
-	InputDimensions            ITuple
+	ColumnDimensions           []int
+	InputDimensions            []int
 	PotentialRadius            int
 	PotentialPct               float64
 	GlobalInhibition           bool
@@ -69,8 +69,8 @@ type SpatialPooler struct {
 }
 
 type SpParams struct {
-	InputDimensions            ITuple
-	ColumnDimensions           ITuple
+	InputDimensions            []int
+	ColumnDimensions           []int
 	PotentialRadius            int
 	PotentialPct               float64
 	GlobalInhibition           bool
@@ -92,8 +92,8 @@ type SpParams struct {
 func NewSpParams() SpParams {
 	sp := SpParams{}
 
-	sp.InputDimensions = ITuple{32, 32}
-	sp.ColumnDimensions = ITuple{64, 64}
+	sp.InputDimensions = []int{32, 32}
+	sp.ColumnDimensions = []int{64, 64}
 	sp.PotentialRadius = 16
 	sp.PotentialPct = 0.5
 	sp.GlobalInhibition = false
@@ -117,8 +117,8 @@ func NewSpParams() SpParams {
 func NewSpatialPooler(spParams SpParams) *SpatialPooler {
 	sp := SpatialPooler{}
 	//Validate inputs
-	sp.numColumns = spParams.ColumnDimensions.A * spParams.ColumnDimensions.B
-	sp.numInputs = spParams.InputDimensions.A * spParams.InputDimensions.B
+	sp.numColumns = ProdInt(spParams.ColumnDimensions)
+	sp.numInputs = ProdInt(spParams.InputDimensions)
 
 	if sp.numColumns < 1 {
 		panic("Must have at least 1 column")
@@ -617,7 +617,7 @@ and connectivity matrices.
 */
 
 func (sp *SpatialPooler) avgConnectedSpanForColumnND(index int) float64 {
-	dimensions := []int{sp.InputDimensions.A, sp.InputDimensions.B}
+	dimensions := sp.InputDimensions
 
 	//Nupic was taking the product of 1 x last entry of dimension
 	//vector, I removed the multiplication
@@ -676,22 +676,10 @@ func (sp *SpatialPooler) avgColumnsPerInput() float64 {
 	//TODO: extend to support different number of dimensions for inputs and
 	// columns
 	//numDim = max(self._columnDimensions.size, self._inputDimensions.size)
-	numDim := make([]int, 2)
-	if sp.ColumnDimensions.A > sp.InputDimensions.A {
-		numDim[0] = sp.ColumnDimensions.A
-	} else {
-		numDim[0] = sp.InputDimensions.A
-	}
+	numDim := MaxInt(sp.ColumnDimensions, sp.InputDimensions)
 
-	if sp.ColumnDimensions.B > sp.InputDimensions.B {
-		numDim[1] = sp.ColumnDimensions.B
-	} else {
-		numDim[1] = sp.InputDimensions.B
-	}
-
-	//TODO: refactor out
-	columnDims := []int{sp.ColumnDimensions.A, sp.ColumnDimensions.B}
-	inputDims := []int{sp.InputDimensions.A, sp.InputDimensions.B}
+	columnDims := sp.ColumnDimensions
+	inputDims := sp.InputDimensions
 
 	//overlay column dimensions across 1's matrix
 	colDim := make([][]int, numDim[0])
@@ -743,10 +731,7 @@ value is meaningless if global inhibition is enabled.
 func (sp *SpatialPooler) updateInhibitionRadius() {
 
 	if sp.GlobalInhibition {
-		cmax := sp.ColumnDimensions.A
-		if sp.ColumnDimensions.B > sp.ColumnDimensions.A {
-			cmax = sp.ColumnDimensions.B
-		}
+		cmax := MaxIntSlice(sp.ColumnDimensions)
 		sp.inhibitionRadius = cmax
 		return
 	}
@@ -757,15 +742,11 @@ func (sp *SpatialPooler) updateInhibitionRadius() {
 	}
 	avgConnectedSpan = avgConnectedSpan / float64(sp.numColumns)
 
-	// avgConnectedSpan = numpy.average(
-	//                       [self._avgConnectedSpanForColumnND(i)
-	//                       for i in xrange(self._numColumns)]
-	//                     )
 	columnsPerInput := sp.avgColumnsPerInput()
 	diameter := avgConnectedSpan * columnsPerInput
 	radius := (diameter - 1) / 2.0
 	radius = math.Max(1.0, radius)
-	//mathutil.Max
+
 	sp.inhibitionRadius = int(RoundPrec(radius, 0))
 }
 
@@ -822,4 +803,68 @@ func (sp *SpatialPooler) printParameters() {
 
 func randFloatRange(min, max float64) float64 {
 	return rand.Float64()*(max-min) + min
+}
+
+//returns max index wise comparison
+func MaxInt(a, b []int) []int {
+	result := make([]int, len(a))
+	for i := 0; i < len(a); i++ {
+		if a[i] > b[i] {
+			result[i] = a[i]
+		} else {
+			result[i] = b[i]
+		}
+	}
+
+	return result
+}
+
+//Returns max value from specified int slice
+func MaxIntSlice(values []int) int {
+	max := 0
+	for i := 0; i < len(values); i++ {
+		if values[i] > max {
+			max = values[i]
+		}
+	}
+	return max
+}
+
+//Returns product of set of integers
+func ProdInt(vals []int) int {
+	sum := 1
+	for x := 1; x < len(vals); x++ {
+		sum *= vals[x]
+	}
+
+	if sum == 1 {
+		return 0
+	} else {
+		return sum
+	}
+}
+
+func RoundPrec(x float64, prec int) float64 {
+	if math.IsNaN(x) || math.IsInf(x, 0) {
+		return x
+	}
+
+	sign := 1.0
+	if x < 0 {
+		sign = -1
+		x *= -1
+	}
+
+	var rounder float64
+	pow := math.Pow(10, float64(prec))
+	intermed := x * pow
+	_, frac := math.Modf(intermed)
+
+	if frac >= 0.5 {
+		rounder = math.Ceil(intermed)
+	} else {
+		rounder = math.Floor(intermed)
+	}
+
+	return rounder / pow * sign
 }
