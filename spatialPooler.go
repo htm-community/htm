@@ -673,47 +673,34 @@ func (sp *SpatialPooler) avgColumnsPerInput() float64 {
 
 	//TODO: extend to support different number of dimensions for inputs and
 	// columns
-	//numDim = max(self._columnDimensions.size, self._inputDimensions.size)
-	numDim := MaxInt(sp.ColumnDimensions, sp.InputDimensions)
-
+	numDim := mathutil.Max(len(sp.ColumnDimensions), len(sp.InputDimensions))
 	columnDims := sp.ColumnDimensions
 	inputDims := sp.InputDimensions
 
 	//overlay column dimensions across 1's matrix
-	colDim := make([][]int, numDim[0])
-	for i := 0; i < len(colDim); i++ {
-		colDim[i] = make([]int, numDim[1])
-		for j := 0; j < len(colDim[i]); j++ {
-			if j < numDim[1] {
-				colDim[i][j] = columnDims[j]
-			} else {
-				colDim[i][j] = 1
-			}
+	colDim := make([]int, numDim)
+	inputDim := make([]int, numDim)
+
+	for i := 0; i < numDim; i++ {
+		if i < len(columnDims) {
+			colDim[i] = columnDims[i]
+		} else {
+			colDim[i] = 1
 		}
+
+		if i < numDim {
+			inputDim[i] = inputDims[i]
+		} else {
+			inputDim[i] = 1
+		}
+
 	}
 
-	inputDim := make([][]int, numDim[0])
-	for i := 0; i < len(inputDim); i++ {
-		inputDim[i] = make([]int, numDim[1])
-		for j := 0; j < len(inputDim[i]); j++ {
-			if j < numDim[1] {
-				inputDim[i][j] = inputDims[j]
-			} else {
-				inputDim[i][j] = 1
-			}
-		}
-	}
-
-	//columnsPerInput = colDim.astype(realDType) / inputDim
 	sum := 0.0
 	for i := 0; i < len(inputDim); i++ {
-		for j := 0; j < len(inputDim[i]); j++ {
-			sum += float64(colDim[i][j]) / float64(inputDim[i][j])
-		}
+		sum += float64(colDim[i]) / float64(inputDim[i])
 	}
-
-	return sum / float64(numDim[0]*numDim[1])
-	//return numpy.average(columnsPerInput)
+	return sum / float64(numDim)
 }
 
 /*

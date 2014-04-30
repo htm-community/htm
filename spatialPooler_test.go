@@ -254,6 +254,57 @@ func TestAvgConnectedSpanForColumnND(t *testing.T) {
 
 }
 
+func TestAvgColumnsPerInput(t *testing.T) {
+	sp := SpatialPooler{}
+	sp.ColumnDimensions = []int{2, 2, 2, 2}
+	sp.InputDimensions = []int{4, 4, 4, 4}
+
+	if sp.avgColumnsPerInput() != 0.5 {
+		t.Errorf("Expected %v avg columns, was: %v", 0.5, sp.avgColumnsPerInput())
+	}
+
+	sp.ColumnDimensions = []int{2, 2, 2, 2}
+	sp.InputDimensions = []int{7, 5, 1, 3}
+	//2/7 0.4 2 0.666
+	trueAvgColumnPerInput := (2.0/7 + 2.0/5 + 2.0/1 + 2/3.0) / 4
+	if sp.avgColumnsPerInput() != trueAvgColumnPerInput {
+		t.Errorf("Expected %v avg columns, was: %v", trueAvgColumnPerInput, sp.avgColumnsPerInput())
+	}
+
+	sp.ColumnDimensions = []int{3, 3}
+	sp.InputDimensions = []int{3, 3}
+	// 1 1
+	trueAvgColumnPerInput = 1
+	if sp.avgColumnsPerInput() != trueAvgColumnPerInput {
+		t.Errorf("Expected %v avg columns, was: %v", trueAvgColumnPerInput, sp.avgColumnsPerInput())
+	}
+
+	sp.ColumnDimensions = []int{25}
+	sp.InputDimensions = []int{5}
+	// 5
+	trueAvgColumnPerInput = 5
+	if sp.avgColumnsPerInput() != trueAvgColumnPerInput {
+		t.Errorf("Expected %v avg columns, was: %v", trueAvgColumnPerInput, sp.avgColumnsPerInput())
+	}
+
+	sp.ColumnDimensions = []int{3, 3, 3, 5, 5, 6, 6}
+	sp.InputDimensions = []int{3, 3, 3, 5, 5, 6, 6}
+	//1 1 1 1 1 1 1
+	trueAvgColumnPerInput = 1
+	if sp.avgColumnsPerInput() != trueAvgColumnPerInput {
+		t.Errorf("Expected %v avg columns, was: %v", trueAvgColumnPerInput, sp.avgColumnsPerInput())
+	}
+
+	sp.ColumnDimensions = []int{3, 6, 9, 12}
+	sp.InputDimensions = []int{3, 3, 3, 3}
+	// 1 2 3 4
+	trueAvgColumnPerInput = 2.5
+	if sp.avgColumnsPerInput() != trueAvgColumnPerInput {
+		t.Errorf("Expected %v avg columns, was: %v", trueAvgColumnPerInput, sp.avgColumnsPerInput())
+	}
+
+}
+
 //----- Helper functions -------------
 
 func AlmostEqual(a, b float64) bool {
