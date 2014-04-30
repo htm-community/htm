@@ -4,6 +4,8 @@ import (
 	//"fmt"
 	"github.com/skelterjohn/go.matrix"
 	//"math"
+	"github.com/stretchr/testify/assert"
+	//"github.com/stretchr/testify/mock"
 	"testing"
 )
 
@@ -302,6 +304,44 @@ func TestAvgColumnsPerInput(t *testing.T) {
 	if sp.avgColumnsPerInput() != trueAvgColumnPerInput {
 		t.Errorf("Expected %v avg columns, was: %v", trueAvgColumnPerInput, sp.avgColumnsPerInput())
 	}
+
+}
+
+func TestUpdateInhibitionRadius(t *testing.T) {
+	sp := spTest{}
+
+	// Test global inhibition case
+	sp.GlobalInhibition = true
+	sp.ColumnDimensions = []int{57, 31, 2}
+	sp.numColumns = 3
+	sp.updateInhibitionRadius()
+	expected := 57
+	assert.Equal(t, expected, sp.inhibitionRadius)
+
+	sp.GlobalInhibition = false
+	//sp.AvgConnectedSpanForColumnND = Mock(return_value = 3)
+	//sp.AvgColumnsPerInput = Mock(return_value = 4)
+	trueInhibitionRadius := 6
+	//((3 * 4) - 1) / 2 => round up
+	sp.updateInhibitionRadius()
+	assert.Equal(t, trueInhibitionRadius, sp.inhibitionRadius)
+
+	//Test clipping at 1.0
+	sp.GlobalInhibition = false
+	//sp.AvgConnectedSpanForColumnND = Mock(return_value = 0.5)
+	//sp.AvgColumnsPerInput = Mock(return_value = 1.2)
+	trueInhibitionRadius = 1
+	sp.updateInhibitionRadius()
+	assert.Equal(t, trueInhibitionRadius, sp.inhibitionRadius)
+
+	//Test rounding up
+	sp.GlobalInhibition = false
+	//sp.AvgConnectedSpanForColumnND = Mock(return_value = 2.4)
+	//sp.AvgColumnsPerInput = Mock(return_value = 2)
+	trueInhibitionRadius = 2
+	// ((2 * 2.4) - 1) / 2.0 => round up
+	sp.updateInhibitionRadius()
+	assert.Equal(t, trueInhibitionRadius, sp.inhibitionRadius)
 
 }
 
