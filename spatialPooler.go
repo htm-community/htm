@@ -9,11 +9,6 @@ import (
 	//"sort"
 )
 
-type ITuple struct {
-	A int
-	B int
-}
-
 type SpatialPooler struct {
 	numColumns                 int
 	numInputs                  int
@@ -574,7 +569,23 @@ func (sp *SpatialPooler) updatePermanencesForColumn(perm []float64, index int, r
 
 //}
 
-func (sp *SpatialPooler) updateBookeepingVars() {
+/*
+ Updates counter instance variables each round.
+
+Parameters:
+----------------------------
+learn: a boolean value indicating whether learning should be
+performed. Learning entails updating the permanence
+values of the synapses, and hence modifying the 'state'
+of the model. setting learning to 'off' might be useful
+for indicating separate training vs. testing sets.
+*/
+
+func (sp *SpatialPooler) updateBookeepingVars(learn bool) {
+	sp.IterationNum += 1
+	if learn {
+		sp.IterationLearnNum += 1
+	}
 
 }
 
