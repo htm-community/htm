@@ -148,6 +148,21 @@ func (sm *SparseBinaryMatrix) SetRowFromDense(row int, denseRow []bool) {
 	}
 }
 
+//In a normal matrix this would be multiplication in binary terms
+//we just and then sum the true entries
+func (sm *SparseBinaryMatrix) RowAndSum(row []bool) []int {
+	sm.validateCol(len(row))
+	result := make([]int, sm.Height)
+
+	for _, val := range sm.Entries {
+		if row[val.Col] {
+			result[val.Col]++
+		}
+	}
+
+	return result
+}
+
 func (sm *SparseBinaryMatrix) validateCol(col int) {
 	if col > sm.Width {
 		panic("Specified row is wider than matrix.")

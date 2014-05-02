@@ -1,6 +1,7 @@
 package htm
 
 import (
+	"github.com/stretchr/testify/assert"
 	"testing"
 )
 
@@ -101,5 +102,21 @@ func TestGetRowIndices(t *testing.T) {
 			t.Errorf("Was %v expected %v", indResult, indices)
 		}
 	}
+
+}
+
+func TestGetRowAndSum(t *testing.T) {
+	sm := NewSparseBinaryMatrix(5, 5)
+
+	sm.SetRowFromDense(0, []bool{true, false, true, true, false})
+	sm.SetRowFromDense(2, []bool{false, false, false, false, false})
+	sm.SetRowFromDense(3, []bool{true, true, true, true, true})
+	i := []bool{true, false, true, true, false}
+
+	result := sm.RowAndSum(i)
+
+	assert.Equal(t, 3, result[0])
+	assert.Equal(t, 0, result[2])
+	assert.Equal(t, 5, result[3])
 
 }
