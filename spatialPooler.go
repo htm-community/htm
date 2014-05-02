@@ -196,8 +196,9 @@ func NewSpatialPooler(spParams SpParams) *SpatialPooler {
 			 Initialize a tiny random tie breaker. This is used to determine winning
 		     columns where the overlaps are identical.
 	*/
-	//sp.TieBreaker = 0.01*numpy.array([random.getReal64() for i in
-	//                                    xrange(numColumns)])
+	//TODO: set tiebreaker
+	//sp.TieBreaker = 0.01*numpy.array([random.getReal64() for i  in xrange(numColumns)])
+	//
 
 	/*
 			 'connectedSynapses' is a similar matrix to 'permanences'
@@ -589,8 +590,38 @@ func (sp *SpatialPooler) updateBookeepingVars(learn bool) {
 
 }
 
-func (sp *SpatialPooler) calculateOverlap(inputVector []bool) {
+/*
+ This function determines each column's overlap with the current input
+vector. The overlap of a column is the number of synapses for that column
+that are connected (permance value is greater than 'synPermConnected')
+to input bits which are turned on. Overlap values that are lower than
+the 'stimulusThreshold' are ignored. The implementation takes advantage of
+the SpraseBinaryMatrix class to perform this calculation efficiently.
 
+Parameters:
+----------------------------
+inputVector: a numpy array of 0's and 1's that comprises the input to
+the spatial pooler.
+*/
+func (sp *SpatialPooler) calculateOverlap(inputVector []bool) []int {
+	//overlaps = numpy.zeros(self._numColumns).astype(realDType)
+	overlaps := sp.connectedSynapses.RowAndSum(inputVector)
+	//self._connectedSynapses.rightVecSumAtNZ_fast(inputVector, overlaps)
+	//overlaps[overlaps < self._stimulusThreshold] = 0
+	for idx, _ := range overlaps {
+		if overlaps[idx] < sp.StimulusThreshold {
+			overlaps[idx] = 0
+		}
+	}
+	return overlaps
+}
+
+func (sp *SpatialPooler) calculateOverlapPct(overlaps []int) []float64 {
+	result := make([]float64, len(overlaps))
+	for idx, val := range overlaps {
+		result[idx] = float64(val) / float64(sp.connectedCounts[idx])
+	}
+	return result
 }
 
 func (sp *SpatialPooler) inhibitColumns() {

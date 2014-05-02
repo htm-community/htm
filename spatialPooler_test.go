@@ -307,8 +307,9 @@ func TestAvgColumnsPerInput(t *testing.T) {
 
 }
 
+/*
 func TestUpdateInhibitionRadius(t *testing.T) {
-	sp := spTest{}
+	sp := spMock{}
 
 	// Test global inhibition case
 	sp.GlobalInhibition = true
@@ -319,7 +320,8 @@ func TestUpdateInhibitionRadius(t *testing.T) {
 	assert.Equal(t, expected, sp.inhibitionRadius)
 
 	sp.GlobalInhibition = false
-	//sp.AvgConnectedSpanForColumnND = Mock(return_value = 3)
+
+	//sp.avgConnectedSpanForColumnND = Mock(return_value = 3)
 	//sp.AvgColumnsPerInput = Mock(return_value = 4)
 	trueInhibitionRadius := 6
 	//((3 * 4) - 1) / 2 => round up
@@ -342,6 +344,79 @@ func TestUpdateInhibitionRadius(t *testing.T) {
 	// ((2 * 2.4) - 1) / 2.0 => round up
 	sp.updateInhibitionRadius()
 	assert.Equal(t, trueInhibitionRadius, sp.inhibitionRadius)
+
+}
+*/
+
+func TestCalculateOverlap(t *testing.T) {
+	sp := SpatialPooler{}
+	sp.numInputs = 10
+	sp.numColumns = 5
+
+	sp.connectedSynapses = NewSparseBinaryMatrixFromDense([][]bool{
+		{true, true, true, true, true, true, true, true, true, true},
+		{false, false, true, true, true, true, true, true, true, true},
+		{false, false, false, false, true, true, true, true, true, true},
+		{false, false, false, false, false, false, true, true, true, true},
+		{false, false, false, false, false, false, false, false, true, true},
+	})
+	t.Log(sp.connectedSynapses.ToString())
+	sp.connectedCounts = []int{10, 8, 6, 4, 2}
+	inputVector := make([]bool, sp.numInputs)
+	overlaps := sp.calculateOverlap(inputVector)
+	overlapsPct := sp.calculateOverlapPct(overlaps)
+	trueOverlaps := []int{0, 0, 0, 0, 0}
+	trueOverlapsPct := []float64{0, 0, 0, 0, 0}
+	t.Logf("pct", overlapsPct)
+	assert.Equal(t, trueOverlaps, overlaps)
+	assert.Equal(t, overlapsPct, trueOverlapsPct)
+
+	inputVector = make([]bool, sp.numInputs)
+	for i := 0; i < len(inputVector); i++ {
+		inputVector[i] = true
+	}
+	overlaps = sp.calculateOverlap(inputVector)
+	overlapsPct = sp.calculateOverlapPct(overlaps)
+	trueOverlaps = []int{10, 8, 6, 4, 2}
+	trueOverlapsPct = []float64{1, 1, 1, 1, 1}
+	t.Logf("pct", overlapsPct)
+	assert.Equal(t, trueOverlaps, overlaps)
+	assert.Equal(t, overlapsPct, trueOverlapsPct)
+
+	inputVector = make([]bool, sp.numInputs)
+	inputVector[9] = true
+	t.Logf("input", inputVector)
+	overlaps = sp.calculateOverlap(inputVector)
+	overlapsPct = sp.calculateOverlapPct(overlaps)
+	trueOverlaps = []int{1, 1, 1, 1, 1}
+	trueOverlapsPct = []float64{0.1, 0.125, 1.0 / 6, 0.25, 0.5}
+	t.Logf("pct", overlapsPct)
+	assert.Equal(t, trueOverlaps, overlaps)
+	assert.Equal(t, trueOverlapsPct, overlapsPct)
+
+	//Zig-zag
+	sp.connectedSynapses = NewSparseBinaryMatrixFromDense([][]bool{
+		{true, false, false, false, false, true, false, false, false, false},
+		{false, true, false, false, false, false, true, false, false, false},
+		{false, false, true, false, false, false, false, true, false, false},
+		{false, false, false, true, false, false, false, false, true, false},
+		{false, false, false, false, true, false, false, false, false, true},
+	})
+	sp.connectedCounts = []int{2.0, 2.0, 2.0, 2.0, 2.0}
+	inputVector = make([]bool, sp.numInputs)
+	inputVector[0] = true
+	inputVector[2] = true
+	inputVector[4] = true
+	inputVector[6] = true
+	inputVector[8] = true
+	t.Logf("input", inputVector)
+	overlaps = sp.calculateOverlap(inputVector)
+	overlapsPct = sp.calculateOverlapPct(overlaps)
+	trueOverlaps = []int{1, 1, 1, 1, 1}
+	trueOverlapsPct = []float64{0.5, 0.5, 0.5, 0.5, 0.5}
+	t.Logf("pct", overlapsPct)
+	assert.Equal(t, trueOverlaps, overlaps)
+	assert.Equal(t, trueOverlapsPct, overlapsPct)
 
 }
 
