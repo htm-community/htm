@@ -106,17 +106,41 @@ func TestGetRowIndices(t *testing.T) {
 }
 
 func TestGetRowAndSum(t *testing.T) {
-	sm := NewSparseBinaryMatrix(5, 5)
+	sm := NewSparseBinaryMatrix(4, 5)
 
 	sm.SetRowFromDense(0, []bool{true, false, true, true, false})
+	sm.SetRowFromDense(1, []bool{false, false, false, true, false})
 	sm.SetRowFromDense(2, []bool{false, false, false, false, false})
 	sm.SetRowFromDense(3, []bool{true, true, true, true, true})
+
+	t.Log(sm.ToString())
+	t.Log(sm.Entries)
 	i := []bool{true, false, true, true, false}
 
 	result := sm.RowAndSum(i)
 
 	assert.Equal(t, 3, result[0])
+	assert.Equal(t, 1, result[1])
 	assert.Equal(t, 0, result[2])
-	assert.Equal(t, 5, result[3])
+	assert.Equal(t, 3, result[3])
+
+}
+
+func TestSetRowFromDense(t *testing.T) {
+
+}
+
+func TestNewFromDense(t *testing.T) {
+	sbm := NewSparseBinaryMatrixFromDense([][]bool{
+		{true, true, true},
+		{false, false, false},
+		{false, true, false},
+		{true, false, true},
+	})
+
+	assert.Equal(t, 4, sbm.Height)
+	assert.Equal(t, 3, sbm.Width)
+	assert.Equal(t, true, sbm.Get(3, 2))
+	assert.Equal(t, []bool{false, true, false}, sbm.GetDenseRow(2))
 
 }

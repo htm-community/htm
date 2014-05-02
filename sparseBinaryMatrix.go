@@ -1,7 +1,8 @@
 package htm
 
 import (
-//"math"
+	//"math"
+	"bytes"
 )
 
 //Entries are positions of non-zero values
@@ -38,7 +39,7 @@ func NewSparseBinaryMatrixFromDense(values [][]bool) *SparseBinaryMatrix {
 	m.Height = len(values)
 	m.Width = len(values[0])
 
-	for r := 0; r < len(values); r++ {
+	for r := 0; r < m.Height; r++ {
 		m.SetRowFromDense(r, values[r])
 	}
 
@@ -144,7 +145,7 @@ func (sm *SparseBinaryMatrix) GetRowIndices(row int) []int {
 func (sm *SparseBinaryMatrix) SetRowFromDense(row int, denseRow []bool) {
 	sm.validateRowCol(row, len(denseRow))
 	for i := 0; i < sm.Width; i++ {
-		sm.Set(i, row, denseRow[i])
+		sm.Set(row, i, denseRow[i])
 	}
 }
 
@@ -156,11 +157,28 @@ func (sm *SparseBinaryMatrix) RowAndSum(row []bool) []int {
 
 	for _, val := range sm.Entries {
 		if row[val.Col] {
-			result[val.Col]++
+			result[val.Row]++
 		}
 	}
 
 	return result
+}
+
+func (sm *SparseBinaryMatrix) ToString() string {
+	var buffer bytes.Buffer
+
+	for r := 0; r < sm.Height; r++ {
+		for c := 0; c < sm.Width; c++ {
+			if sm.Get(r, c) {
+				buffer.WriteByte('1')
+			} else {
+				buffer.WriteByte('0')
+			}
+		}
+		buffer.WriteByte('\n')
+	}
+
+	return buffer.String()
 }
 
 func (sm *SparseBinaryMatrix) validateCol(col int) {
