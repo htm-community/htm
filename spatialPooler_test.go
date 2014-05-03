@@ -420,6 +420,45 @@ func TestCalculateOverlap(t *testing.T) {
 
 }
 
+/*
+sp = self._sp
+    density = 0.3
+    sp._numColumns = 10
+    overlaps = numpy.array([1, 2, 1, 4, 8, 3, 12, 5, 4, 1])
+    active = list(sp._inhibitColumnsGlobal(overlaps, density))
+    trueActive = numpy.zeros(sp._numColumns)
+    trueActive = [4, 6, 7]
+    self.assertListEqual(list(trueActive), active)
+
+    density = 0.5
+    sp._numColumns = 10
+    overlaps = numpy.array(range(10))
+    active = list(sp._inhibitColumnsGlobal(overlaps, density))
+    trueActive = numpy.zeros(sp._numColumns)
+    trueActive = range(5, 10)
+    self.assertListEqual(trueActive, active)
+
+
+
+*/
+
+func TestInhibitColumnsGlobal(t *testing.T) {
+	sp := SpatialPooler{}
+	density := 0.3
+	sp.numColumns = 10
+	overlaps := []int{1, 2, 1, 4, 8, 3, 12, 5, 4, 1}
+	active := sp.inhibitColumnsGlobal(overlaps, density)
+	trueActive := []int{4, 6, 7}
+	assert.Equal(t, trueActive, active)
+
+	density = 0.5
+	overlaps = []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9}
+	active = sp.inhibitColumnsGlobal(overlaps, density)
+	trueActive = []int{5, 6, 7, 8, 9}
+	assert.Equal(t, trueActive, active)
+
+}
+
 //----- Helper functions -------------
 
 func AlmostEqual(a, b float64) bool {

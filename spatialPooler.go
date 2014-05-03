@@ -6,7 +6,7 @@ import (
 	"github.com/skelterjohn/go.matrix"
 	"math"
 	"math/rand"
-	//"sort"
+	"sort"
 )
 
 type SpatialPooler struct {
@@ -47,7 +47,7 @@ type SpatialPooler struct {
 
 	potentialPools *SparseBinaryMatrix
 	permanences    *matrix.SparseMatrix
-	tieBreaker     float64
+	tieBreaker     []float64
 
 	connectedSynapses *SparseBinaryMatrix
 	//redundant
@@ -196,9 +196,11 @@ func NewSpatialPooler(spParams SpParams) *SpatialPooler {
 			 Initialize a tiny random tie breaker. This is used to determine winning
 		     columns where the overlaps are identical.
 	*/
-	//TODO: set tiebreaker
-	//sp.TieBreaker = 0.01*numpy.array([random.getReal64() for i  in xrange(numColumns)])
-	//
+
+	sp.tieBreaker = make([]float64, sp.numColumns)
+	for i := 0; i < len(sp.tieBreaker); i++ {
+		sp.tieBreaker[i] = 0.01 * rand.Float64()
+	}
 
 	/*
 			 'connectedSynapses' is a similar matrix to 'permanences'
@@ -604,10 +606,7 @@ inputVector: a numpy array of 0's and 1's that comprises the input to
 the spatial pooler.
 */
 func (sp *SpatialPooler) calculateOverlap(inputVector []bool) []int {
-	//overlaps = numpy.zeros(self._numColumns).astype(realDType)
 	overlaps := sp.connectedSynapses.RowAndSum(inputVector)
-	//self._connectedSynapses.rightVecSumAtNZ_fast(inputVector, overlaps)
-	//overlaps[overlaps < self._stimulusThreshold] = 0
 	for idx, _ := range overlaps {
 		if overlaps[idx] < sp.StimulusThreshold {
 			overlaps[idx] = 0
@@ -624,9 +623,113 @@ func (sp *SpatialPooler) calculateOverlapPct(overlaps []int) []float64 {
 	return result
 }
 
-func (sp *SpatialPooler) inhibitColumns() {
+/*
+ Perform global inhibition. Performing global inhibition entails picking the
+top 'numActive' columns with the highest overlap score in the entire
+region. At most half of the columns in a local neighborhood are allowed to
+be active.
 
+Parameters:
+----------------------------
+overlaps: an array containing the overlap score for each column.
+The overlap score for a column is defined as the number
+of synapses in a "connected state" (connected synapses)
+that are connected to input bits which are turned on.
+density: The fraction of columns to survive inhibition.
+*/
+
+func (sp *SpatialPooler) inhibitColumnsGlobal(overlaps []int, density float64) []int {
+	//calculate num active per inhibition area
+	numActive := int(density * float64(sp.numColumns))
+	ov := make([]TupleInt, len(overlaps))
+	//TODO: if overlaps is assumed to be distinct this can be
+	//  	simplified
+	//a = value, b = original index
+	for i := 0; i < len(ov); i++ {
+		ov[i].A = overlaps[i]
+		ov[i].B = i
+	}
+	//insert sort overlaps
+	for i := 1; i < len(ov); i++ {
+		for j := i; j > 0 && ov[j].A < ov[j-1].A; j-- {
+			tmp := ov[j]
+			ov[j] = ov[j-1]
+			ov[j-1] = tmp
+		}
+	}
+
+	result := make([]int, numActive)
+	for i := 0; i < numActive; i++ {
+		result[i] = ov[len(ov)-1-i].B
+	}
+
+	sort.Sort(sort.IntSlice(result))
+
+	//return indexes of active columns
+	return result
 }
+
+/*
+
+*/
+
+/*
+ Performs inhibition. This method calculates the necessary values needed to
+actually perform inhibition and then delegates the task of picking the
+active columns to helper functions.
+
+Parameters:
+----------------------------
+overlaps: an array containing the overlap score for each column.
+The overlap score for a column is defined as the number
+of synapses in a "connected state" (connected synapses)
+that are connected to input bits which are turned on.
+
+*/
+
+// func (sp *SpatialPooler) inhibitColumns(overlaps []int) {
+// 	/*
+// 			 # determine how many columns should be selected in the inhibition phase.
+// 		    # This can be specified by either setting the 'numActiveColumnsPerInhArea'
+// 		    # parameter of the 'localAreaDensity' parameter when initializing the class
+// 	*/
+// 	density := 0.0
+// 	//overlaps = overlaps.copy()
+// 	if sp.LocalAreaDensity > 0 {
+// 		density = sp.LocalAreaDensity
+// 	} else {
+// 		inhibitionArea := math.Pow(2*sp.inhibitionRadius+1, len(sp.ColumnDimensions))
+// 		inhibitionArea = math.Min(sp.numColumns, inhibitionArea)
+// 		density = float64(sp.NumActiveColumnsPerInhArea) / inhibitionArea
+// 		density = math.Min(density, 0.5)
+// 	}
+
+// 	// if (self._localAreaDensity > 0):
+// 	//   density = self._localAreaDensity
+// 	// else:
+// 	//   inhibitionArea := math.Pow(((2*self._inhibitionRadius + 1), self._columnDimensions.size)
+// 	//   inhibitionArea = math.Min(sp.numColumns, inhibitionArea)
+// 	//   density = float(self._numActiveColumnsPerInhArea) / inhibitionArea
+// 	//   density = min(density, 0.5)
+
+// 	// Add our fixed little bit of random noise to the scores to help break ties.
+// 	overlaps += self._tieBreaker
+// 	for i := 0; i < len(overlaps); i++ {
+// 		overlaps[i] += sp.tieBreaker[i]
+// 	}
+
+// 	if sp.GlobalInhibition ||
+// 		sp.inhibitionRadius > MaxIntSlice(sp.ColumnDimensions) {
+// 		return sp.inhi
+// 	} else {
+
+// 	}
+
+// if self._globalInhibition or self._inhibitionRadius > max(self._columnDimensions):
+//   return self._inhibitColumnsGlobal(overlaps, density)
+// else:
+//   return self._inhibitColumnsLocal(overlaps, density)
+//}
 
 func (sp *SpatialPooler) adaptSynapses(inputVector []bool) {
 
