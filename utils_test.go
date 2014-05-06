@@ -14,4 +14,9 @@ func TestCartProductInt(t *testing.T) {
 
 	result := CartProductInt(vals)
 
+	assert.Equal(t, 48, len(result))
+	assert.Equal(t, []int{1, 5, 10}, result[0])
+	assert.Equal(t, []int{2, 5, 12}, result[18])
+	assert.Equal(t, []int{3, 8, 13}, result[47])
+
 }
