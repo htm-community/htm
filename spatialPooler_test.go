@@ -3,8 +3,8 @@ package htm
 import (
 	//"fmt"
 	"github.com/skelterjohn/go.matrix"
-	//"math"
 	"github.com/stretchr/testify/assert"
+	"math/big"
 	//"github.com/stretchr/testify/mock"
 	"testing"
 )
@@ -456,6 +456,93 @@ func TestInhibitColumnsGlobal(t *testing.T) {
 	active = sp.inhibitColumnsGlobal(overlaps, density)
 	trueActive = []int{5, 6, 7, 8, 9}
 	assert.Equal(t, trueActive, active)
+
+}
+
+func TestGetNeighborsND(t *testing.T) {
+	sp := SpatialPooler{}
+
+	dimensions := []int{5, 7, 2}
+	var layout [5][7][2]int
+
+	counter := 0
+	for i := range layout {
+		for j := range layout[i] {
+			for k := range layout[i][j] {
+				layout[i][j][k] = counter
+				counter++
+			}
+		}
+	}
+
+	radius := 1
+	x := 1
+	y := 3
+	z := 2
+
+	columnIndex := layout[z][y][x]
+
+	neighbors := sp.getNeighborsND(columnIndex, dimensions, radius, true)
+
+	var expected []int
+
+	for i := radius * -1; i < radius; i++ {
+		for j := radius * -1; j < radius; j++ {
+			for k := radius * -1; k < radius; k++ {
+				zprime := (z + i) % dimensions[0]
+				yprime := (y + j) % dimensions[1]
+				xprime := (x + k) % dimensions[2]
+				if layout[zprime][yprime][xprime] != columnIndex {
+					expected = append(expected, layout[zprime][yprime][xprime])
+				}
+
+			}
+		}
+	}
+
+	assert.Equal(t, expected, neighbors)
+
+	dimensions = []int{5, 7, 9}
+	var layoutb [5][7][9]int
+	counter = 0
+	for i := range layoutb {
+		for j := range layoutb[i] {
+			for k := range layoutb[i][j] {
+				layoutb[i][j][k] = counter
+				counter++
+			}
+		}
+	}
+
+	t.Log("z", len(layoutb))
+
+	radius = 3
+	x = 0
+	y = 0
+	z = 3
+	columnIndex = layoutb[z][y][x]
+	neighbors = sp.getNeighborsND(columnIndex, dimensions, radius, true)
+	expected = []int{}
+	for i := radius * -1; i < radius; i++ {
+		for j := radius * -1; j < radius; j++ {
+			for k := radius * -1; k < radius; k++ {
+				h := new(big.Int)
+				zprime := math.Mod((z + i), (dimensions[0]))
+				yprime := math.Mod((y + j), (dimensions[1]))
+				xprime := math.Mod((x + k), (dimensions[2]))
+
+				t.Log("z", zprime)
+				t.Log("y", yprime)
+				t.Log("x", xprime)
+				if layoutb[zprime][yprime][xprime] != columnIndex {
+					expected = append(expected, layoutb[zprime][yprime][xprime])
+				}
+
+			}
+		}
+	}
+
+	assert.Equal(t, expected, neighbors)
 
 }
 

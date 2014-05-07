@@ -624,6 +624,76 @@ func (sp *SpatialPooler) calculateOverlapPct(overlaps []int) []float64 {
 }
 
 /*
+ Similar to _getNeighbors1D and _getNeighbors2D, this function Returns a
+list of indices corresponding to the neighbors of a given column. Since the
+permanence values are stored in such a way that information about toplogy
+is lost. This method allows for reconstructing the toplogy of the inputs,
+which are flattened to one array. Given a column's index, its neighbors are
+defined as those columns that are 'radius' indices away from it in each
+dimension. The method returns a list of the flat indices of these columns.
+Parameters:
+----------------------------
+columnIndex: The index identifying a column in the permanence, potential
+	and connectivity matrices.
+dimensions: An array containg a dimensions for the column space. A 2x3
+	grid will be represented by [2,3].
+radius: Indicates how far away from a given column are other
+	columns to be considered its neighbors. In the previous 2x3
+	example, each column with coordinates:
+	[2+/-radius, 3+/-radius] is considered a neighbor.
+wrapAround: A boolean value indicating whether to consider columns at
+	the border of a dimensions to be adjacent to columns at the
+	other end of the dimension. For example, if the columns are
+	layed out in one deimnsion, columns 1 and 10 will be
+	considered adjacent if wrapAround is set to true:
+	[1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+*/
+
+func (sp *SpatialPooler) getNeighborsND(columnIndex int, dimensions []int, radius int, wrapAround bool) []int {
+	if len(dimensions) < 1 {
+		panic("Dimensions empty")
+	}
+	bounds := append(dimensions[1:], 1)
+	bounds = RevCumProdInt(bounds)
+
+	columnCoords := make([]int, len(bounds))
+	for j := 0; j < len(bounds); j++ {
+		columnCoords[j] = columnIndex / bounds[j] % dimensions[j]
+	}
+
+	rangeND := make([][]int, len(dimensions))
+	for i := 0; i < len(dimensions); i++ {
+		if wrapAround {
+			cRange := make([]int, radius*2)
+			for j := 0; j < 2*radius; j++ {
+				cRange[j] = (columnCoords[i] - radius) + j%dimensions[i]
+			}
+			rangeND[i] = cRange
+		} else {
+			var cRange []int
+			for j := columnCoords[i] - radius; j < radius*2; j++ {
+				temp := columnCoords[i] - radius + j
+				if temp >= 0 && temp < dimensions[i] {
+					cRange = append(cRange, temp)
+				}
+			}
+			rangeND[i] = cRange
+		}
+	}
+
+	cp := CartProductInt(rangeND)
+	var neighbors []int
+	for i := 0; i < len(cp); i++ {
+		val := DotInt(bounds, cp[i])
+		if val != columnIndex {
+			neighbors = append(neighbors, val)
+		}
+	}
+
+	return neighbors
+}
+
+/*
  Perform global inhibition. Performing global inhibition entails picking the
 top 'numActive' columns with the highest overlap score in the entire
 region. At most half of the columns in a local neighborhood are allowed to
@@ -670,8 +740,43 @@ func (sp *SpatialPooler) inhibitColumnsGlobal(overlaps []int, density float64) [
 }
 
 /*
+ Performs local inhibition. Local inhibition is performed on a column by
+column basis. Each column observes the overlaps of its neighbors and is
+selected if its overlap score is within the top 'numActive' in its local
+neighborhood. At most half of the columns in a local neighborhood are
+allowed to be active.
 
+Parameters:
+----------------------------
+overlaps: an array containing the overlap score for each column.
+	The overlap score for a column is defined as the number
+	of synapses in a "connected state" (connected synapses)
+	that are connected to input bits which are turned on.
+density: The fraction of columns to survive inhibition. This
+	value is only an intended target. Since the surviving
+	columns are picked in a local fashion, the exact fraction
+	of survining columns is likely to vary.
 */
+
+// func (sp *SpatialPooler) inhibitColumnsLocal(overlaps []int, density float64) []int {
+// 	activeColumns := make([]bool,sp.numColumns)
+// 	//activeColumns = numpy.zeros(self._numColumns)
+//     //addToWinners := math.Max(overlaps)/1000.0
+//     //overlaps = numpy.array(overlaps, dtype=realDType)
+//     for i:=0; i<sp.numColumns; i++ {
+
+//     }
+//     for i in xrange(self._numColumns):
+//       maskNeighbors = sp.getNeighborsND(i, self._columnDimensions,
+//         self._inhibitionRadius)
+//       overlapSlice = overlaps[maskNeighbors]
+//       numActive = int(0.5 + density * (len(maskNeighbors) + 1))
+//       numBigger = numpy.count_nonzero(overlapSlice > overlaps[i])
+//       if numBigger < numActive:
+//         activeColumns[i] = 1
+//         overlaps[i] += addToWinners
+//     return numpy.where(activeColumns > 0)[0]
+// }
 
 /*
  Performs inhibition. This method calculates the necessary values needed to
