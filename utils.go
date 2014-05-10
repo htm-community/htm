@@ -1,12 +1,20 @@
 package htm
 
 import (
-//"fmt"
+	//"fmt"
+	"math/big"
 )
 
 type TupleInt struct {
 	A int
 	B int
+}
+
+//Euclidean modulous
+func Mod(a, b int) int {
+	ab := big.NewInt(int64(a))
+	bb := big.NewInt(int64(b))
+	return int(ab.Mod(ab, bb).Int64())
 }
 
 //Dot product

@@ -4,7 +4,7 @@ import (
 	//"fmt"
 	"github.com/skelterjohn/go.matrix"
 	"github.com/stretchr/testify/assert"
-	"math/big"
+	//"math/big"
 	//"github.com/stretchr/testify/mock"
 	"testing"
 )
@@ -514,8 +514,6 @@ func TestGetNeighborsND(t *testing.T) {
 		}
 	}
 
-	t.Log("z", len(layoutb))
-
 	radius = 3
 	x = 0
 	y = 0
@@ -526,14 +524,10 @@ func TestGetNeighborsND(t *testing.T) {
 	for i := radius * -1; i < radius; i++ {
 		for j := radius * -1; j < radius; j++ {
 			for k := radius * -1; k < radius; k++ {
-				h := new(big.Int)
-				zprime := math.Mod((z + i), (dimensions[0]))
-				yprime := math.Mod((y + j), (dimensions[1]))
-				xprime := math.Mod((x + k), (dimensions[2]))
+				zprime := Mod((z + i), (dimensions[0]))
+				yprime := Mod((y + j), (dimensions[1]))
+				xprime := Mod((x + k), (dimensions[2]))
 
-				t.Log("z", zprime)
-				t.Log("y", yprime)
-				t.Log("x", xprime)
 				if layoutb[zprime][yprime][xprime] != columnIndex {
 					expected = append(expected, layoutb[zprime][yprime][xprime])
 				}
@@ -543,6 +537,60 @@ func TestGetNeighborsND(t *testing.T) {
 	}
 
 	assert.Equal(t, expected, neighbors)
+
+	dimensions = []int{5, 10, 7, 6}
+	var layoutc [5][10][7][6]int
+	counter = 0
+	for i := range layoutc {
+		for j := range layoutc[i] {
+			for k := range layoutc[i][j] {
+				for m := range layoutc[i][j][k] {
+					layoutc[i][j][k][m] = counter
+					counter++
+				}
+			}
+		}
+	}
+
+	radius = 4
+	w := 2
+	x = 5
+	y = 6
+	z = 2
+	columnIndex = layoutc[z][y][x][w]
+	neighbors = sp.getNeighborsND(columnIndex, dimensions, radius, true)
+	expected = []int{}
+	for i := radius * -1; i < radius; i++ {
+		for j := radius * -1; j < radius; j++ {
+			for k := radius * -1; k < radius; k++ {
+				for m := radius * -1; m < radius; m++ {
+					zprime := Mod((z + i), (dimensions[0]))
+					yprime := Mod((y + j), (dimensions[1]))
+					xprime := Mod((x + k), (dimensions[2]))
+					wprime := Mod((w + m), (dimensions[3]))
+
+					if layoutc[zprime][yprime][xprime][wprime] != columnIndex {
+						expected = append(expected, layoutc[zprime][yprime][xprime][wprime])
+					}
+
+				}
+
+			}
+		}
+	}
+
+	assert.Equal(t, expected, neighbors)
+
+	layoutd := []bool{false, false, true, false, true, false, false, false}
+	columnIndex = 3
+	dimensions = []int{1, 2, 3, 4, 5, 6, 7, 8}
+	radius = 1
+	mask := sp.getNeighborsND(columnIndex, dimensions, radius, true)
+
+	for _, val := range mask {
+		assert.Equal(t, true, layoutd[val])
+
+	}
 
 }
 
