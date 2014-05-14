@@ -46,11 +46,42 @@ func NewSparseBinaryMatrixFromDense(values [][]bool) *SparseBinaryMatrix {
 	return m
 }
 
+// Creates a sparse binary matrix from specified integer array
+// (any values greater than 0 are true)
+func NewSparseBinaryMatrixFromInts(values [][]int) *SparseBinaryMatrix {
+	if len(values) < 1 {
+		panic("No values specified.")
+	}
+
+	m := &SparseBinaryMatrix{}
+	m.Height = len(values)
+	m.Width = len(values[0])
+
+	for r := 0; r < m.Height; r++ {
+		for c := 0; c < m.Width; c++ {
+			if values[r][c] > 0 {
+				m.Set(r, c, true)
+			}
+		}
+	}
+
+	return m
+}
+
 // func NewRandSparseBinaryMatrix() *SparseBinaryMatrix {
 // }
 
 // func (sm *SparseBinaryMatrix) Resize(width int, height int) {
 // }
+
+//Returns flattend dense represenation
+func (sm *SparseBinaryMatrix) Flatten() []bool {
+	result := make([]bool, sm.Height*sm.Width)
+	for _, val := range sm.Entries {
+		result[(val.Row*sm.Width)+val.Col] = true
+	}
+	return result
+}
 
 //Get value at col,row position
 func (sm *SparseBinaryMatrix) Get(row int, col int) bool {
