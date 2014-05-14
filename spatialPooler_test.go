@@ -712,7 +712,7 @@ func TestGetNeighborsND(t *testing.T) {
 
 	mask = sp.getNeighborsND(columnIndex, dimensions, radius, true)
 	t.Log("mask", mask)
-	t.Log("1d", layouth.Flatten())
+	t.Log("1d", layoutk.Flatten())
 	for idx, val := range layoutk.Flatten() {
 		if ContainsInt(idx, mask) {
 			assert.Equal(t, true, val)
@@ -720,6 +720,32 @@ func TestGetNeighborsND(t *testing.T) {
 			assert.Equal(t, false, val)
 		}
 	}
+
+	//Wrap-around
+	ints = [][]int{{1, 0, 0, 1, 1},
+		{0, 0, 0, 0, 0},
+		{0, 0, 0, 0, 0},
+		{0, 0, 0, 0, 0},
+		{1, 0, 0, 1, 1},
+		{1, 0, 0, 1, 0}}
+
+	layoutl := NewSparseBinaryMatrixFromInts(ints)
+	t.Log(layoutl.ToString())
+
+	columnIndex = 29
+	radius = 1
+
+	mask = sp.getNeighborsND(columnIndex, dimensions, radius, true)
+	t.Log("mask", mask)
+	t.Log("1d", layoutl.Flatten())
+	for idx, val := range layoutl.Flatten() {
+		if ContainsInt(idx, mask) {
+			assert.Equal(t, true, val)
+		} else {
+			assert.Equal(t, false, val)
+		}
+	}
+
 }
 
 //----- Helper functions -------------
