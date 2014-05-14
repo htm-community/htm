@@ -629,6 +629,23 @@ func TestGetNeighborsND(t *testing.T) {
 		}
 	}
 
+	//Radius too big
+	layoutg := []bool{true, true, true, true, true, true, false, true}
+	columnIndex = 6
+	dimensions = []int{8}
+	radius = 20
+
+	mask = sp.getNeighborsND(columnIndex, dimensions, radius, true)
+	t.Log("mask", mask)
+
+	for idx, val := range layoutg {
+		if ContainsInt(idx, mask) {
+			assert.Equal(t, true, val)
+		} else {
+			assert.Equal(t, false, val)
+		}
+	}
+
 }
 
 //----- Helper functions -------------

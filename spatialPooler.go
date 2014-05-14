@@ -653,6 +653,7 @@ func (sp *SpatialPooler) getNeighborsND(columnIndex int, dimensions []int, radiu
 	if len(dimensions) < 1 {
 		panic("Dimensions empty")
 	}
+
 	bounds := append(dimensions[1:], 1)
 	bounds = RevCumProdInt(bounds)
 
@@ -671,7 +672,7 @@ func (sp *SpatialPooler) getNeighborsND(columnIndex int, dimensions []int, radiu
 			rangeND[i] = cRange
 		} else {
 			var cRange []int
-			for j := columnCoords[i] - radius; j < radius*2; j++ {
+			for j := columnCoords[i] - radius; j < (radius*2)+1; j++ {
 				temp := columnCoords[i] - radius + j
 				if temp >= 0 && temp < dimensions[i] {
 					cRange = append(cRange, temp)
