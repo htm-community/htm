@@ -583,7 +583,6 @@ func TestGetNeighborsND(t *testing.T) {
 
 	layoutd := []bool{false, false, true, false, true, false, false, false}
 	columnIndex = 3
-	//dimensions = []int{1, 2, 3, 4, 5, 6, 7, 8}
 	dimensions = []int{8}
 	radius = 1
 	mask := sp.getNeighborsND(columnIndex, dimensions, radius, true)
@@ -593,6 +592,25 @@ func TestGetNeighborsND(t *testing.T) {
 	}
 
 	for idx, val := range layoutd {
+		if ContainsInt(idx, mask) {
+			assert.Equal(t, true, val)
+		} else {
+			assert.Equal(t, false, val)
+		}
+	}
+
+	layoute := []bool{false, true, true, false, true, true, false, false}
+	columnIndex = 3
+	dimensions = []int{8}
+	radius = 2
+
+	mask = sp.getNeighborsND(columnIndex, dimensions, radius, true)
+	t.Log("mask", mask)
+	for _, val := range mask {
+		assert.Equal(t, true, layoute[val])
+	}
+
+	for idx, val := range layoute {
 		if ContainsInt(idx, mask) {
 			assert.Equal(t, true, val)
 		} else {
