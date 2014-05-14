@@ -696,6 +696,30 @@ func TestGetNeighborsND(t *testing.T) {
 		}
 	}
 
+	//Radius too big
+	ints = [][]int{{1, 1, 1, 1, 1},
+		{1, 1, 1, 1, 1},
+		{1, 1, 1, 1, 1},
+		{1, 1, 0, 1, 1},
+		{1, 1, 1, 1, 1},
+		{1, 1, 1, 1, 1}}
+
+	layoutk := NewSparseBinaryMatrixFromInts(ints)
+	t.Log(layouth.ToString())
+
+	columnIndex = 3*5 + 2
+	radius = 7
+
+	mask = sp.getNeighborsND(columnIndex, dimensions, radius, true)
+	t.Log("mask", mask)
+	t.Log("1d", layouth.Flatten())
+	for idx, val := range layoutk.Flatten() {
+		if ContainsInt(idx, mask) {
+			assert.Equal(t, true, val)
+		} else {
+			assert.Equal(t, false, val)
+		}
+	}
 }
 
 //----- Helper functions -------------
