@@ -486,13 +486,13 @@ func TestGetNeighborsND(t *testing.T) {
 
 	var expected []int
 
-	for i := radius * -1; i < radius; i++ {
-		for j := radius * -1; j < radius; j++ {
-			for k := radius * -1; k < radius; k++ {
+	for i := radius * -1; i <= radius; i++ {
+		for j := radius * -1; j <= radius; j++ {
+			for k := radius * -1; k <= radius; k++ {
 				zprime := (z + i) % dimensions[0]
 				yprime := (y + j) % dimensions[1]
 				xprime := (x + k) % dimensions[2]
-				if layout[zprime][yprime][xprime] != columnIndex {
+				if layout[zprime][yprime][xprime] != columnIndex && !ContainsInt(layout[zprime][yprime][xprime], expected) {
 					expected = append(expected, layout[zprime][yprime][xprime])
 				}
 
@@ -521,14 +521,14 @@ func TestGetNeighborsND(t *testing.T) {
 	columnIndex = layoutb[z][y][x]
 	neighbors = sp.getNeighborsND(columnIndex, dimensions, radius, true)
 	expected = []int{}
-	for i := radius * -1; i < radius; i++ {
-		for j := radius * -1; j < radius; j++ {
-			for k := radius * -1; k < radius; k++ {
+	for i := radius * -1; i <= radius; i++ {
+		for j := radius * -1; j <= radius; j++ {
+			for k := radius * -1; k <= radius; k++ {
 				zprime := Mod((z + i), (dimensions[0]))
 				yprime := Mod((y + j), (dimensions[1]))
 				xprime := Mod((x + k), (dimensions[2]))
 
-				if layoutb[zprime][yprime][xprime] != columnIndex {
+				if layoutb[zprime][yprime][xprime] != columnIndex && !ContainsInt(layoutb[zprime][yprime][xprime], expected) {
 					expected = append(expected, layoutb[zprime][yprime][xprime])
 				}
 
@@ -560,16 +560,16 @@ func TestGetNeighborsND(t *testing.T) {
 	columnIndex = layoutc[z][y][x][w]
 	neighbors = sp.getNeighborsND(columnIndex, dimensions, radius, true)
 	expected = []int{}
-	for i := radius * -1; i < radius; i++ {
-		for j := radius * -1; j < radius; j++ {
-			for k := radius * -1; k < radius; k++ {
-				for m := radius * -1; m < radius; m++ {
+	for i := radius * -1; i <= radius; i++ {
+		for j := radius * -1; j <= radius; j++ {
+			for k := radius * -1; k <= radius; k++ {
+				for m := radius * -1; m <= radius; m++ {
 					zprime := Mod((z + i), (dimensions[0]))
 					yprime := Mod((y + j), (dimensions[1]))
 					xprime := Mod((x + k), (dimensions[2]))
 					wprime := Mod((w + m), (dimensions[3]))
 
-					if layoutc[zprime][yprime][xprime][wprime] != columnIndex {
+					if layoutc[zprime][yprime][xprime][wprime] != columnIndex && !ContainsInt(layoutc[zprime][yprime][xprime][wprime], expected) {
 						expected = append(expected, layoutc[zprime][yprime][xprime][wprime])
 					}
 
@@ -583,13 +583,21 @@ func TestGetNeighborsND(t *testing.T) {
 
 	layoutd := []bool{false, false, true, false, true, false, false, false}
 	columnIndex = 3
-	dimensions = []int{1, 2, 3, 4, 5, 6, 7, 8}
+	//dimensions = []int{1, 2, 3, 4, 5, 6, 7, 8}
+	dimensions = []int{8}
 	radius = 1
 	mask := sp.getNeighborsND(columnIndex, dimensions, radius, true)
-
+	t.Log("mask", mask)
 	for _, val := range mask {
 		assert.Equal(t, true, layoutd[val])
+	}
 
+	for idx, val := range layoutd {
+		if ContainsInt(idx, mask) {
+			assert.Equal(t, true, val)
+		} else {
+			assert.Equal(t, false, val)
+		}
 	}
 
 }

@@ -60,3 +60,13 @@ func CartProductInt(values [][]int) [][]int {
 	}
 	return result
 }
+
+//Searches int slice for specified integer
+func ContainsInt(q int, vals []int) bool {
+	for _, val := range vals {
+		if val == q {
+			return true
+		}
+	}
+	return false
+}

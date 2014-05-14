@@ -664,8 +664,8 @@ func (sp *SpatialPooler) getNeighborsND(columnIndex int, dimensions []int, radiu
 	rangeND := make([][]int, len(dimensions))
 	for i := 0; i < len(dimensions); i++ {
 		if wrapAround {
-			cRange := make([]int, radius*2)
-			for j := 0; j < 2*radius; j++ {
+			cRange := make([]int, (radius*2)+1)
+			for j := 0; j < (2*radius)+1; j++ {
 				cRange[j] = Mod((columnCoords[i]-radius)+j, dimensions[i])
 			}
 			rangeND[i] = cRange
@@ -685,7 +685,7 @@ func (sp *SpatialPooler) getNeighborsND(columnIndex int, dimensions []int, radiu
 	var neighbors []int
 	for i := 0; i < len(cp); i++ {
 		val := DotInt(bounds, cp[i])
-		if val != columnIndex {
+		if val != columnIndex && !ContainsInt(val, neighbors) {
 			neighbors = append(neighbors, val)
 		}
 	}
