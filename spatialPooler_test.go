@@ -646,6 +646,32 @@ func TestGetNeighborsND(t *testing.T) {
 		}
 	}
 
+	//These are all the same tests from 2D
+	ints := [][]int{{0, 0, 0, 0, 0},
+		{0, 0, 0, 0, 0},
+		{0, 1, 1, 1, 0},
+		{0, 1, 0, 1, 0},
+		{0, 1, 1, 1, 0},
+		{0, 0, 0, 0, 0}}
+
+	layouth := NewSparseBinaryMatrixFromInts(ints)
+	t.Log(layouth.ToString())
+
+	columnIndex = 3*5 + 2
+	dimensions = []int{6, 5}
+	radius = 1
+
+	mask = sp.getNeighborsND(columnIndex, dimensions, radius, true)
+	t.Log("mask", mask)
+	t.Log("1d", layouth.Flatten())
+	for idx, val := range layouth.Flatten() {
+		if ContainsInt(idx, mask) {
+			assert.Equal(t, true, val)
+		} else {
+			assert.Equal(t, false, val)
+		}
+	}
+
 }
 
 //----- Helper functions -------------
