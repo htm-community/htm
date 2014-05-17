@@ -748,6 +748,29 @@ func TestGetNeighborsND(t *testing.T) {
 
 }
 
+func TestInhibitColumnsLocal(t *testing.T) {
+	sp := SpatialPooler{}
+	density := 0.5
+	sp.numColumns = 10
+	sp.ColumnDimensions = []int{sp.numColumns}
+	sp.inhibitionRadius = 2
+	overlaps := []float64{1, 2, 7, 0, 3, 4, 16, 1, 1.5, 1.7}
+	// L W W L L W W L L W
+	trueActive := []int{1, 2, 5, 6, 9}
+	active := sp.inhibitColumnsLocal(overlaps, density)
+	assert.Equal(t, trueActive, active)
+
+	//Test add to winners
+	// density = 0.3333
+	// sp.inhibitionRadius = 3
+	// overlaps = []float64{1, 1, 1, 1, 1, 1, 1, 1, 1, 1}
+	// // W W L L W W L L L W
+	// trueActive = []int{0, 1, 4, 5, 8}
+	// active = sp.inhibitColumnsLocal(overlaps, density)
+	// assert.Equal(t, trueActive, active)
+
+}
+
 //----- Helper functions -------------
 
 func AlmostEqual(a, b float64) bool {

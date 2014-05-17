@@ -759,25 +759,38 @@ density: The fraction of columns to survive inhibition. This
 	of survining columns is likely to vary.
 */
 
-// func (sp *SpatialPooler) inhibitColumnsLocal(overlaps []int, density float64) []int {
-// 	activeColumns := make([]bool,sp.numColumns)
-// 	//activeColumns = numpy.zeros(self._numColumns)
-//     //addToWinners := math.Max(overlaps)/1000.0
-//     //overlaps = numpy.array(overlaps, dtype=realDType)
-//     for i:=0; i<sp.numColumns; i++ {
+func (sp *SpatialPooler) inhibitColumnsLocal(overlaps []float64, density float64) []int {
+	var activeColumns []int
+	addToWinners := MaxSliceFloat64(overlaps) / 1000.0
+	fmt.Println("winners", addToWinners)
+	for i := 0; i < sp.numColumns; i++ {
+		mask := sp.getNeighborsND(i, sp.ColumnDimensions, sp.inhibitionRadius, true)
+		fmt.Println("i", i)
+		fmt.Println("mask", mask)
+		ovSlice := make([]float64, len(mask))
+		for idx, val := range mask {
+			ovSlice[idx] = overlaps[val]
+		}
+		fmt.Println("ovs", ovSlice)
+		fmt.Println("ov", overlaps)
+		numActive := int(0.5 + density*float64(len(mask)+1))
+		numBigger := 0
+		for _, ov := range ovSlice {
+			if ov > overlaps[i] {
+				numBigger++
+			}
+		}
+		fmt.Println("bigger", numBigger)
+		fmt.Println("active", numActive)
+		if numBigger < numActive {
+			activeColumns = append(activeColumns, i)
+			overlaps[i] += addToWinners
+			fmt.Println("winner", overlaps[i])
+		}
+	}
 
-//     }
-//     for i in xrange(self._numColumns):
-//       maskNeighbors = sp.getNeighborsND(i, self._columnDimensions,
-//         self._inhibitionRadius)
-//       overlapSlice = overlaps[maskNeighbors]
-//       numActive = int(0.5 + density * (len(maskNeighbors) + 1))
-//       numBigger = numpy.count_nonzero(overlapSlice > overlaps[i])
-//       if numBigger < numActive:
-//         activeColumns[i] = 1
-//         overlaps[i] += addToWinners
-//     return numpy.where(activeColumns > 0)[0]
-// }
+	return activeColumns
+}
 
 /*
  Performs inhibition. This method calculates the necessary values needed to
@@ -967,7 +980,7 @@ value is meaningless if global inhibition is enabled.
 func (sp *SpatialPooler) updateInhibitionRadius() {
 
 	if sp.GlobalInhibition {
-		cmax := MaxIntSlice(sp.ColumnDimensions)
+		cmax := MaxSliceInt(sp.ColumnDimensions)
 		sp.inhibitionRadius = cmax
 		return
 	}
@@ -1036,99 +1049,3 @@ func (sp *SpatialPooler) printParameters() {
 }
 
 //----- Helper functions ----
-
-func randFloatRange(min, max float64) float64 {
-	return rand.Float64()*(max-min) + min
-}
-
-//returns max index wise comparison
-func MaxInt(a, b []int) []int {
-	result := make([]int, len(a))
-	for i := 0; i < len(a); i++ {
-		if a[i] > b[i] {
-			result[i] = a[i]
-		} else {
-			result[i] = b[i]
-		}
-	}
-
-	return result
-}
-
-//Returns max value from specified int slice
-func MaxIntSlice(values []int) int {
-	max := 0
-	for i := 0; i < len(values); i++ {
-		if values[i] > max {
-			max = values[i]
-		}
-	}
-	return max
-}
-
-//Returns product of set of integers
-func ProdInt(vals []int) int {
-	sum := 1
-	for x := 0; x < len(vals); x++ {
-		sum *= vals[x]
-	}
-
-	if sum == 1 {
-		return 0
-	} else {
-		return sum
-	}
-}
-
-//Returns cumulative product
-func CumProdInt(vals []int) []int {
-	if len(vals) < 2 {
-		return vals
-	}
-	result := make([]int, len(vals))
-	result[0] = vals[0]
-	for x := 1; x < len(vals); x++ {
-		result[x] = vals[x] * result[x-1]
-	}
-
-	return result
-}
-
-//Returns cumulative product starting from end
-func RevCumProdInt(vals []int) []int {
-	if len(vals) < 2 {
-		return vals
-	}
-	result := make([]int, len(vals))
-	result[len(vals)-1] = vals[len(vals)-1]
-	for x := len(vals) - 2; x >= 0; x-- {
-		result[x] = vals[x] * result[x+1]
-	}
-
-	return result
-}
-
-func RoundPrec(x float64, prec int) float64 {
-	if math.IsNaN(x) || math.IsInf(x, 0) {
-		return x
-	}
-
-	sign := 1.0
-	if x < 0 {
-		sign = -1
-		x *= -1
-	}
-
-	var rounder float64
-	pow := math.Pow(10, float64(prec))
-	intermed := x * pow
-	_, frac := math.Modf(intermed)
-
-	if frac >= 0.5 {
-		rounder = math.Ceil(intermed)
-	} else {
-		rounder = math.Floor(intermed)
-	}
-
-	return rounder / pow * sign
-}
