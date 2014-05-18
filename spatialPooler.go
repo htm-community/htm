@@ -27,7 +27,7 @@ type SpatialPooler struct {
 	MinPctOverlapDutyCycles    float64
 	MinPctActiveDutyCycles     float64
 	DutyCyclePeriod            int
-	MaxBoost                   int
+	MaxBoost                   float64
 	SpVerbosity                int
 
 	// Extra parameter settings
@@ -57,7 +57,7 @@ type SpatialPooler struct {
 	activeDutyCycles     []float64
 	minOverlapDutyCycles []float64
 	minActiveDutyCycles  []float64
-	boostFactors         []bool
+	boostFactors         []float64
 
 	inhibitionRadius int
 
@@ -79,7 +79,7 @@ type SpParams struct {
 	MinPctOverlapDutyCycle     float64
 	MinPctActiveDutyCycle      float64
 	DutyCyclePeriod            int
-	MaxBoost                   int
+	MaxBoost                   float64
 	Seed                       int
 	SpVerbosity                int
 }
@@ -236,9 +236,9 @@ func NewSpatialPooler(spParams SpParams) *SpatialPooler {
 	sp.activeDutyCycles = make([]float64, sp.numColumns)
 	sp.minOverlapDutyCycles = make([]float64, sp.numColumns)
 	sp.minActiveDutyCycles = make([]float64, sp.numColumns)
-	sp.boostFactors = make([]bool, sp.numColumns)
+	sp.boostFactors = make([]float64, sp.numColumns)
 	for i := 0; i < len(sp.boostFactors); i++ {
-		sp.boostFactors[i] = true
+		sp.boostFactors[i] = 1.0
 	}
 
 	/*
@@ -862,7 +862,44 @@ func (sp *SpatialPooler) bumpUpWeakColumns() {
 
 }
 
+/*
+ Update the boost factors for all columns. The boost factors are used to
+increase the overlap of inactive columns to improve their chances of
+becoming active. and hence encourage participation of more columns in the
+learning process. This is a line defined as: y = mx + b boost =
+(1-maxBoost)/minDuty * dutyCycle + maxFiringBoost. Intuitively this means
+that columns that have been active enough have a boost factor of 1, meaning
+their overlap is not boosted. Columns whose active duty cycle drops too much
+below that of their neighbors are boosted depending on how infrequently they
+have been active. The more infrequent, the more they are boosted. The exact
+boost factor is linearly interpolated between the points (dutyCycle:0,
+boost:maxFiringBoost) and (dutyCycle:minDuty, boost:1.0).
+
+boostFactor
+^
+maxBoost _ |
+|\
+| \
+1 _ | \ _ _ _ _ _ _ _
+|
++--------------------> activeDutyCycle
+|
+minActiveDutyCycle
+*/
+
 func (sp *SpatialPooler) updateBoostFactors() {
+	for i, val := range sp.minActiveDutyCycles {
+		if val > 0 {
+			sp.boostFactors[i] = ((1.0 - sp.MaxBoost) /
+				sp.minActiveDutyCycles[i] * sp.activeDutyCycles[i]) + sp.MaxBoost
+		}
+	}
+
+	for i, val := range sp.activeDutyCycles {
+		if val > sp.minActiveDutyCycles[i] {
+			sp.boostFactors[i] = 1.0
+		}
+	}
 
 }
 
