@@ -811,6 +811,17 @@ func UpdateBoostFactorsTest(t *testing.T) {
 		assert.True(t, diff <= 0.0000001)
 	}
 
+	sp.maxBoost = 10.0
+	sp.numColumns = 6
+	sp.minActiveDutyCycles = []float64{0.1, 0.2, 0.02, 0.03, 0.7, 0.12}
+	sp.activeDutyCycles = make([]float64, sp.numColumns)
+	trueBoostFactors = MakeSliceFloat64(6, sp.MaxBoost)
+	sp.updateBoostFactors()
+	for i, _ := range sp.boostFactors {
+		diff := math.Abs(trueBoostFactors[i] - sp.boostFactors[i])
+		assert.True(t, diff <= 0.0000001)
+	}
+
 }
 
 //----- Helper functions -------------
