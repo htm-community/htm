@@ -38,6 +38,28 @@ func FillSliceInt(values []int) {
 	}
 }
 
+//Creates an integer slice with indices containing
+// the specified initial value
+func MakeSliceInt(size, initialValue int) []int {
+	result := make([]int, size)
+	if initialValue != 0 {
+		for i, _ := range result {
+			result[i] = initialValue
+		}
+	}
+	return result
+}
+
+func MakeSliceFloat64(size int, initialValue float64) []float64 {
+	result := make([]float64, size)
+	if initialValue != 0 {
+		for i, _ := range result {
+			result[i] = initialValue
+		}
+	}
+	return result
+}
+
 //Returns cartesian product of specified
 //2d arrayb
 func CartProductInt(values [][]int) [][]int {
