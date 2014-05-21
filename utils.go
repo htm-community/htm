@@ -38,6 +38,24 @@ func FillSliceInt(values []int) {
 	}
 }
 
+//Returns the subset of values specified by indices
+func SubsetSliceInt(values, indices []int) []int {
+	result := make([]int, len(indices))
+	for i, val := range indices {
+		result[i] = values[val]
+	}
+	return result
+}
+
+//Returns the subset of values specified by indices
+func SubsetSliceFloat64(values []float64, indices []int) []float64 {
+	result := make([]float64, len(indices))
+	for i, val := range indices {
+		result[i] = values[val]
+	}
+	return result
+}
+
 //Populates float64 slice with specified value
 func FillSliceFloat64(values []float64, value float64) {
 	for i := range values {

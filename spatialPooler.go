@@ -1047,17 +1047,41 @@ func (sp *SpatialPooler) updateInhibitionRadius() {
 
 // }
 
-// Updates the minimum duty cycles in a global fashion. Sets the minimum duty
-// cycles for the overlap and activation of all columns to be a percent of the
-// maximum in the region, specified by minPctOverlapDutyCycle and
-// minPctActiveDutyCycle respectively. Functionaly it is equivalent to
-// updateMinDutyCyclesLocal, but this function exploits the globalilty of the
-// compuation to perform it in a straightforward, and more efficient manner.
+/*
+Updates the minimum duty cycles in a global fashion. Sets the minimum duty
+cycles for the overlap and activation of all columns to be a percent of the
+maximum in the region, specified by minPctOverlapDutyCycle and
+minPctActiveDutyCycle respectively. Functionaly it is equivalent to
+updateMinDutyCyclesLocal, but this function exploits the globalilty of the
+compuation to perform it in a straightforward, and more efficient manner.
+*/
 func (sp *SpatialPooler) updateMinDutyCyclesGlobal() {
 	minOverlap := sp.MinPctOverlapDutyCycles * MaxSliceFloat64(sp.overlapDutyCycles)
 	FillSliceFloat64(sp.minOverlapDutyCycles, minOverlap)
 	minActive := sp.MinPctActiveDutyCycles * MaxSliceFloat64(sp.activeDutyCycles)
 	FillSliceFloat64(sp.minActiveDutyCycles, minActive)
+}
+
+/*
+ Updates the minimum duty cycles. The minimum duty cycles are determined
+locally. Each column's minimum duty cycles are set to be a percent of the
+maximum duty cycles in the column's neighborhood. Unlike
+updateMinDutyCyclesGlobal, here the values can be quite different for
+different columns.
+*/
+func (sp *SpatialPooler) updateMinDutyCyclesLocal() {
+
+	for i := 0; i < sp.numColumns; i++ {
+		maskNeighbors := sp.getNeighborsND(i, sp.ColumnDimensions, sp.inhibitionRadius, true)
+		maskNeighbors = append(maskNeighbors, i)
+
+		maxOverlap := MaxSliceFloat64(SubsetSliceFloat64(sp.overlapDutyCycles, maskNeighbors))
+		sp.minOverlapDutyCycles[i] = maxOverlap * sp.MinPctOverlapDutyCycles
+
+		maxActive := MaxSliceFloat64(SubsetSliceFloat64(sp.activeDutyCycles, maskNeighbors))
+		sp.minActiveDutyCycles[i] = maxActive * sp.MinPctActiveDutyCycles
+	}
+
 }
 
 /*
