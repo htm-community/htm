@@ -1036,16 +1036,18 @@ func (sp *SpatialPooler) updateInhibitionRadius() {
 	sp.inhibitionRadius = int(RoundPrec(radius, 0))
 }
 
-// Updates the minimum duty cycles defining normal activity for a column. A
-// column with activity duty cycle below this minimum threshold is boosted.
-// func (sp *SpatialPooler) updateMinDutyCycles() {
-// 	if sp.GlobalInhibition || sp.inhibitionRadius > sp.numInputs {
-// 		sp.updateMinDutyCyclesGlobal()
-// 	} else {
-// 		sp.updateMinDutyCyclesLocal()
-// 	}
+/*
+Updates the minimum duty cycles defining normal activity for a column. A
+column with activity duty cycle below this minimum threshold is boosted.
+*/
+func (sp *SpatialPooler) updateMinDutyCycles() {
+	if sp.GlobalInhibition || sp.inhibitionRadius > sp.numInputs {
+		sp.updateMinDutyCyclesGlobal()
+	} else {
+		sp.updateMinDutyCyclesLocal()
+	}
 
-// }
+}
 
 /*
 Updates the minimum duty cycles in a global fashion. Sets the minimum duty
