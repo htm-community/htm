@@ -1054,8 +1054,6 @@ func (sp *SpatialPooler) updateInhibitionRadius() {
 // updateMinDutyCyclesLocal, but this function exploits the globalilty of the
 // compuation to perform it in a straightforward, and more efficient manner.
 func (sp *SpatialPooler) updateMinDutyCyclesGlobal() {
-	//sp.minOverlapDutyCycles.fill(sp.minPctOverlapDutyCycles * sp.overlapDutyCycles.max())
-	//sp.minActiveDutyCycles.fill(sp.minPctActiveDutyCycles * sp.activeDutyCycles.max())
 	minOverlap := sp.MinPctOverlapDutyCycles * MaxSliceFloat64(sp.overlapDutyCycles)
 	FillSliceFloat64(sp.minOverlapDutyCycles, minOverlap)
 	minActive := sp.MinPctActiveDutyCycles * MaxSliceFloat64(sp.activeDutyCycles)
