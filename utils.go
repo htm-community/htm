@@ -32,9 +32,23 @@ func DotInt(a, b []int) int {
 }
 
 //Populates integer slice with index values
-func FillSliceInt(values []int) {
+func FillSliceWithIdxInt(values []int) {
 	for i := range values {
 		values[i] = i
+	}
+}
+
+//Populates float64 slice with specified value
+func FillSliceInt(values []int, value int) {
+	for i := range values {
+		values[i] = value
+	}
+}
+
+//Populates float64 slice with specified value
+func FillSliceFloat64(values []float64, value float64) {
+	for i := range values {
+		values[i] = value
 	}
 }
 
@@ -54,13 +68,6 @@ func SubsetSliceFloat64(values []float64, indices []int) []float64 {
 		result[i] = values[val]
 	}
 	return result
-}
-
-//Populates float64 slice with specified value
-func FillSliceFloat64(values []float64, value float64) {
-	for i := range values {
-		values[i] = value
-	}
 }
 
 //Creates an integer slice with indices containing

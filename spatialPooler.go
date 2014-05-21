@@ -850,7 +850,46 @@ that are connected to input bits which are turned on.
 //   return self._inhibitColumnsLocal(overlaps, density)
 //}
 
-func (sp *SpatialPooler) adaptSynapses(inputVector []bool) {
+/*
+ The primary method in charge of learning. Adapts the permanence values of
+the synapses based on the input vector, and the chosen columns after
+inhibition round. Permanence values are increased for synapses connected to
+input bits that are turned on, and decreased for synapses connected to
+inputs bits that are turned off.
+
+Parameters:
+----------------------------
+inputVector: a numpy array of 0's and 1's thata comprises the input to
+the spatial pooler. There exists an entry in the array
+for every input bit.
+activeColumns: an array containing the indices of the columns that
+survived inhibition.
+*/
+func (sp *SpatialPooler) adaptSynapses(inputVector []bool, activeColumns []int) {
+	var inputIndices []int
+	for i, val := range inputVector {
+		if val {
+			inputIndices = append(inputIndices, i)
+		}
+	}
+
+	permChanges := make([]float64, sp.numInputs)
+	FillSliceFloat64(permChanges, -1*sp.SynPermInactiveDec)
+	for _, val := range inputIndices {
+		permChanges[val] = sp.SynPermActiveInc
+	}
+
+	for i, _ := range activeColumns {
+		perm := make([]float64, sp.numInputs)
+		for j := 0; j < sp.numInputs; j++ {
+			temp := sp.permanences.Get(i, j)
+			if temp > 0 {
+				temp += permChanges[j]
+			}
+			perm[i] = temp
+		}
+		sp.updatePermanencesForColumn(perm, i, true)
+	}
 
 }
 
