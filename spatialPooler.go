@@ -1114,3 +1114,34 @@ func (sp *SpatialPooler) printParameters() {
 }
 
 //----- Helper functions ----
+
+/*
+ Updates a duty cycle estimate with a new value. This is a helper
+function that is used to update several duty cycle variables in
+the Column class, such as: overlapDutyCucle, activeDutyCycle,
+minPctDutyCycleBeforeInh, minPctDutyCycleAfterInh, etc. returns
+the updated duty cycle. Duty cycles are updated according to the following
+formula:
+
+			(period - 1)*dutyCycle + newValue
+dutyCycle := ----------------------------------
+						period
+
+Parameters:
+----------------------------
+dutyCycles: An array containing one or more duty cycle values that need
+to be updated
+newInput: A new numerical value used to update the duty cycle
+period: The period of the duty cycle
+*/
+func updateDutyCyclesHelper(dutyCycles []float64, newInput float64, period int) []float64 {
+	if period < 1.0 {
+		panic("period can't be less than 1")
+	}
+	pf := float64(period)
+	result := make([]float64, len(dutyCycles))
+	for i, val := range dutyCycles {
+		result[i] = (val*(pf-1.0) + newInput) / pf
+	}
+	return result
+}
