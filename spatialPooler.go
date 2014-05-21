@@ -854,8 +854,53 @@ func (sp *SpatialPooler) adaptSynapses(inputVector []bool) {
 
 }
 
-func (sp *SpatialPooler) updateDutyCycles() {
+/*
+ Updates the duty cycles for each column. The OVERLAP duty cycle is a moving
+average of the number of inputs which overlapped with the each column. The
+ACTIVITY duty cycles is a moving average of the frequency of activation for
+each column.
 
+Parameters:
+----------------------------
+overlaps: an array containing the overlap score for each column.
+The overlap score for a column is defined as the number
+of synapses in a "connected state" (connected synapses)
+that are connected to input bits which are turned on.
+activeColumns: An array containing the indices of the active columns,
+the sprase set of columns which survived inhibition
+*/
+func (sp *SpatialPooler) updateDutyCycles(overlaps []float64, activeColumns []int) {
+	overlapArray := make([]int, sp.numColumns)
+	activeArray := make([]int, sp.numColumns)
+
+	for i, val := range overlaps {
+		if val > 0 {
+			overlapArray[i] = 1
+		}
+	}
+
+	if len(activeColumns) > 0 {
+		for _, val := range activeColumns {
+			activeArray[val] = 1
+		}
+	}
+
+	period := sp.DutyCyclePeriod
+	if period > sp.IterationNum {
+		period = sp.IterationNum
+	}
+
+	sp.overlapDutyCycles = updateDutyCyclesHelper(
+		sp.overlapDutyCycles,
+		overlapArray,
+		period,
+	)
+
+	sp.activeDutyCycles = updateDutyCyclesHelper(
+		sp.activeDutyCycles,
+		activeArray,
+		period,
+	)
 }
 
 func (sp *SpatialPooler) bumpUpWeakColumns() {
@@ -1134,14 +1179,14 @@ to be updated
 newInput: A new numerical value used to update the duty cycle
 period: The period of the duty cycle
 */
-func updateDutyCyclesHelper(dutyCycles []float64, newInput float64, period int) []float64 {
+func updateDutyCyclesHelper(dutyCycles []float64, newInput []int, period int) []float64 {
 	if period < 1.0 {
 		panic("period can't be less than 1")
 	}
 	pf := float64(period)
 	result := make([]float64, len(dutyCycles))
 	for i, val := range dutyCycles {
-		result[i] = (val*(pf-1.0) + newInput) / pf
+		result[i] = (val*(pf-1.0) + float64(newInput[i])) / pf
 	}
 	return result
 }
