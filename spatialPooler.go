@@ -53,7 +53,7 @@ type SpatialPooler struct {
 	//redundant
 	connectedCounts []int
 
-	overlapDutyCycles    []bool
+	overlapDutyCycles    []float64
 	activeDutyCycles     []float64
 	minOverlapDutyCycles []float64
 	minActiveDutyCycles  []float64
@@ -232,7 +232,7 @@ func NewSpatialPooler(spParams SpParams) *SpatialPooler {
 		sp.updatePermanencesForColumn(perm, i, true)
 	}
 
-	sp.overlapDutyCycles = make([]bool, sp.numColumns)
+	sp.overlapDutyCycles = make([]float64, sp.numColumns)
 	sp.activeDutyCycles = make([]float64, sp.numColumns)
 	sp.minOverlapDutyCycles = make([]float64, sp.numColumns)
 	sp.minActiveDutyCycles = make([]float64, sp.numColumns)
@@ -1051,12 +1051,16 @@ func (sp *SpatialPooler) updateInhibitionRadius() {
 // cycles for the overlap and activation of all columns to be a percent of the
 // maximum in the region, specified by minPctOverlapDutyCycle and
 // minPctActiveDutyCycle respectively. Functionaly it is equivalent to
-// _updateMinDutyCyclesLocal, but this function exploits the globalilty of the
+// updateMinDutyCyclesLocal, but this function exploits the globalilty of the
 // compuation to perform it in a straightforward, and more efficient manner.
-// func (sp *SpatialPooler) updateMinDutyCyclesGlobal() {
-// 	sp.minOverlapDutyCycles.fill(sp.minPctOverlapDutyCycles * sp.overlapDutyCycles.max())
-// 	sp.minActiveDutyCycles.fill(sp.minPctActiveDutyCycles * sp.activeDutyCycles.max())
-// }
+func (sp *SpatialPooler) updateMinDutyCyclesGlobal() {
+	//sp.minOverlapDutyCycles.fill(sp.minPctOverlapDutyCycles * sp.overlapDutyCycles.max())
+	//sp.minActiveDutyCycles.fill(sp.minPctActiveDutyCycles * sp.activeDutyCycles.max())
+	minOverlap := sp.MinPctOverlapDutyCycles * MaxSliceFloat64(sp.overlapDutyCycles)
+	FillSliceFloat64(sp.minOverlapDutyCycles, minOverlap)
+	minActive := sp.MinPctActiveDutyCycles * MaxSliceFloat64(sp.activeDutyCycles)
+	FillSliceFloat64(sp.minActiveDutyCycles, minActive)
+}
 
 /*
 Removes the set of columns who have never been active from the set of

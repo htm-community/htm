@@ -38,6 +38,13 @@ func FillSliceInt(values []int) {
 	}
 }
 
+//Populates float64 slice with specified value
+func FillSliceFloat64(values []float64, value float64) {
+	for i := range values {
+		values[i] = value
+	}
+}
+
 //Creates an integer slice with indices containing
 // the specified initial value
 func MakeSliceInt(size, initialValue int) []int {
