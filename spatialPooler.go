@@ -476,8 +476,8 @@ the matrix, and the permanence is given in 'dense' form, i.e. a full
 arrray containing all the zeros as well as the non-zero values. It is in
 charge of implementing 'clipping' - ensuring that the permanence values are
 always between 0 and 1 - and 'trimming' - enforcing sparsity by zeroing out
-all permanence values below '_synPermTrimThreshold'. It also maintains
-the consistency between 'permanences' (the matrix storeing the
+all permanence values below 'synPermTrimThreshold'. It also maintains
+the consistency between 'permanences' (the matrix storing the
 permanence values), 'connectedSynapses', (the matrix storing the bits
 each column is connected to), and 'connectedCounts' (an array storing
 the number of input bits each column is connected to). Every method wishing

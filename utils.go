@@ -254,3 +254,18 @@ func RoundPrec(x float64, prec int) float64 {
 
 	return rounder / pow * sign
 }
+
+//Helper for unit tests where int literals are easier
+// to read
+func Make2DBool(values [][]int) [][]bool {
+	result := make([][]bool, len(values))
+
+	for i, val := range values {
+		result[i] = make([]bool, len(val))
+		for j, col := range val {
+			result[i][j] = col == 1
+		}
+	}
+
+	return result
+}

@@ -859,6 +859,62 @@ func TestUpdateDutyCycleHelper(t *testing.T) {
 	assert.Equal(t, expected, actual)
 }
 
+func TestUpdatePermanencesForColumn(t *testing.T) {
+
+	sp := SpatialPooler{}
+	sp.InputDimensions = []int{5}
+	sp.ColumnDimensions = []int{5}
+	sp.numColumns = 5
+	sp.numInputs = 5
+	sp.SynPermConnected = 0.1
+	sp.SynPermTrimThreshold = 0.05
+	sp.connectedCounts = make([]int, sp.numColumns)
+	elms := make(map[int]float64, 25)
+	sp.permanences = matrix.MakeSparseMatrix(elms, sp.numColumns, sp.numInputs)
+	sp.potentialPools = NewSparseBinaryMatrix(sp.numColumns, sp.numInputs)
+	sp.connectedSynapses = NewSparseBinaryMatrix(sp.numColumns, sp.numInputs)
+	sp.SynPermMax = 1
+	sp.SynPermMin = 0
+
+	permanences := [][]float64{
+		{-0.10, 0.500, 0.400, 0.010, 0.020},
+		{0.300, 0.010, 0.020, 0.120, 0.090},
+		{0.070, 0.050, 1.030, 0.190, 0.060},
+		{0.180, 0.090, 0.110, 0.010, 0.030},
+		{0.200, 0.101, 0.050, -0.09, 1.100}}
+
+	/*
+	   These are the 'true permanences' reflected in trueConnectedSynapses
+	   truePermanences = SparseMatrix(
+	   [[0.000, 0.500, 0.400, 0.000, 0.000],
+	   Clip - - Trim Trim
+	   [0.300, 0.000, 0.000, 0.120, 0.090],
+	   - Trim Trim - -
+	   [0.070, 0.050, 1.000, 0.190, 0.060],
+	   - - Clip - -
+	   [0.180, 0.090, 0.110, 0.000, 0.000],
+	   - - - Trim Trim
+	   [0.200, 0.101, 0.050, 0.000, 1.000]])
+	   - - - Clip Clip
+	*/
+
+	trueConnectedSynapses := Make2DBool([][]int{{0, 1, 1, 0, 0},
+		{1, 0, 0, 1, 0},
+		{0, 0, 1, 1, 0},
+		{1, 0, 1, 0, 0},
+		{1, 1, 0, 0, 1}})
+
+	trueConnectedCounts := []int{2, 2, 2, 2, 3}
+
+	for i := 0; i < sp.numColumns; i++ {
+		sp.updatePermanencesForColumn(permanences[i], i, true)
+		assert.Equal(t, trueConnectedSynapses[i], sp.connectedSynapses.GetDenseRow(i))
+	}
+
+	assert.Equal(t, trueConnectedCounts, sp.connectedCounts)
+
+}
+
 //----- Helper functions -------------
 
 func AlmostEqual(a, b float64) bool {
