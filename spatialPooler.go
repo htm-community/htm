@@ -702,7 +702,7 @@ func (sp *SpatialPooler) getNeighborsND(columnIndex int, dimensions []int, radiu
 			rangeND[i] = cRange
 		} else {
 			var cRange []int
-			for j := columnCoords[i] - radius; j < (radius*2)+1; j++ {
+			for j := 0; j < (radius*2)+1; j++ {
 				temp := columnCoords[i] - radius + j
 				if temp >= 0 && temp < dimensions[i] {
 					cRange = append(cRange, temp)
@@ -792,17 +792,15 @@ density: The fraction of columns to survive inhibition. This
 func (sp *SpatialPooler) inhibitColumnsLocal(overlaps []float64, density float64) []int {
 	var activeColumns []int
 	addToWinners := MaxSliceFloat64(overlaps) / 1000.0
-	fmt.Println("winners", addToWinners)
+
 	for i := 0; i < sp.numColumns; i++ {
-		mask := sp.getNeighborsND(i, sp.ColumnDimensions, sp.inhibitionRadius, true)
-		fmt.Println("i", i)
-		fmt.Println("mask", mask)
+		mask := sp.getNeighborsND(i, sp.ColumnDimensions, sp.inhibitionRadius, false)
+
 		ovSlice := make([]float64, len(mask))
 		for idx, val := range mask {
 			ovSlice[idx] = overlaps[val]
 		}
-		fmt.Println("ovs", ovSlice)
-		fmt.Println("ov", overlaps)
+
 		numActive := int(0.5 + density*float64(len(mask)+1))
 		numBigger := 0
 		for _, ov := range ovSlice {
@@ -810,12 +808,10 @@ func (sp *SpatialPooler) inhibitColumnsLocal(overlaps []float64, density float64
 				numBigger++
 			}
 		}
-		fmt.Println("bigger", numBigger)
-		fmt.Println("active", numActive)
+
 		if numBigger < numActive {
 			activeColumns = append(activeColumns, i)
 			overlaps[i] += addToWinners
-			fmt.Println("winner", overlaps[i])
 		}
 	}
 

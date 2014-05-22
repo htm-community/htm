@@ -5,9 +5,9 @@ import (
 	"testing"
 )
 
-func TestFillSliceInt(t *testing.T) {
+func TestFillSliceWithIdxInt(t *testing.T) {
 	vals := make([]int, 3)
-	FillSliceInt(vals)
+	FillSliceWithIdxInt(vals)
 	expected := []int{0, 1, 2}
 	assert.Equal(t, expected, vals)
 }

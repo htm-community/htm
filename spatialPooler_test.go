@@ -6,6 +6,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	//"math/big"
 	//"github.com/stretchr/testify/mock"
+	"math"
 	"testing"
 )
 
@@ -446,13 +447,13 @@ func TestInhibitColumnsGlobal(t *testing.T) {
 	sp := SpatialPooler{}
 	density := 0.3
 	sp.numColumns = 10
-	overlaps := []int{1, 2, 1, 4, 8, 3, 12, 5, 4, 1}
+	overlaps := []float64{1, 2, 1, 4, 8, 3, 12, 5, 4, 1}
 	active := sp.inhibitColumnsGlobal(overlaps, density)
 	trueActive := []int{4, 6, 7}
 	assert.Equal(t, trueActive, active)
 
 	density = 0.5
-	overlaps = []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9}
+	overlaps = []float64{0, 1, 2, 3, 4, 5, 6, 7, 8, 9}
 	active = sp.inhibitColumnsGlobal(overlaps, density)
 	trueActive = []int{5, 6, 7, 8, 9}
 	assert.Equal(t, trueActive, active)
@@ -746,6 +747,14 @@ func TestGetNeighborsND(t *testing.T) {
 		}
 	}
 
+	//No wrap around
+	columnIndex = 8
+	radius = 2
+	dimensions = []int{10}
+	neighbors = sp.getNeighborsND(columnIndex, dimensions, radius, false)
+	expected = []int{6, 7, 9}
+	assert.Equal(t, expected, neighbors)
+
 }
 
 func TestInhibitColumnsLocal(t *testing.T) {
@@ -755,19 +764,19 @@ func TestInhibitColumnsLocal(t *testing.T) {
 	sp.ColumnDimensions = []int{sp.numColumns}
 	sp.inhibitionRadius = 2
 	overlaps := []float64{1, 2, 7, 0, 3, 4, 16, 1, 1.5, 1.7}
-	// L W W L L W W L L W
+	// L W  W  L  L  W   W  L   L    W
 	trueActive := []int{1, 2, 5, 6, 9}
 	active := sp.inhibitColumnsLocal(overlaps, density)
 	assert.Equal(t, trueActive, active)
 
 	//Test add to winners
-	// density = 0.3333
-	// sp.inhibitionRadius = 3
-	// overlaps = []float64{1, 1, 1, 1, 1, 1, 1, 1, 1, 1}
-	// // W W L L W W L L L W
-	// trueActive = []int{0, 1, 4, 5, 8}
-	// active = sp.inhibitColumnsLocal(overlaps, density)
-	// assert.Equal(t, trueActive, active)
+	density = 0.3333
+	sp.inhibitionRadius = 3
+	overlaps = []float64{1, 1, 1, 1, 1, 1, 1, 1, 1, 1}
+	// W W L L W W L L L W
+	trueActive = []int{0, 1, 4, 5, 8}
+	active = sp.inhibitColumnsLocal(overlaps, density)
+	assert.Equal(t, trueActive, active)
 
 }
 
@@ -788,7 +797,7 @@ func UpdateBoostFactorsTest(t *testing.T) {
 		assert.Equal(t, trueBoostFactors[i], sp.boostFactors[i])
 	}
 
-	sp.maxBoost = 10.0
+	sp.MaxBoost = 10.0
 	sp.numColumns = 6
 	sp.minActiveDutyCycles = []float64{0.1, 0.3, 0.02, 0.04, 0.7, 0.12}
 	sp.activeDutyCycles = []float64{0.1, 0.3, 0.02, 0.04, 0.7, 0.12}
@@ -800,7 +809,7 @@ func UpdateBoostFactorsTest(t *testing.T) {
 		assert.True(t, diff <= 0.0000001)
 	}
 
-	sp.maxBoost = 10.0
+	sp.MaxBoost = 10.0
 	sp.numColumns = 6
 	sp.minActiveDutyCycles = []float64{0.1, 0.2, 0.02, 0.03, 0.7, 0.12}
 	sp.activeDutyCycles = []float64{0.01, 0.02, 0.002, 0.003, 0.07, 0.012}
@@ -811,7 +820,7 @@ func UpdateBoostFactorsTest(t *testing.T) {
 		assert.True(t, diff <= 0.0000001)
 	}
 
-	sp.maxBoost = 10.0
+	sp.MaxBoost = 10.0
 	sp.numColumns = 6
 	sp.minActiveDutyCycles = []float64{0.1, 0.2, 0.02, 0.03, 0.7, 0.12}
 	sp.activeDutyCycles = make([]float64, sp.numColumns)
