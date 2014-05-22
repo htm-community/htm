@@ -536,41 +536,43 @@ func (sp *SpatialPooler) updatePermanencesForColumn(perm []float64, index int, r
 // 		panic("input != numimputs")
 // 	}
 
-// sp.updateBookeepingVars(learn)
-// //inputVector = numpy.array(inputVector, dtype=realDType)
-// //inputVector.reshape(-1)
+// 	sp.updateBookeepingVars(learn)
+// 	//inputVector = numpy.array(inputVector, dtype=realDType)
+// 	//inputVector.reshape(-1)
 
-// overlaps := sp.calculateOverlap(inputVector)
+// 	overlaps := sp.calculateOverlap(inputVector)
 
-// boostedOverlaps := overlaps
-// // Apply boosting when learning is on
-// if learn {
-// 	boostedOverlaps = sp.BoostFactors * overlaps
-// }
-
-// // Apply inhibition to determine the winning columns
-// activeColumns = sp.inhibitColumns(boostedOverlaps)
-
-// if learn {
-// 	adaptSynapses(inputVector, activeColumns)
-// 	updateDutyCycles(overlaps, activeColumns)
-// 	sp.bumpUpWeakColumns()
-// 	sp.updateBoostFactors()
-// 	if sp.isUpdateRound() {
-// 		sp.updateInhibitionRadius()
-// 		sp.updateMinDutyCycles()
+// 	boostedOverlaps := overlaps
+// 	// Apply boosting when learning is on
+// 	if learn {
+// 		for i, val := range sp.boostFactors {
+// 			boostedOverlaps[i] *= int(val)
+// 		}
 // 	}
 
-// } else {
-// 	activeColumns = sp.stripNeverLearned(activeColumns)
-// }
+// 	// Apply inhibition to determine the winning columns
+// 	activeColumns := sp.inhibitColumns(boostedOverlaps)
 
-// activeArray.fill(0)
-// if len(activeColumns) > 0 {
-// 	activeArray[activeColumns] = 1
-// }
+// 	if learn {
+// 		adaptSynapses(inputVector, activeColumns)
+// 		updateDutyCycles(overlaps, activeColumns)
+// 		sp.bumpUpWeakColumns()
+// 		sp.updateBoostFactors()
+// 		if sp.isUpdateRound() {
+// 			sp.updateInhibitionRadius()
+// 			sp.updateMinDutyCycles()
+// 		}
 
-//}
+// 	} else {
+// 		activeColumns = sp.stripNeverLearned(activeColumns)
+// 	}
+
+// 	activeArray.fill(0)
+// 	if len(activeColumns) > 0 {
+// 		activeArray[activeColumns] = 1
+// 	}
+
+// }
 
 /*
  Updates counter instance variables each round.
@@ -709,7 +711,7 @@ that are connected to input bits which are turned on.
 density: The fraction of columns to survive inhibition.
 */
 
-func (sp *SpatialPooler) inhibitColumnsGlobal(overlaps []int, density float64) []int {
+func (sp *SpatialPooler) inhibitColumnsGlobal(overlaps []float64, density float64) []int {
 	//calculate num active per inhibition area
 	numActive := int(density * float64(sp.numColumns))
 	ov := make([]TupleInt, len(overlaps))
@@ -717,7 +719,7 @@ func (sp *SpatialPooler) inhibitColumnsGlobal(overlaps []int, density float64) [
 	//  	simplified
 	//a = value, b = original index
 	for i := 0; i < len(ov); i++ {
-		ov[i].A = overlaps[i]
+		ov[i].A = int(overlaps[i])
 		ov[i].B = i
 	}
 	//insert sort overlaps
@@ -806,49 +808,36 @@ that are connected to input bits which are turned on.
 
 */
 
-// func (sp *SpatialPooler) inhibitColumns(overlaps []int) {
-// 	/*
-// 			 # determine how many columns should be selected in the inhibition phase.
-// 		    # This can be specified by either setting the 'numActiveColumnsPerInhArea'
-// 		    # parameter of the 'localAreaDensity' parameter when initializing the class
-// 	*/
-// 	density := 0.0
-// 	//overlaps = overlaps.copy()
-// 	if sp.LocalAreaDensity > 0 {
-// 		density = sp.LocalAreaDensity
-// 	} else {
-// 		inhibitionArea := math.Pow(2*sp.inhibitionRadius+1, len(sp.ColumnDimensions))
-// 		inhibitionArea = math.Min(sp.numColumns, inhibitionArea)
-// 		density = float64(sp.NumActiveColumnsPerInhArea) / inhibitionArea
-// 		density = math.Min(density, 0.5)
-// 	}
+func (sp *SpatialPooler) inhibitColumns(overlaps []float64) []int {
+	/*
+			 determine how many columns should be selected in the inhibition phase.
+		     This can be specified by either setting the 'numActiveColumnsPerInhArea'
+		     parameter of the 'localAreaDensity' parameter when initializing the class
+	*/
+	density := 0.0
+	if sp.LocalAreaDensity > 0 {
+		density = sp.LocalAreaDensity
+	} else {
+		inhibitionArea := math.Pow(float64(2*sp.inhibitionRadius+1), float64(len(sp.ColumnDimensions)))
+		inhibitionArea = math.Min(float64(sp.numColumns), inhibitionArea)
+		density = float64(sp.NumActiveColumnsPerInhArea) / inhibitionArea
+		density = math.Min(density, 0.5)
+	}
 
-// 	// if (self._localAreaDensity > 0):
-// 	//   density = self._localAreaDensity
-// 	// else:
-// 	//   inhibitionArea := math.Pow(((2*self._inhibitionRadius + 1), self._columnDimensions.size)
-// 	//   inhibitionArea = math.Min(sp.numColumns, inhibitionArea)
-// 	//   density = float(self._numActiveColumnsPerInhArea) / inhibitionArea
-// 	//   density = min(density, 0.5)
+	// Add our fixed little bit of random noise to the scores to help break ties.
+	//overlaps += sp.tieBreaker
+	for i := 0; i < len(overlaps); i++ {
+		overlaps[i] += sp.tieBreaker[i]
+	}
 
-// 	// Add our fixed little bit of random noise to the scores to help break ties.
-// 	overlaps += self._tieBreaker
-// 	for i := 0; i < len(overlaps); i++ {
-// 		overlaps[i] += sp.tieBreaker[i]
-// 	}
+	if sp.GlobalInhibition ||
+		sp.inhibitionRadius > MaxSliceInt(sp.ColumnDimensions) {
+		return sp.inhibitColumnsGlobal(overlaps, density)
+	} else {
+		return sp.inhibitColumnsLocal(overlaps, density)
+	}
 
-// 	if sp.GlobalInhibition ||
-// 		sp.inhibitionRadius > MaxIntSlice(sp.ColumnDimensions) {
-// 		return sp.inhi
-// 	} else {
-
-// 	}
-
-// if self._globalInhibition or self._inhibitionRadius > max(self._columnDimensions):
-//   return self._inhibitColumnsGlobal(overlaps, density)
-// else:
-//   return self._inhibitColumnsLocal(overlaps, density)
-//}
+}
 
 /*
  The primary method in charge of learning. Adapts the permanence values of
