@@ -833,6 +833,32 @@ func UpdateBoostFactorsTest(t *testing.T) {
 
 }
 
+func TestUpdateDutyCycleHelper(t *testing.T) {
+
+	dc := []float64{1000.0, 1000.0, 1000.0, 1000.0, 1000.0}
+	period := 1000
+	newvals := make([]int, 5)
+	actual := updateDutyCyclesHelper(dc, newvals, period)
+	expected := []float64{999, 999, 999, 999, 999}
+	assert.Equal(t, expected, actual)
+
+	FillSliceInt(newvals, 1000)
+	actual = updateDutyCyclesHelper(dc, newvals, period)
+	assert.Equal(t, dc, actual)
+
+	newvals = []int{2000, 4000, 5000, 6000, 7000}
+	expected = []float64{1001, 1003, 1004, 1005, 1006}
+	actual = updateDutyCyclesHelper(dc, newvals, period)
+	assert.Equal(t, expected, actual)
+
+	dc = []float64{1000, 800, 600, 400, 2000}
+	FillSliceInt(newvals, 0)
+	period = 2
+	actual = updateDutyCyclesHelper(dc, newvals, period)
+	expected = []float64{500, 400, 300, 200, 1000}
+	assert.Equal(t, expected, actual)
+}
+
 //----- Helper functions -------------
 
 func AlmostEqual(a, b float64) bool {
