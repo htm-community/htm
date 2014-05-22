@@ -529,50 +529,78 @@ func (sp *SpatialPooler) updatePermanencesForColumn(perm []float64, index int, r
 	sp.connectedCounts[index] = len(newConnected)
 }
 
-//Main func, returns active array
-//active arrays length is equal to # of columns
-// func (sp *SpatialPooler) Compute(inputVector []bool, learn bool) []bool {
-// 	if len(inputVector) != sp.numInputs {
-// 		panic("input != numimputs")
-// 	}
+/*
+ This is the primary public method of the SpatialPooler class. This
+function takes a input vector and outputs the indices of the active columns.
+If 'learn' is set to True, this method also updates the permanences of the
+columns.
 
-// 	sp.updateBookeepingVars(learn)
-// 	//inputVector = numpy.array(inputVector, dtype=realDType)
-// 	//inputVector.reshape(-1)
+Parameters:
+----------------------------
+inputVector: a numpy array of 0's and 1's thata comprises the input to
+			 the spatial pooler. The array will be treated as a one
+			 dimensional array, therefore the dimensions of the array
+			 do not have to much the exact dimensions specified in the
+			 class constructor. In fact, even a list would suffice.
+			The number of input bits in the vector must, however,
+			match the number of bits specified by the call to the
+			constructor. Therefore there must be a '0' or '1' in the
+			array for every input bit.
+learn: a boolean value indicating whether learning should be
+	   performed. Learning entails updating the permanence
+	   values of the synapses, and hence modifying the 'state'
+	   of the model. Setting learning to 'off' freezes the SP
+	   and has many uses. For example, you might want to feed in
+	   various inputs and examine the resulting SDR's.
+activeArray: an array whose size is equal to the number of columns.
+	   Before the function returns this array will be populated
+       with 1's at the indices of the active columns, and 0's
+	   everywhere else.
+*/
+func (sp *SpatialPooler) Compute(inputVector []bool, learn bool, activeArray []bool) {
+	if len(inputVector) != sp.numInputs {
+		panic("input != numimputs")
+	}
 
-// 	overlaps := sp.calculateOverlap(inputVector)
+	sp.updateBookeepingVars(learn)
 
-// 	boostedOverlaps := overlaps
-// 	// Apply boosting when learning is on
-// 	if learn {
-// 		for i, val := range sp.boostFactors {
-// 			boostedOverlaps[i] *= int(val)
-// 		}
-// 	}
+	overlaps := sp.calculateOverlap(inputVector)
 
-// 	// Apply inhibition to determine the winning columns
-// 	activeColumns := sp.inhibitColumns(boostedOverlaps)
+	boostedOverlaps := make([]float64, len(overlaps))
+	// Apply boosting when learning is on
+	if learn {
+		for i, val := range sp.boostFactors {
+			boostedOverlaps[i] = float64(overlaps[i]) * val
+		}
+	}
 
-// 	if learn {
-// 		adaptSynapses(inputVector, activeColumns)
-// 		updateDutyCycles(overlaps, activeColumns)
-// 		sp.bumpUpWeakColumns()
-// 		sp.updateBoostFactors()
-// 		if sp.isUpdateRound() {
-// 			sp.updateInhibitionRadius()
-// 			sp.updateMinDutyCycles()
-// 		}
+	// Apply inhibition to determine the winning columns
+	activeColumns := sp.inhibitColumns(boostedOverlaps)
 
-// 	} else {
-// 		activeColumns = sp.stripNeverLearned(activeColumns)
-// 	}
+	overlapsf := make([]float64, len(overlaps))
+	for i, val := range overlaps {
+		overlapsf[i] = float64(val)
+	}
 
-// 	activeArray.fill(0)
-// 	if len(activeColumns) > 0 {
-// 		activeArray[activeColumns] = 1
-// 	}
+	if learn {
+		sp.adaptSynapses(inputVector, activeColumns)
+		sp.updateDutyCycles(overlapsf, activeColumns)
+		sp.bumpUpWeakColumns()
+		sp.updateBoostFactors()
+		if sp.isUpdateRound() {
+			sp.updateInhibitionRadius()
+			sp.updateMinDutyCycles()
+		}
 
-// }
+	} else {
+		activeColumns = sp.stripNeverLearned(activeColumns)
+	}
+
+	for i, _ := range activeArray {
+		activeArray[i] = ContainsInt(i, activeColumns)
+	}
+
+}
 
 /*
  Updates counter instance variables each round.
@@ -1001,8 +1029,12 @@ func (sp *SpatialPooler) updateBoostFactors() {
 
 }
 
-func (sp *SpatialPooler) isUpdateRound() {
-
+/*
+ returns true if the enough rounds have passed to warrant updates of
+ duty cycles
+*/
+func (sp *SpatialPooler) isUpdateRound() bool {
+	return (sp.IterationNum % sp.UpdatePeriod) == 0
 }
 
 /*
