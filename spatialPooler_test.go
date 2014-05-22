@@ -3,7 +3,8 @@ package htm
 import (
 	//"fmt"
 	"github.com/skelterjohn/go.matrix"
-	"github.com/stretchr/testify/assert"
+	//"github.com/stretchr/testify/assert"
+	"github.com/zacg/testify/assert"
 	//"math/big"
 	//"github.com/stretchr/testify/mock"
 	"math"
@@ -912,6 +913,99 @@ func TestUpdatePermanencesForColumn(t *testing.T) {
 	}
 
 	assert.Equal(t, trueConnectedCounts, sp.connectedCounts)
+
+}
+
+func TestAdaptSynapses(t *testing.T) {
+
+	sp := SpatialPooler{}
+	sp.InputDimensions = []int{8}
+	sp.ColumnDimensions = []int{4}
+	sp.numInputs = 8
+	sp.numColumns = 4
+	sp.SynPermInactiveDec = 0.01
+	sp.SynPermActiveInc = 0.1
+	sp.SynPermTrimThreshold = 0.05
+	sp.connectedSynapses = NewSparseBinaryMatrix(sp.numColumns, sp.numInputs)
+	sp.connectedCounts = make([]int, sp.numColumns)
+	sp.SynPermMax = 1
+	sp.SynPermMin = 0
+
+	ints := [][]int{{1, 1, 1, 1, 0, 0, 0, 0},
+		{1, 0, 0, 0, 1, 1, 0, 1},
+		{0, 0, 1, 0, 0, 0, 1, 0},
+		{1, 0, 0, 0, 0, 0, 1, 0}}
+	sp.potentialPools = NewSparseBinaryMatrixFromInts(ints)
+
+	inputVector := []bool{true, false, false, true, true, false, true, false}
+	activeColumns := []int{0, 1, 2}
+
+	floats := []float64{0.200, 0.120, 0.090, 0.040, 0.000, 0.000, 0.000, 0.000,
+		0.150, 0.000, 0.000, 0.000, 0.180, 0.120, 0.000, 0.450,
+		0.000, 0.000, 0.014, 0.000, 0.000, 0.000, 0.110, 0.000,
+		0.040, 0.000, 0.000, 0.000, 0.000, 0.000, 0.178, 0.000}
+	elms := make(map[int]float64, len(floats))
+	for i, val := range floats {
+		elms[i] = val
+	}
+	sp.permanences = matrix.MakeSparseMatrix(elms, 4, 8)
+
+	truePermanences := [][]float64{
+		{0.300, 0.110, 0.080, 0.140, 0.000, 0.000, 0.000, 0.000},
+		// Inc Dec Dec Inc - - - -
+		{0.250, 0.000, 0.000, 0.000, 0.280, 0.110, 0.000, 0.440},
+		// Inc - - - Inc Dec - Dec
+		{0.000, 0.000, 0.000, 0.000, 0.000, 0.000, 0.210, 0.000},
+		// - - Trim - - - Inc -
+		{0.040, 0.000, 0.000, 0.000, 0.000, 0.000, 0.178, 0.000}}
+	// - - - - - - - -
+
+	sp.adaptSynapses(inputVector, activeColumns)
+
+	for i := 0; i < sp.numColumns; i++ {
+		for j := 0; j < sp.numInputs; j++ {
+			expected := truePermanences[i][j]
+			actual := sp.permanences.Get(i, j)
+			assert.AlmostEqual(t, expected, actual)
+		}
+	}
+
+	ints = [][]int{{1, 1, 1, 0, 0, 0, 0, 0},
+		{0, 1, 1, 1, 0, 0, 0, 0},
+		{0, 0, 1, 1, 1, 0, 0, 0},
+		{1, 0, 0, 0, 0, 0, 1, 0}}
+
+	sp.potentialPools = NewSparseBinaryMatrixFromInts(ints)
+
+	inputVector = []bool{true, false, false, true, true, false, true, false}
+	activeColumns = []int{0, 1, 2}
+
+	floats = []float64{0.200, 0.120, 0.090, 0.000, 0.000, 0.000, 0.000, 0.000,
+		0.000, 0.017, 0.232, 0.400, 0.000, 0.000, 0.000, 0.000,
+		0.000, 0.000, 0.014, 0.051, 0.730, 0.000, 0.000, 0.000,
+		0.170, 0.000, 0.000, 0.000, 0.000, 0.000, 0.380, 0.000}
+	for i, val := range floats {
+		elms[i] = val
+	}
+	sp.permanences = matrix.MakeSparseMatrix(elms, 4, 8)
+
+	truePermanences = [][]float64{
+		{0.30, 0.110, 0.080, 0.000, 0.000, 0.000, 0.000, 0.000},
+		// Inc Dec Dec - - - - -
+		{0.000, 0.000, 0.222, 0.500, 0.000, 0.000, 0.000, 0.000},
+		// - Trim Dec Inc - - - -
+		{0.000, 0.000, 0.000, 0.151, 0.830, 0.000, 0.000, 0.000},
+		// - - Trim Inc Inc - - -
+		{0.170, 0.000, 0.000, 0.000, 0.000, 0.000, 0.380, 0.000}}
+	// - - - - - - - -
+
+	for i := 0; i < sp.numColumns; i++ {
+		for j := 0; j < sp.numInputs; j++ {
+			expected := truePermanences[i][j]
+			actual := sp.permanences.Get(i, j)
+			assert.AlmostEqual(t, expected, actual)
+		}
+	}
 
 }
 

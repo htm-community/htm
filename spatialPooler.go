@@ -892,16 +892,18 @@ func (sp *SpatialPooler) adaptSynapses(inputVector []bool, activeColumns []int) 
 		permChanges[val] = sp.SynPermActiveInc
 	}
 
-	for i, _ := range activeColumns {
+	for _, ac := range activeColumns {
 		perm := make([]float64, sp.numInputs)
+		mask := sp.potentialPools.GetRowIndices(ac)
 		for j := 0; j < sp.numInputs; j++ {
-			temp := sp.permanences.Get(i, j)
-			if temp > 0 {
-				temp += permChanges[j]
+			if ContainsInt(j, mask) {
+				perm[j] = permChanges[j] + sp.permanences.Get(ac, j)
+			} else {
+				perm[j] = sp.permanences.Get(ac, j)
 			}
-			perm[i] = temp
+
 		}
-		sp.updatePermanencesForColumn(perm, i, true)
+		sp.updatePermanencesForColumn(perm, ac, true)
 	}
 
 }
