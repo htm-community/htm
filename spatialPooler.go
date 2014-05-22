@@ -942,7 +942,32 @@ func (sp *SpatialPooler) updateDutyCycles(overlaps []float64, activeColumns []in
 	)
 }
 
+/*
+ This method increases the permanence values of synapses of columns whose
+activity level has been too low. Such columns are identified by having an
+overlap duty cycle that drops too much below those of their peers. The
+permanence values for such columns are increased.
+*/
 func (sp *SpatialPooler) bumpUpWeakColumns() {
+	var weakColumns []int
+	for i, val := range sp.overlapDutyCycles {
+		if val < sp.minOverlapDutyCycles[i] {
+			weakColumns = append(weakColumns, i)
+		}
+	}
+
+	for i, _ := range weakColumns {
+		perm := make([]float64, sp.numInputs)
+		for j := 0; j < sp.numInputs; j++ {
+			perm[i] = sp.permanences.Get(i, j)
+		}
+
+		maskPotential := sp.potentialPools.GetRowIndices(i)
+		for _, mpot := range maskPotential {
+			perm[mpot] += sp.SynPermBelowStimulusInc
+		}
+		sp.updatePermanencesForColumn(perm, i, false)
+	}
 
 }
 
