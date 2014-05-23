@@ -1059,6 +1059,94 @@ func TestUpdateMinDutyCyclesGlobal(t *testing.T) {
 		assert.AlmostEqual(t, trueMinOverlapDutyCycles[i], sp.minOverlapDutyCycles[i])
 	}
 
+	sp.MinPctOverlapDutyCycles = 0.015
+	sp.MinPctActiveDutyCycles = 0.03
+	sp.numColumns = 5
+	sp.overlapDutyCycles = []float64{0.86, 2.4, 0.03, 1.6, 1.5}
+	sp.activeDutyCycles = []float64{0.16, 0.007, 0.15, 0.54, 0.13}
+	sp.updateMinDutyCyclesGlobal()
+	trueMinOverlapDutyCycles = MakeSliceFloat64(sp.numColumns, 0.015*2.4)
+	for i := 0; i < sp.numColumns; i++ {
+		assert.AlmostEqual(t, trueMinOverlapDutyCycles[i], sp.minOverlapDutyCycles[i])
+	}
+
+	sp.MinPctOverlapDutyCycles = 0.015
+	sp.MinPctActiveDutyCycles = 0.03
+	sp.numColumns = 5
+	sp.overlapDutyCycles = MakeSliceFloat64(sp.numColumns, 0)
+	sp.activeDutyCycles = MakeSliceFloat64(sp.numColumns, 0)
+	sp.updateMinDutyCyclesGlobal()
+	trueMinActiveDutyCycles = MakeSliceFloat64(sp.numColumns, 0)
+	trueMinOverlapDutyCycles = MakeSliceFloat64(sp.numColumns, 0)
+
+	assert.Equal(t, 5, len(sp.minActiveDutyCycles))
+	assert.Equal(t, 5, len(sp.minOverlapDutyCycles))
+	for i := 0; i < sp.numColumns; i++ {
+		assert.AlmostEqual(t, trueMinActiveDutyCycles[i], sp.minActiveDutyCycles[i])
+		assert.AlmostEqual(t, trueMinOverlapDutyCycles[i], sp.minOverlapDutyCycles[i])
+	}
+
+}
+
+// func TestUpdateMinDutyCyclesLocal(t *testing.T) {
+//TODO: implement
+// }
+
+func TestBumpUpWeakColumns(t *testing.T) {
+	sp := SpatialPooler{}
+	sp.numInputs = 8
+	sp.InputDimensions = []int{8}
+	sp.numColumns = 5
+	sp.ColumnDimensions = []int{5}
+	sp.SynPermBelowStimulusInc = 0.01
+	sp.SynPermTrimThreshold = 0.05
+	sp.overlapDutyCycles = []float64{0, 0.009, 0.1, 0.001, 0.002}
+	sp.minOverlapDutyCycles = MakeSliceFloat64(5, 5*0.01)
+	sp.SynPermInactiveDec = 0.01
+	sp.SynPermActiveInc = 0.1
+	sp.connectedSynapses = NewSparseBinaryMatrix(sp.numColumns, sp.numInputs)
+	sp.connectedCounts = make([]int, sp.numColumns)
+	sp.SynPermMax = 1
+	sp.SynPermMin = 0
+
+	//sp._potentialPools = SparseBinaryMatrix(
+	ints := [][]int{{1, 1, 1, 1, 0, 0, 0, 0},
+		{1, 0, 0, 0, 1, 1, 0, 1},
+		{0, 0, 1, 0, 1, 1, 1, 0},
+		{1, 1, 1, 0, 0, 0, 1, 0},
+		{1, 1, 1, 1, 1, 1, 1, 1}}
+	sp.potentialPools = NewSparseBinaryMatrixFromInts(ints)
+
+	floats := []float64{0.200, 0.120, 0.090, 0.040, 0.000, 0.000, 0.000, 0.000,
+		0.150, 0.000, 0.000, 0.000, 0.180, 0.120, 0.000, 0.450,
+		0.000, 0.000, 0.014, 0.000, 0.032, 0.044, 0.110, 0.000,
+		0.041, 0.000, 0.000, 0.000, 0.000, 0.000, 0.178, 0.000,
+		0.100, 0.738, 0.045, 0.002, 0.050, 0.008, 0.208, 0.034}
+	elms := make(map[int]float64, len(floats))
+	for i, val := range floats {
+		elms[i] = val
+	}
+	sp.permanences = matrix.MakeSparseMatrix(elms, 5, 8)
+
+	truePermanences := [][]float64{
+		{0.210, 0.130, 0.100, 0.000, 0.000, 0.000, 0.000, 0.000},
+		// Inc Inc Inc Trim - - - -
+		{0.160, 0.000, 0.000, 0.000, 0.190, 0.130, 0.000, 0.460},
+		// Inc - - - Inc Inc - Inc
+		{0.000, 0.000, 0.014, 0.000, 0.032, 0.044, 0.110, 0.000}, //unchanged
+		// - - - - - - - -
+		{0.051, 0.000, 0.000, 0.000, 0.000, 0.000, 0.188, 0.000},
+		// Inc Trim Trim - - - Inc -
+		{0.110, 0.748, 0.055, 0.000, 0.060, 0.000, 0.218, 0.000}}
+
+	sp.bumpUpWeakColumns()
+
+	for i := 0; i < sp.numColumns; i++ {
+		for j := 0; j < sp.numInputs; j++ {
+			assert.AlmostEqual(t, truePermanences[i][j], sp.permanences.Get(i, j))
+		}
+	}
+
 }
 
 //----- Helper functions -------------
