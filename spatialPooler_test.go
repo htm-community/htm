@@ -1009,6 +1009,36 @@ func TestAdaptSynapses(t *testing.T) {
 
 }
 
+func TestIsUpdateRound(t *testing.T) {
+	sp := SpatialPooler{}
+	sp.UpdatePeriod = 50
+
+	sp.IterationNum = 1
+	assert.Equal(t, false, sp.isUpdateRound())
+	sp.IterationNum = 39
+	assert.Equal(t, false, sp.isUpdateRound())
+	sp.IterationNum = 50
+	assert.Equal(t, true, sp.isUpdateRound())
+	sp.IterationNum = 1009
+	assert.Equal(t, false, sp.isUpdateRound())
+	sp.IterationNum = 1250
+	assert.Equal(t, true, sp.isUpdateRound())
+
+	sp.UpdatePeriod = 125
+	sp.IterationNum = 0
+	assert.Equal(t, true, sp.isUpdateRound())
+	sp.IterationNum = 200
+	assert.Equal(t, false, sp.isUpdateRound())
+	sp.IterationNum = 249
+	assert.Equal(t, false, sp.isUpdateRound())
+	sp.IterationNum = 1330
+	assert.Equal(t, false, sp.isUpdateRound())
+	sp.IterationNum = 1249
+	assert.Equal(t, false, sp.isUpdateRound())
+	sp.IterationNum = 1375
+	assert.Equal(t, true, sp.isUpdateRound())
+}
+
 //----- Helper functions -------------
 
 func AlmostEqual(a, b float64) bool {
