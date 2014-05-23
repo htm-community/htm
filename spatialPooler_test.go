@@ -311,6 +311,7 @@ func TestAvgColumnsPerInput(t *testing.T) {
 
 /*
 func TestUpdateInhibitionRadius(t *testing.T) {
+	//TODO: implement this test
 	sp := spMock{}
 
 	// Test global inhibition case
@@ -423,25 +424,9 @@ func TestCalculateOverlap(t *testing.T) {
 }
 
 /*
-sp = self._sp
-    density = 0.3
-    sp._numColumns = 10
-    overlaps = numpy.array([1, 2, 1, 4, 8, 3, 12, 5, 4, 1])
-    active = list(sp._inhibitColumnsGlobal(overlaps, density))
-    trueActive = numpy.zeros(sp._numColumns)
-    trueActive = [4, 6, 7]
-    self.assertListEqual(list(trueActive), active)
-
-    density = 0.5
-    sp._numColumns = 10
-    overlaps = numpy.array(range(10))
-    active = list(sp._inhibitColumnsGlobal(overlaps, density))
-    trueActive = numpy.zeros(sp._numColumns)
-    trueActive = range(5, 10)
-    self.assertListEqual(trueActive, active)
-
-
-
+func TestInhibitColumns(t *testing.T) {
+	TODO: implement this test
+}
 */
 
 func TestInhibitColumnsGlobal(t *testing.T) {
@@ -1109,7 +1094,6 @@ func TestBumpUpWeakColumns(t *testing.T) {
 	sp.SynPermMax = 1
 	sp.SynPermMin = 0
 
-	//sp._potentialPools = SparseBinaryMatrix(
 	ints := [][]int{{1, 1, 1, 1, 0, 0, 0, 0},
 		{1, 0, 0, 0, 1, 1, 0, 1},
 		{0, 0, 1, 0, 1, 1, 1, 0},
@@ -1147,6 +1131,20 @@ func TestBumpUpWeakColumns(t *testing.T) {
 		}
 	}
 
+}
+
+func TestMapPotential1Column1Input(t *testing.T) {
+	sp := SpatialPooler{}
+	sp.InputDimensions = []int{1}
+	sp.numInputs = 1
+	sp.ColumnDimensions = []int{1}
+	sp.numColumns = 1
+	sp.PotentialRadius = 2
+	sp.PotentialPct = 1
+
+	expectedMask := []bool{true}
+	mask := sp.mapPotential(0, false)
+	assert.Equal(t, expectedMask, mask)
 }
 
 //----- Helper functions -------------
