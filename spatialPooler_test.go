@@ -1039,6 +1039,28 @@ func TestIsUpdateRound(t *testing.T) {
 	assert.Equal(t, true, sp.isUpdateRound())
 }
 
+func TestUpdateMinDutyCyclesGlobal(t *testing.T) {
+	sp := SpatialPooler{}
+	sp.MinPctActiveDutyCycles = 0.02
+	sp.MinPctOverlapDutyCycles = 0.01
+	sp.numColumns = 5
+	sp.overlapDutyCycles = []float64{0.06, 1, 3, 6, 0.5}
+	sp.activeDutyCycles = []float64{0.6, 0.07, 0.5, 0.4, 0.3}
+	sp.minOverlapDutyCycles = make([]float64, sp.numColumns)
+	sp.minActiveDutyCycles = make([]float64, sp.numColumns)
+	sp.updateMinDutyCyclesGlobal()
+	trueMinActiveDutyCycles := MakeSliceFloat64(sp.numColumns, 0.02*0.6)
+	trueMinOverlapDutyCycles := MakeSliceFloat64(sp.numColumns, 0.01*6)
+
+	assert.Equal(t, 5, len(sp.minActiveDutyCycles))
+	assert.Equal(t, 5, len(sp.minOverlapDutyCycles))
+	for i := 0; i < sp.numColumns; i++ {
+		assert.AlmostEqual(t, trueMinActiveDutyCycles[i], sp.minActiveDutyCycles[i])
+		assert.AlmostEqual(t, trueMinOverlapDutyCycles[i], sp.minOverlapDutyCycles[i])
+	}
+
+}
+
 //----- Helper functions -------------
 
 func AlmostEqual(a, b float64) bool {
