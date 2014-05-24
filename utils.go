@@ -269,3 +269,23 @@ func Make2DBool(values [][]int) [][]bool {
 
 	return result
 }
+
+//Returns number of on bits
+func CountTrue(values []bool) int {
+	count := 0
+	for _, val := range values {
+		if val {
+			count++
+		}
+	}
+	return count
+}
+
+//Or's 2 bool slices
+func OrBool(a, b []bool) []bool {
+	result := make([]bool, len(a))
+	for i, val := range a {
+		result[i] = val || b[i]
+	}
+	return result
+}

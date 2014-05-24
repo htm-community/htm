@@ -287,8 +287,8 @@ region boundaries ignored.
 */
 func (sp *SpatialPooler) mapPotential(index int, wrapAround bool) []bool {
 	// Distribute column over inputs uniformly
-	ratio := index / mathutil.Max((sp.numColumns-1), 1)
-	index = int((sp.numInputs - 1) * ratio)
+	ratio := float64(index) / float64(mathutil.Max((sp.numColumns-1), 1))
+	index = int(float64(sp.numInputs-1) * ratio)
 
 	var indices []int
 	indLen := 2*sp.PotentialRadius + 1
@@ -297,20 +297,16 @@ func (sp *SpatialPooler) mapPotential(index int, wrapAround bool) []bool {
 		temp := (i + index - sp.PotentialRadius)
 		if wrapAround {
 			temp = temp % sp.numInputs
+			if temp < 0 {
+				temp = sp.numInputs + temp
+			}
 		} else {
 			if !(temp >= 0 && temp < sp.numInputs) {
 				continue
 			}
 		}
 		//no dupes
-		exists := false
-		for _, val := range indices {
-			if val == temp {
-				exists = true
-				break
-			}
-		}
-		if !exists {
+		if !ContainsInt(temp, indices) {
 			indices = append(indices, temp)
 		}
 	}
@@ -324,19 +320,16 @@ func (sp *SpatialPooler) mapPotential(index int, wrapAround bool) []bool {
 		indices[i], indices[j] = indices[j], indices[i]
 	}
 
-	sampleLen := int(float64(len(indices)) * sp.PotentialPct)
+	//sample = numpy.empty(int(round(indices.size*self._potentialPct)),dtype=uintType)
+
+	//self._random.getUInt32Sample(indices.astype(uintType), sample)
+
+	sampleLen := int(RoundPrec(float64(len(indices))*sp.PotentialPct, 0))
 	sample := indices[:sampleLen]
 	//project indices onto input mask
 	mask := make([]bool, sp.numInputs)
 	for i, _ := range mask {
-		found := false
-		for x := 0; x < len(sample); x++ {
-			if sample[x] == i {
-				found = true
-				break
-			}
-		}
-		mask[i] = found
+		mask[i] = ContainsInt(i, sample)
 	}
 
 	return mask

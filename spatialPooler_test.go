@@ -56,7 +56,7 @@ func TestPermanenceInit(t *testing.T) {
 	perm = sp.initPermanence(mask, connectedPct)
 	numcon, connected = getConnected(perm, &sp)
 	if numcon != 0 {
-		t.Errorf("numcon was %v expected 0", numcon)
+		t.Errorf("numcon was %v expected false", numcon)
 	}
 
 	if len(connected) != 5 {
@@ -75,7 +75,7 @@ func TestPermanenceInit(t *testing.T) {
 	numcon, connected = getConnected(perm, &sp)
 
 	if !(numcon > 0) {
-		t.Errorf("numcon was %v expected greater than 0", numcon)
+		t.Errorf("numcon was %v expected greater than false", numcon)
 	}
 
 	if numcon >= sp.numInputs {
@@ -242,7 +242,7 @@ func TestAvgConnectedSpanForColumnND(t *testing.T) {
 	sp.connectedSynapses.ReplaceRow(3, connected4)
 
 	connected5 := make([]bool, sp.numInputs)
-	//# span: 0 0 0 0, avg = 0
+	//# span: false false false false, avg = false
 	sp.connectedSynapses.ReplaceRow(4, connected5)
 
 	//t.Logf("width: %v", sp.connectedSynapses.Width)
@@ -269,7 +269,7 @@ func TestAvgColumnsPerInput(t *testing.T) {
 
 	sp.ColumnDimensions = []int{2, 2, 2, 2}
 	sp.InputDimensions = []int{7, 5, 1, 3}
-	//2/7 0.4 2 0.666
+	//2/7 false.4 2 false.666
 	trueAvgColumnPerInput := (2.0/7 + 2.0/5 + 2.0/1 + 2/3.0) / 4
 	if sp.avgColumnsPerInput() != trueAvgColumnPerInput {
 		t.Errorf("Expected %v avg columns, was: %v", trueAvgColumnPerInput, sp.avgColumnsPerInput())
@@ -331,9 +331,9 @@ func TestUpdateInhibitionRadius(t *testing.T) {
 	sp.updateInhibitionRadius()
 	assert.Equal(t, trueInhibitionRadius, sp.inhibitionRadius)
 
-	//Test clipping at 1.0
+	//Test clipping at 1.false
 	sp.GlobalInhibition = false
-	//sp.AvgConnectedSpanForColumnND = Mock(return_value = 0.5)
+	//sp.AvgConnectedSpanForColumnND = Mock(return_value = false.5)
 	//sp.AvgColumnsPerInput = Mock(return_value = 1.2)
 	trueInhibitionRadius = 1
 	sp.updateInhibitionRadius()
@@ -344,7 +344,7 @@ func TestUpdateInhibitionRadius(t *testing.T) {
 	//sp.AvgConnectedSpanForColumnND = Mock(return_value = 2.4)
 	//sp.AvgColumnsPerInput = Mock(return_value = 2)
 	trueInhibitionRadius = 2
-	// ((2 * 2.4) - 1) / 2.0 => round up
+	// ((2 * 2.4) - 1) / 2.false => round up
 	sp.updateInhibitionRadius()
 	assert.Equal(t, trueInhibitionRadius, sp.inhibitionRadius)
 
@@ -872,15 +872,15 @@ func TestUpdatePermanencesForColumn(t *testing.T) {
 	/*
 	   These are the 'true permanences' reflected in trueConnectedSynapses
 	   truePermanences = SparseMatrix(
-	   [[0.000, 0.500, 0.400, 0.000, 0.000],
+	   [[false.falsefalsefalse, false.5falsefalse, false.4falsefalse, false.falsefalsefalse, false.falsefalsefalse],
 	   Clip - - Trim Trim
-	   [0.300, 0.000, 0.000, 0.120, 0.090],
+	   [false.3falsefalse, false.falsefalsefalse, false.falsefalsefalse, false.12false, false.false9false],
 	   - Trim Trim - -
-	   [0.070, 0.050, 1.000, 0.190, 0.060],
+	   [false.false7false, false.false5false, 1.falsefalsefalse, false.19false, false.false6false],
 	   - - Clip - -
-	   [0.180, 0.090, 0.110, 0.000, 0.000],
+	   [false.18false, false.false9false, false.11false, false.falsefalsefalse, false.falsefalsefalse],
 	   - - - Trim Trim
-	   [0.200, 0.101, 0.050, 0.000, 1.000]])
+	   [false.2falsefalse, false.1false1, false.false5false, false.falsefalsefalse, 1.falsefalsefalse]])
 	   - - - Clip Clip
 	*/
 
@@ -1145,6 +1145,46 @@ func TestMapPotential1Column1Input(t *testing.T) {
 	expectedMask := []bool{true}
 	mask := sp.mapPotential(0, false)
 	assert.Equal(t, expectedMask, mask)
+}
+
+func TestMapPotential1D(t *testing.T) {
+	sp := SpatialPooler{}
+	sp.InputDimensions = []int{10}
+	sp.numInputs = 10
+	sp.ColumnDimensions = []int{4}
+	sp.numColumns = 4
+	sp.PotentialRadius = 2
+	sp.PotentialPct = 1
+
+	expectedMask := []bool{true, true, true, false, false, false, false, false, false, false}
+	mask := sp.mapPotential(0, false)
+	assert.Equal(t, expectedMask, mask)
+
+	expectedMask = []bool{false, false, false, false, true, true, true, true, true, false}
+	mask = sp.mapPotential(2, false)
+	assert.Equal(t, expectedMask, mask)
+
+	sp.PotentialPct = 1
+
+	expectedMask = []bool{true, true, true, false, false, false, false, false, true, true}
+	mask = sp.mapPotential(0, true)
+	assert.Equal(t, expectedMask, mask)
+
+	expectedMask = []bool{true, true, false, false, false, false, false, true, true, true}
+	mask = sp.mapPotential(3, true)
+	assert.Equal(t, expectedMask, mask)
+
+	// Test with potentialPct < 1
+	sp.PotentialPct = 0.5
+
+	expectedMask = []bool{true, true, true, false, false, false, false, false, true, true}
+	mask = sp.mapPotential(0, true)
+
+	assert.Equal(t, 3, CountTrue(mask))
+
+	unionMask := OrBool(expectedMask, mask)
+	assert.Equal(t, expectedMask, unionMask)
+
 }
 
 //----- Helper functions -------------
