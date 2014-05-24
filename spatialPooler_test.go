@@ -976,13 +976,15 @@ func TestAdaptSynapses(t *testing.T) {
 
 	truePermanences = [][]float64{
 		{0.30, 0.110, 0.080, 0.000, 0.000, 0.000, 0.000, 0.000},
-		// Inc Dec Dec - - - - -
+		// Inc  Dec    Dec     -     - - - -
 		{0.000, 0.000, 0.222, 0.500, 0.000, 0.000, 0.000, 0.000},
-		// - Trim Dec Inc - - - -
+		// - 	Trim 	Dec 	Inc 	- 	  - 	- 		-
 		{0.000, 0.000, 0.000, 0.151, 0.830, 0.000, 0.000, 0.000},
-		// - - Trim Inc Inc - - -
+		// - 	  - 	Trim 	Inc   Inc 	  - 	 - 		-
 		{0.170, 0.000, 0.000, 0.000, 0.000, 0.000, 0.380, 0.000}}
 	// - - - - - - - -
+
+	sp.adaptSynapses(inputVector, activeColumns)
 
 	for i := 0; i < sp.numColumns; i++ {
 		for j := 0; j < sp.numInputs; j++ {
@@ -1186,6 +1188,38 @@ func TestMapPotential1D(t *testing.T) {
 	assert.Equal(t, expectedMask, unionMask)
 
 }
+
+// func TestExactOutput(t *testing.T) {
+// 	/*
+// 	 Given a specific input and initialization params the SP should return this
+// 	 exact output.
+// 	 Previously output varied between platforms (OSX/Linux etc)
+// 	*/
+// 	sp := SpatialPooler{}
+// 	sp.InputDimensions = []int{1, 188}
+// 	sp.columnDimensions = []int{2048, 1}
+// 	sp.potentialRadius = 94
+// 	sp.potentialPct = 0.5
+// 	sp.globalInhibition = 1
+// 	sp.localAreaDensity = -1.0
+// 	sp.numActiveColumnsPerInhArea = 40.0
+// 	sp.stimulusThreshold = 0
+// 	sp.synPermInactiveDec = 0.01
+// 	sp.synPermActiveInc = 0.1
+// 	sp.synPermConnected = 0.1
+// 	sp.minPctOverlapDutyCycle = 0.001
+// 	sp.minPctActiveDutyCycle = 0.001
+// 	sp.dutyCyclePeriod = 1000
+// 	sp.maxBoost = 10.0
+// 	sp.seed = 1956
+// 	sp.spVerbosity = 0
+
+// 	expectedOutput := []int{10, 29, 110, 114, 210, 221, 253, 260, 289, 340, 393, 408,
+// 		473, 503, 534, 639, 680, 712, 739, 791, 905, 912, 961,
+// 		1048, 1086, 1131, 1173, 1210, 1223, 1261, 1276, 1285,
+// 		1302, 1617, 1679, 1712, 1721, 1780, 1920, 1951}
+
+// }
 
 //----- Helper functions -------------
 
