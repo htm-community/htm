@@ -8,6 +8,7 @@ import (
 	//"math/big"
 	//"github.com/stretchr/testify/mock"
 	"math"
+	"math/rand"
 	"strconv"
 	"testing"
 )
@@ -429,11 +430,85 @@ func TestCalculateOverlap(t *testing.T) {
 
 }
 
-/*
 func TestInhibitColumns(t *testing.T) {
-	TODO: implement this test
+	sp := SpatialPooler{}
+
+	globalValue := []int{1}
+	localValue := []int{2}
+	lastGlobalDensity := 0.0
+	lastLocalDensity := 0.0
+	globalFunc := func(overlaps []float64, density float64) []int {
+		lastGlobalDensity = density
+		return globalValue
+	}
+
+	localFunc := func(overlaps []float64, density float64) []int {
+		lastLocalDensity = density
+		return localValue
+	}
+
+	sp.ColumnDimensions = []int{5}
+	sp.numColumns = 5
+	sp.inhibitionRadius = 10
+	sp.tieBreaker = make([]float64, sp.numColumns)
+	for i := 0; i < len(sp.tieBreaker); i++ {
+		sp.tieBreaker[i] = 0.01 * rand.Float64()
+	}
+
+	overlaps := RandomSample(sp.numColumns)
+
+	sp.NumActiveColumnsPerInhArea = 5
+	sp.LocalAreaDensity = 0.1
+	sp.GlobalInhibition = true
+	sp.inhibitionRadius = 5
+	trueDensity := sp.LocalAreaDensity
+	sp.inhibitColumns(overlaps, globalFunc, localFunc)
+	assert.Equal(t, trueDensity, lastGlobalDensity)
+
+	//----- 2
+	sp.ColumnDimensions = []int{50, 10}
+	sp.numColumns = 500
+	sp.tieBreaker = MakeSliceFloat64(500, 0)
+	sp.NumActiveColumnsPerInhArea = -1
+	sp.LocalAreaDensity = 0.1
+	sp.GlobalInhibition = false
+	sp.inhibitionRadius = 7
+	// 0.1 * (2*9+1)**2 = 22.5
+	trueDensity = sp.LocalAreaDensity
+	overlaps = RandomSample(sp.numColumns)
+	sp.inhibitColumns(overlaps, globalFunc, localFunc)
+	assert.Equal(t, trueDensity, lastLocalDensity)
+
+	// Test translation of numColumnsPerInhArea into local area density
+	sp.ColumnDimensions = []int{10, 10}
+	sp.numColumns = 1000
+	sp.tieBreaker = MakeSliceFloat64(1000, 0)
+	sp.NumActiveColumnsPerInhArea = 3
+	sp.LocalAreaDensity = -1
+	sp.GlobalInhibition = false
+	sp.inhibitionRadius = 4
+	trueDensity = 3.0 / 81.0
+	overlaps = RandomSample(sp.numColumns)
+
+	// 3.0 / (((2*4) + 1) ** 2)
+	sp.inhibitColumns(overlaps, globalFunc, localFunc)
+	assert.Equal(t, trueDensity, lastLocalDensity)
+
+	// Test clipping of local area density to 0.5
+	sp.ColumnDimensions = []int{10, 10}
+	sp.numColumns = 1000
+	sp.tieBreaker = MakeSliceFloat64(1000, 0)
+	sp.NumActiveColumnsPerInhArea = 7
+	sp.LocalAreaDensity = -1
+	sp.GlobalInhibition = false
+	sp.inhibitionRadius = 1
+	trueDensity = 0.5
+	overlaps = RandomSample(sp.numColumns)
+
+	sp.inhibitColumns(overlaps, globalFunc, localFunc)
+	assert.Equal(t, trueDensity, lastLocalDensity)
+
 }
-*/
 
 func TestInhibitColumnsGlobal(t *testing.T) {
 	sp := SpatialPooler{}

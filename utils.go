@@ -270,6 +270,14 @@ func Make2DBool(values [][]int) [][]bool {
 	return result
 }
 
+func Make1DBool(values []int) []bool {
+	result := make([]bool, len(values))
+	for i, val := range values {
+		result[i] = val == 1
+	}
+	return result
+}
+
 //Returns number of on bits
 func CountTrue(values []bool) int {
 	count := 0
@@ -287,5 +295,16 @@ func OrBool(a, b []bool) []bool {
 	for i, val := range a {
 		result[i] = val || b[i]
 	}
+	return result
+}
+
+//Returns random slice of floats of specified length
+func RandomSample(length int) []float64 {
+	result := make([]float64, length)
+
+	for i, _ := range result {
+		result[i] = rand.Float64()
+	}
+
 	return result
 }
