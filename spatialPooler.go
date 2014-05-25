@@ -249,7 +249,7 @@ func NewSpatialPooler(spParams SpParams) *SpatialPooler {
 		    average number of connected synapses per column.
 	*/
 	sp.inhibitionRadius = 0
-	sp.updateInhibitionRadius()
+	sp.updateInhibitionRadius(sp.avgConnectedSpanForColumnND, sp.avgColumnsPerInput)
 
 	if sp.spVerbosity > 0 {
 		sp.printParameters()
@@ -578,7 +578,7 @@ func (sp *SpatialPooler) Compute(inputVector []bool, learn bool, activeArray []b
 		sp.bumpUpWeakColumns()
 		sp.updateBoostFactors()
 		if sp.isUpdateRound() {
-			sp.updateInhibitionRadius()
+			sp.updateInhibitionRadius(sp.avgConnectedSpanForColumnND, sp.avgColumnsPerInput)
 			sp.updateMinDutyCycles()
 		}
 
@@ -586,8 +586,10 @@ func (sp *SpatialPooler) Compute(inputVector []bool, learn bool, activeArray []b
 		activeColumns = sp.stripNeverLearned(activeColumns)
 	}
 
-	for i, _ := range activeArray {
-		activeArray[i] = ContainsInt(i, activeColumns)
+	if len(activeColumns) > 0 {
+		for i, _ := range activeArray {
+			activeArray[i] = ContainsInt(i, activeColumns)
+		}
 	}
 
 }
@@ -1122,6 +1124,9 @@ func (sp *SpatialPooler) avgColumnsPerInput() float64 {
 	return sum / float64(numDim)
 }
 
+type avgConnectedSpanForColumnNDFunc func(int) float64
+type avgColumnsPerInputFunc func() float64
+
 /*
  Update the inhibition radius. The inhibition radius is a meausre of the
 square (or hypersquare) of columns that each a column is "conencted to"
@@ -1132,7 +1137,8 @@ exist for each input. For multiple dimension the aforementioned
 calculations are averaged over all dimensions of inputs and columns. This
 value is meaningless if global inhibition is enabled.
 */
-func (sp *SpatialPooler) updateInhibitionRadius() {
+func (sp *SpatialPooler) updateInhibitionRadius(avgConnectedSpanForColumnND avgConnectedSpanForColumnNDFunc,
+	avgColumnsPerInput avgColumnsPerInputFunc) {
 
 	if sp.GlobalInhibition {
 		cmax := MaxSliceInt(sp.ColumnDimensions)
@@ -1142,11 +1148,11 @@ func (sp *SpatialPooler) updateInhibitionRadius() {
 
 	avgConnectedSpan := 0.0
 	for i := 0; i < sp.numColumns; i++ {
-		avgConnectedSpan += sp.avgConnectedSpanForColumnND(i)
+		avgConnectedSpan += avgConnectedSpanForColumnND(i)
 	}
 	avgConnectedSpan = avgConnectedSpan / float64(sp.numColumns)
 
-	columnsPerInput := sp.avgColumnsPerInput()
+	columnsPerInput := avgColumnsPerInput()
 	diameter := avgConnectedSpan * columnsPerInput
 	radius := (diameter - 1) / 2.0
 	radius = math.Max(1.0, radius)
