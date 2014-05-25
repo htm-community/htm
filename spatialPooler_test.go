@@ -310,47 +310,52 @@ func TestAvgColumnsPerInput(t *testing.T) {
 
 }
 
-/*
 func TestUpdateInhibitionRadius(t *testing.T) {
-	//TODO: implement this test
-	sp := spMock{}
+	sp := SpatialPooler{}
 
 	// Test global inhibition case
 	sp.GlobalInhibition = true
 	sp.ColumnDimensions = []int{57, 31, 2}
 	sp.numColumns = 3
-	sp.updateInhibitionRadius()
+
+	sp.updateInhibitionRadius(sp.avgConnectedSpanForColumnND, sp.avgColumnsPerInput)
 	expected := 57
 	assert.Equal(t, expected, sp.inhibitionRadius)
 
 	sp.GlobalInhibition = false
+	avgConnectedSpan := 3.0
+	avgColPerInput := 4.0
+	var avgConnectedSpanMock = func(i int) float64 {
+		return avgConnectedSpan
+	}
 
-	//sp.avgConnectedSpanForColumnND = Mock(return_value = 3)
-	//sp.AvgColumnsPerInput = Mock(return_value = 4)
+	var avgColPerInputMock = func() float64 {
+		return avgColPerInput
+	}
+
 	trueInhibitionRadius := 6
 	//((3 * 4) - 1) / 2 => round up
-	sp.updateInhibitionRadius()
+	sp.updateInhibitionRadius(avgConnectedSpanMock, avgColPerInputMock)
 	assert.Equal(t, trueInhibitionRadius, sp.inhibitionRadius)
 
 	//Test clipping at 1.false
 	sp.GlobalInhibition = false
-	//sp.AvgConnectedSpanForColumnND = Mock(return_value = false.5)
-	//sp.AvgColumnsPerInput = Mock(return_value = 1.2)
 	trueInhibitionRadius = 1
-	sp.updateInhibitionRadius()
+	avgConnectedSpan = 0.5
+	avgColPerInput = 1.2
+	sp.updateInhibitionRadius(avgConnectedSpanMock, avgColPerInputMock)
 	assert.Equal(t, trueInhibitionRadius, sp.inhibitionRadius)
 
-	//Test rounding up
+	// //Test rounding up
 	sp.GlobalInhibition = false
-	//sp.AvgConnectedSpanForColumnND = Mock(return_value = 2.4)
-	//sp.AvgColumnsPerInput = Mock(return_value = 2)
+	avgConnectedSpan = 2.4
+	avgColPerInput = 2
 	trueInhibitionRadius = 2
 	// ((2 * 2.4) - 1) / 2.false => round up
-	sp.updateInhibitionRadius()
+	sp.updateInhibitionRadius(avgConnectedSpanMock, avgColPerInputMock)
 	assert.Equal(t, trueInhibitionRadius, sp.inhibitionRadius)
 
 }
-*/
 
 func TestCalculateOverlap(t *testing.T) {
 	sp := SpatialPooler{}
@@ -1204,29 +1209,70 @@ func TestMapPotential1D(t *testing.T) {
 // 	 exact output.
 // 	 Previously output varied between platforms (OSX/Linux etc)
 // 	*/
-// 	sp := SpatialPooler{}
-// 	sp.InputDimensions = []int{1, 188}
-// 	sp.columnDimensions = []int{2048, 1}
-// 	sp.potentialRadius = 94
-// 	sp.potentialPct = 0.5
-// 	sp.globalInhibition = 1
-// 	sp.localAreaDensity = -1.0
-// 	sp.numActiveColumnsPerInhArea = 40.0
-// 	sp.stimulusThreshold = 0
-// 	sp.synPermInactiveDec = 0.01
-// 	sp.synPermActiveInc = 0.1
-// 	sp.synPermConnected = 0.1
-// 	sp.minPctOverlapDutyCycle = 0.001
-// 	sp.minPctActiveDutyCycle = 0.001
-// 	sp.dutyCyclePeriod = 1000
-// 	sp.maxBoost = 10.0
-// 	sp.seed = 1956
-// 	sp.spVerbosity = 0
+// 	spParams := NewSpParams()
+// 	spParams.InputDimensions = []int{1, 188}
+// 	//sp.numInputs = 188
+// 	spParams.ColumnDimensions = []int{2048, 1}
+// 	//sp.numColumns = 2048
+// 	spParams.PotentialRadius = 94
+// 	spParams.PotentialPct = 0.5
+// 	spParams.GlobalInhibition = true
+// 	spParams.LocalAreaDensity = -1.0
+// 	spParams.NumActiveColumnsPerInhArea = 40.0
+// 	spParams.StimulusThreshold = 0
+// 	spParams.SynPermInactiveDec = 0.01
+
+// 	spParams.SynPermConnected = 0.1
+// 	spParams.MinPctOverlapDutyCycle = 0.001
+// 	spParams.MinPctActiveDutyCycle = 0.001
+// 	spParams.DutyCyclePeriod = 1000
+// 	spParams.MaxBoost = 10.0
+// 	sp := NewSpatialPooler(spParams)
+// 	//sp := SpatialPooler{}
+// 	sp.SynPermActiveInc = 0.1
+
+// 	//sp.spVerbosity = 0
 
 // 	expectedOutput := []int{10, 29, 110, 114, 210, 221, 253, 260, 289, 340, 393, 408,
 // 		473, 503, 534, 639, 680, 712, 739, 791, 905, 912, 961,
 // 		1048, 1086, 1131, 1173, 1210, 1223, 1261, 1276, 1285,
 // 		1302, 1617, 1679, 1712, 1721, 1780, 1920, 1951}
+
+// 	inputInts := []int{1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+// 		0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+// 		0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+// 		0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1,
+// 		1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0,
+// 		0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+// 		0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+// 		0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+// 		0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+// 		0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+// 		0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+// 		0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1,
+// 		1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+// 		1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0,
+// 		0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+// 		0, 0, 0, 0, 0, 0, 0, 0}
+
+// 	inputVector := Make1DBool(inputInts)
+// 	//inputArray = numpy.array(inputVector).astype(realDType)
+// 	//input :=
+// 	//activeArray = numpy.zeros(2048)
+// 	active := make([]bool, 2048)
+// 	//sp.compute(inputArray, 1, activeArray)
+// 	sp.Compute(inputVector, true, active)
+// 	//sp.Compute(inputVector, learn, activeArray)
+// 	// Get only the active column indices
+// 	//spOutput = [i for i, v in enumerate(activeArray) if v != 0]
+// 	var onIndices []int
+// 	for i, val := range active {
+// 		if val {
+// 			onIndices = append(onIndices, i)
+// 		}
+// 	}
+// 	//self.assertEqual(spOutput, expectedOutput)
+// 	assert.Equal(t, expectedOutput, onIndices)
 
 // }
 
