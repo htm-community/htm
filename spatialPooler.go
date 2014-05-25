@@ -320,10 +320,6 @@ func (sp *SpatialPooler) mapPotential(index int, wrapAround bool) []bool {
 		indices[i], indices[j] = indices[j], indices[i]
 	}
 
-	//sample = numpy.empty(int(round(indices.size*self._potentialPct)),dtype=uintType)
-
-	//self._random.getUInt32Sample(indices.astype(uintType), sample)
-
 	sampleLen := int(RoundPrec(float64(len(indices))*sp.PotentialPct, 0))
 	sample := indices[:sampleLen]
 	//project indices onto input mask
@@ -494,14 +490,14 @@ func (sp *SpatialPooler) updatePermanencesForColumn(perm []float64, index int, r
 	if raisePerm {
 		sp.raisePermanenceToThreshold(perm, maskPotential)
 	}
+
 	var newConnected []int
 	for i := 0; i < len(perm); i++ {
-		if perm[i] < sp.SynPermTrimThreshold {
+		if perm[i] <= sp.SynPermTrimThreshold {
 			perm[i] = 0
 			continue
 		}
 
-		//output[i] = perm[i] > 0
 		//TODO: can be simplified if syn min/max are always 1/0
 		if perm[i] < sp.SynPermMin {
 			perm[i] = sp.SynPermMin
@@ -513,6 +509,7 @@ func (sp *SpatialPooler) updatePermanencesForColumn(perm []float64, index int, r
 			newConnected = append(newConnected, i)
 		}
 	}
+
 	//TODO: replace with sparse matrix that indexes by rows
 	//sp.permanences.SetRowFromDense(index, perm)
 	for i := 0; i < len(perm); i++ {
@@ -964,17 +961,17 @@ func (sp *SpatialPooler) bumpUpWeakColumns() {
 		}
 	}
 
-	for i, _ := range weakColumns {
+	for _, col := range weakColumns {
 		perm := make([]float64, sp.numInputs)
 		for j := 0; j < sp.numInputs; j++ {
-			perm[i] = sp.permanences.Get(i, j)
+			perm[j] = sp.permanences.Get(col, j)
 		}
 
-		maskPotential := sp.potentialPools.GetRowIndices(i)
+		maskPotential := sp.potentialPools.GetRowIndices(col)
 		for _, mpot := range maskPotential {
 			perm[mpot] += sp.SynPermBelowStimulusInc
 		}
-		sp.updatePermanencesForColumn(perm, i, false)
+		sp.updatePermanencesForColumn(perm, col, false)
 	}
 
 }

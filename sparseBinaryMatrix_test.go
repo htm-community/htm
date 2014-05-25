@@ -80,6 +80,23 @@ func TestReplaceRowByIndices(t *testing.T) {
 	if sm.Get(4, 0) {
 		t.Errorf("Was true expected false @ [4,0]")
 	}
+
+	indices = make([]int, 3)
+	indices[0] = 4
+
+	sm.ReplaceRowByIndices(4, indices)
+	if sm.Get(4, 3) {
+		t.Errorf("Was true expected false @ [4,3]")
+	}
+
+	if sm.Get(4, 9) {
+		t.Errorf("Was true expected false @ [4,9]")
+	}
+
+	if !sm.Get(4, 4) {
+		t.Errorf("Was false expected true @ [4,4]")
+	}
+
 }
 
 func TestGetRowIndices(t *testing.T) {

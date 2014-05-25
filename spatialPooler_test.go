@@ -8,6 +8,7 @@ import (
 	//"math/big"
 	//"github.com/stretchr/testify/mock"
 	"math"
+	"strconv"
 	"testing"
 )
 
@@ -872,15 +873,15 @@ func TestUpdatePermanencesForColumn(t *testing.T) {
 	/*
 	   These are the 'true permanences' reflected in trueConnectedSynapses
 	   truePermanences = SparseMatrix(
-	   [[false.falsefalsefalse, false.5falsefalse, false.4falsefalse, false.falsefalsefalse, false.falsefalsefalse],
+	   [[0.000, 0.500, 0.400, 0.000, 0.000],
 	   Clip - - Trim Trim
-	   [false.3falsefalse, false.falsefalsefalse, false.falsefalsefalse, false.12false, false.false9false],
+	   [0.300, 0.000, 0.000, 0.120, 0.090],
 	   - Trim Trim - -
-	   [false.false7false, false.false5false, 1.falsefalsefalse, false.19false, false.false6false],
+	   [0.070, 0.050, 1.000, 0.190, 0.060],
 	   - - Clip - -
-	   [false.18false, false.false9false, false.11false, false.falsefalsefalse, false.falsefalsefalse],
+	   [0.180, 0.090, 0.110, 0.000, 0.000],
 	   - - - Trim Trim
-	   [false.2falsefalse, false.1false1, false.false5false, false.falsefalsefalse, 1.falsefalsefalse]])
+	   [0.200, 0.101, 0.050, 0.000, 1.000]])
 	   - - - Clip Clip
 	*/
 
@@ -1088,13 +1089,21 @@ func TestBumpUpWeakColumns(t *testing.T) {
 	sp.SynPermBelowStimulusInc = 0.01
 	sp.SynPermTrimThreshold = 0.05
 	sp.overlapDutyCycles = []float64{0, 0.009, 0.1, 0.001, 0.002}
-	sp.minOverlapDutyCycles = MakeSliceFloat64(5, 5*0.01)
+	sp.minOverlapDutyCycles = MakeSliceFloat64(5, 0.01)
 	sp.SynPermInactiveDec = 0.01
 	sp.SynPermActiveInc = 0.1
 	sp.connectedSynapses = NewSparseBinaryMatrix(sp.numColumns, sp.numInputs)
 	sp.connectedCounts = make([]int, sp.numColumns)
 	sp.SynPermMax = 1
 	sp.SynPermMin = 0
+	sp.SynPermConnected = 0.10
+
+	sp.MinPctOverlapDutyCycles = 0.1
+	sp.MinPctActiveDutyCycles = 0.1
+	sp.DutyCyclePeriod = 10
+	sp.MaxBoost = 10.0
+	sp.PotentialRadius = 5
+	sp.PotentialPct = 0.5
 
 	ints := [][]int{{1, 1, 1, 1, 0, 0, 0, 0},
 		{1, 0, 0, 0, 1, 1, 0, 1},
@@ -1116,20 +1125,20 @@ func TestBumpUpWeakColumns(t *testing.T) {
 
 	truePermanences := [][]float64{
 		{0.210, 0.130, 0.100, 0.000, 0.000, 0.000, 0.000, 0.000},
-		// Inc Inc Inc Trim - - - -
+		// Inc   Inc 	Inc    Trim   - - - -
 		{0.160, 0.000, 0.000, 0.000, 0.190, 0.130, 0.000, 0.460},
-		// Inc - - - Inc Inc - Inc
+		// Inc 	  -      -      - 	  Inc 	 Inc 	 - 	   Inc
 		{0.000, 0.000, 0.014, 0.000, 0.032, 0.044, 0.110, 0.000}, //unchanged
-		// - - - - - - - -
+		// - 	 - 		 - 		- 		- 	 - 		 - 		-
 		{0.051, 0.000, 0.000, 0.000, 0.000, 0.000, 0.188, 0.000},
-		// Inc Trim Trim - - - Inc -
+		// Inc 	Trim 	Trim 	- 	   - 	  - 	Inc 	-
 		{0.110, 0.748, 0.055, 0.000, 0.060, 0.000, 0.218, 0.000}}
 
 	sp.bumpUpWeakColumns()
 
 	for i := 0; i < sp.numColumns; i++ {
 		for j := 0; j < sp.numInputs; j++ {
-			assert.AlmostEqual(t, truePermanences[i][j], sp.permanences.Get(i, j))
+			assert.AlmostEqual(t, truePermanences[i][j], sp.permanences.Get(i, j), strconv.Itoa(i)+" "+strconv.Itoa(j))
 		}
 	}
 
