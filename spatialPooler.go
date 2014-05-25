@@ -565,7 +565,7 @@ func (sp *SpatialPooler) Compute(inputVector []bool, learn bool, activeArray []b
 	}
 
 	// Apply inhibition to determine the winning columns
-	activeColumns := sp.inhibitColumns(boostedOverlaps)
+	activeColumns := sp.inhibitColumns(boostedOverlaps, sp.inhibitColumnsGlobal, sp.inhibitColumnsLocal)
 
 	overlapsf := make([]float64, len(overlaps))
 	for i, val := range overlaps {
@@ -810,6 +810,8 @@ func (sp *SpatialPooler) inhibitColumnsLocal(overlaps []float64, density float64
 	return activeColumns
 }
 
+type inhibitColumnsFunc func([]float64, float64) []int
+
 /*
  Performs inhibition. This method calculates the necessary values needed to
 actually perform inhibition and then delegates the task of picking the
@@ -824,7 +826,7 @@ that are connected to input bits which are turned on.
 
 */
 
-func (sp *SpatialPooler) inhibitColumns(overlaps []float64) []int {
+func (sp *SpatialPooler) inhibitColumns(overlaps []float64, inhibitColumnsGlobal, inhibitColumnsLocal inhibitColumnsFunc) []int {
 	/*
 			 determine how many columns should be selected in the inhibition phase.
 		     This can be specified by either setting the 'numActiveColumnsPerInhArea'
@@ -848,9 +850,9 @@ func (sp *SpatialPooler) inhibitColumns(overlaps []float64) []int {
 
 	if sp.GlobalInhibition ||
 		sp.inhibitionRadius > MaxSliceInt(sp.ColumnDimensions) {
-		return sp.inhibitColumnsGlobal(overlaps, density)
+		return inhibitColumnsGlobal(overlaps, density)
 	} else {
-		return sp.inhibitColumnsLocal(overlaps, density)
+		return inhibitColumnsLocal(overlaps, density)
 	}
 
 }
