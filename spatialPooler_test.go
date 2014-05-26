@@ -1156,9 +1156,75 @@ func TestUpdateMinDutyCyclesGlobal(t *testing.T) {
 
 }
 
-// func TestUpdateMinDutyCyclesLocal(t *testing.T) {
-//TODO: implement
-// }
+func TestUpdateMinDutyCyclesLocal(t *testing.T) {
+	sp := SpatialPooler{}
+
+	sp.ColumnDimensions = []int{5}
+	sp.numColumns = 5
+
+	neighborsValue := [][]int{{0, 1, 2},
+		{1, 2, 3},
+		{2, 3, 4},
+		{0, 2, 4},
+		{0, 1, 3},
+	}
+	callCount := 0
+	getNeighborsMock := func(columnIndex int, dimensions []int, radius int, wrapAround bool) []int {
+		//t.Logf("called mock")
+		result := neighborsValue[callCount]
+		callCount++
+		return result
+	}
+
+	sp.MinPctOverlapDutyCycles = 0.04
+	sp.overlapDutyCycles = []float64{1.4, 0.5, 1.2, 0.8, 0.1}
+	trueMinOverlapDutyCycles := []float64{0.04 * 1.4, 0.04 * 1.2, 0.04 * 1.2, 0.04 * 1.4, 0.04 * 1.4}
+
+	sp.MinPctActiveDutyCycles = 0.02
+	sp.activeDutyCycles = []float64{0.4, 0.5, 0.2, 0.18, 0.1}
+	trueMinActiveDutyCycles := []float64{0.02 * 0.5, 0.02 * 0.5, 0.02 * 0.2, 0.02 * 0.4, 0.02 * 0.5}
+
+	sp.minOverlapDutyCycles = MakeSliceFloat64(sp.numColumns, 0)
+
+	sp.minActiveDutyCycles = MakeSliceFloat64(sp.numColumns, 0)
+	sp.updateMinDutyCyclesLocal(getNeighborsMock)
+
+	//assert.Equal(t, trueMinOverlapDutyCycles, sp.minOverlapDutyCycles)
+	for i, _ := range trueMinOverlapDutyCycles {
+		assert.AlmostEqual(t, trueMinOverlapDutyCycles[i], sp.minOverlapDutyCycles[i])
+	}
+	assert.Equal(t, trueMinActiveDutyCycles, sp.minActiveDutyCycles)
+
+	// 2-----
+	sp.ColumnDimensions = []int{8}
+	sp.numColumns = 8
+	neighborsValue = [][]int{{0, 1, 2, 3, 4},
+		{1, 2, 3, 4, 5},
+		{2, 3, 4, 6, 7},
+		{0, 2, 4, 6},
+		{1, 6},
+		{3, 5, 7},
+		{1, 4, 5, 6},
+		{2, 3, 6, 7}}
+
+	sp.MinPctOverlapDutyCycles = 0.01
+	sp.overlapDutyCycles = []float64{1.2, 2.7, 0.9, 1.1, 4.3, 7.1, 2.3, 0.0}
+	trueMinOverlapDutyCycles = []float64{0.01 * 4.3, 0.01 * 7.1, 0.01 * 4.3, 0.01 * 4.3,
+		0.01 * 4.3, 0.01 * 7.1, 0.01 * 7.1, 0.01 * 2.3}
+
+	sp.MinPctActiveDutyCycles = 0.03
+	sp.activeDutyCycles = []float64{0.14, 0.25, 0.125, 0.33, 0.27, 0.11, 0.76, 0.31}
+	trueMinActiveDutyCycles = []float64{0.03 * 0.33, 0.03 * 0.33, 0.03 * 0.76, 0.03 * 0.76,
+		0.03 * 0.76, 0.03 * 0.33, 0.03 * 0.76, 0.03 * 0.76}
+
+	sp.minOverlapDutyCycles = MakeSliceFloat64(sp.numColumns, 0)
+	sp.minActiveDutyCycles = MakeSliceFloat64(sp.numColumns, 0)
+	callCount = 0
+	sp.updateMinDutyCyclesLocal(getNeighborsMock)
+	assert.Equal(t, trueMinOverlapDutyCycles, sp.minOverlapDutyCycles)
+	assert.Equal(t, trueMinActiveDutyCycles, sp.minActiveDutyCycles)
+
+}
 
 func TestBumpUpWeakColumns(t *testing.T) {
 	sp := SpatialPooler{}
