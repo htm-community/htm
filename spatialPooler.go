@@ -1170,7 +1170,7 @@ func (sp *SpatialPooler) updateMinDutyCycles() {
 	if sp.GlobalInhibition || sp.inhibitionRadius > sp.numInputs {
 		sp.updateMinDutyCyclesGlobal()
 	} else {
-		sp.updateMinDutyCyclesLocal()
+		sp.updateMinDutyCyclesLocal(sp.getNeighborsND)
 	}
 
 }
@@ -1190,6 +1190,8 @@ func (sp *SpatialPooler) updateMinDutyCyclesGlobal() {
 	FillSliceFloat64(sp.minActiveDutyCycles, minActive)
 }
 
+type getNeighborsNDFunc func(int, []int, int, bool) []int
+
 /*
  Updates the minimum duty cycles. The minimum duty cycles are determined
 locally. Each column's minimum duty cycles are set to be a percent of the
@@ -1197,10 +1199,10 @@ maximum duty cycles in the column's neighborhood. Unlike
 updateMinDutyCyclesGlobal, here the values can be quite different for
 different columns.
 */
-func (sp *SpatialPooler) updateMinDutyCyclesLocal() {
+func (sp *SpatialPooler) updateMinDutyCyclesLocal(getNeighborsND getNeighborsNDFunc) {
 
 	for i := 0; i < sp.numColumns; i++ {
-		maskNeighbors := sp.getNeighborsND(i, sp.ColumnDimensions, sp.inhibitionRadius, true)
+		maskNeighbors := getNeighborsND(i, sp.ColumnDimensions, sp.inhibitionRadius, false)
 		maskNeighbors = append(maskNeighbors, i)
 
 		maxOverlap := MaxSliceFloat64(SubsetSliceFloat64(sp.overlapDutyCycles, maskNeighbors))
