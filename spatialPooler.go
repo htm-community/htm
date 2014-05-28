@@ -135,7 +135,8 @@ func NewSpatialPooler(spParams SpParams) *SpatialPooler {
 	sp.NumActiveColumnsPerInhArea = spParams.NumActiveColumnsPerInhArea
 	sp.StimulusThreshold = spParams.StimulusThreshold
 	sp.SynPermInactiveDec = spParams.SynPermInactiveDec
-	sp.SynPermActiveInc = spParams.SynPermConnected / 10.0
+	sp.SynPermActiveInc = spParams.SynPermActiveInc
+	sp.SynPermBelowStimulusInc = spParams.SynPermConnected / 10.0
 	sp.SynPermConnected = spParams.SynPermConnected
 	sp.MinPctOverlapDutyCycles = spParams.MinPctOverlapDutyCycle
 	sp.MinPctActiveDutyCycles = spParams.MinPctActiveDutyCycle
@@ -547,15 +548,13 @@ activeArray: an array whose size is equal to the number of columns.
        with 1's at the indices of the active columns, and 0's
 	   everywhere else.
 */
-func (sp *SpatialPooler) Compute(inputVector []bool, learn bool, activeArray []bool) {
+func (sp *SpatialPooler) Compute(inputVector []bool, learn bool, activeArray []bool, inhibitColumns inhibitColFunc) {
 	if len(inputVector) != sp.numInputs {
 		panic("input != numimputs")
 	}
 
 	sp.updateBookeepingVars(learn)
-
 	overlaps := sp.calculateOverlap(inputVector)
-
 	boostedOverlaps := make([]float64, len(overlaps))
 	// Apply boosting when learning is on
 	if learn {
@@ -565,8 +564,7 @@ func (sp *SpatialPooler) Compute(inputVector []bool, learn bool, activeArray []b
 	}
 
 	// Apply inhibition to determine the winning columns
-	activeColumns := sp.inhibitColumns(boostedOverlaps, sp.inhibitColumnsGlobal, sp.inhibitColumnsLocal)
-
+	activeColumns := inhibitColumns(boostedOverlaps, sp.inhibitColumnsGlobal, sp.inhibitColumnsLocal)
 	overlapsf := make([]float64, len(overlaps))
 	for i, val := range overlaps {
 		overlapsf[i] = float64(val)
@@ -811,6 +809,7 @@ func (sp *SpatialPooler) inhibitColumnsLocal(overlaps []float64, density float64
 }
 
 type inhibitColumnsFunc func([]float64, float64) []int
+type inhibitColFunc func(overlaps []float64, inhibitColumnsGlobal, inhibitColumnsLocal inhibitColumnsFunc) []int
 
 /*
  Performs inhibition. This method calculates the necessary values needed to
