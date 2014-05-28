@@ -1393,6 +1393,49 @@ func TestCompute1(t *testing.T) {
 
 }
 
+func TestCompute2(t *testing.T) {
+	/*
+		Checks that columns only change the permanence values for
+		inputs that are within their potential pool
+	*/
+
+	spParams := NewSpParams()
+	spParams.InputDimensions = []int{10}
+	spParams.ColumnDimensions = []int{5}
+	spParams.PotentialRadius = 3
+	spParams.PotentialPct = 0.5
+	spParams.GlobalInhibition = false
+	spParams.LocalAreaDensity = -1
+	spParams.NumActiveColumnsPerInhArea = 3
+	spParams.StimulusThreshold = 1
+	spParams.SynPermInactiveDec = 0.01
+	spParams.SynPermActiveInc = 0.1
+	spParams.SynPermConnected = 0.10
+	spParams.MinPctOverlapDutyCycle = 0.1
+	spParams.MinPctActiveDutyCycle = 0.1
+	spParams.DutyCyclePeriod = 10
+	spParams.MaxBoost = 10.0
+	sp := NewSpatialPooler(spParams)
+
+	inhibitColumnsMock := func(overlaps []float64, inhibitColumnsGlobal, inhibitColumnsLocal inhibitColumnsFunc) []int {
+		return []int{0, 1, 2, 3, 4}
+	}
+
+	inputVector := Make1DBool([]int{1, 1, 1, 1, 1, 1, 1, 1, 1, 1})
+	activeArray := make([]bool, 5)
+
+	for i := 0; i < 20; i++ {
+		sp.Compute(inputVector, true, activeArray, inhibitColumnsMock)
+	}
+
+	for i := 0; i < sp.numColumns; i++ {
+		perm := Float64SliceToInt(GetRowFromSM(sp.permanences, i))
+		potential := sp.potentialPools.GetDenseRow(i)
+		assert.Equal(t, potential, Make1DBool(perm))
+	}
+
+}
+
 // func TestExactOutput(t *testing.T) {
 // 	/*
 // 	 Given a specific input and initialization params the SP should return this
