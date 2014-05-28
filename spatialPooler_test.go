@@ -1344,6 +1344,55 @@ func TestMapPotential1D(t *testing.T) {
 
 }
 
+func TestCompute1(t *testing.T) {
+	/*
+		Checks that feeding in the same input vector leads to polarized
+		permanence values: either zeros or ones, but no fractions
+	*/
+
+	spParams := NewSpParams()
+	spParams.InputDimensions = []int{9}
+	spParams.ColumnDimensions = []int{5}
+	spParams.PotentialRadius = 3
+	spParams.PotentialPct = 0.5
+	spParams.GlobalInhibition = false
+	spParams.LocalAreaDensity = -1
+	spParams.NumActiveColumnsPerInhArea = 3
+	spParams.StimulusThreshold = 1
+	spParams.SynPermInactiveDec = 0.01
+	spParams.SynPermActiveInc = 0.1
+	spParams.SynPermConnected = 0.10
+	spParams.MinPctOverlapDutyCycle = 0.1
+	spParams.MinPctActiveDutyCycle = 0.1
+	spParams.DutyCyclePeriod = 10
+	spParams.MaxBoost = 10.0
+	sp := NewSpatialPooler(spParams)
+
+	sp.potentialPools = NewSparseBinaryMatrix(sp.numColumns, sp.numInputs)
+	for i := 0; i < sp.numColumns; i++ {
+		for j := 0; j < sp.numInputs; j++ {
+			sp.potentialPools.Set(i, j, true)
+		}
+	}
+
+	inhibitColumnsMock := func(overlaps []float64, inhibitColumnsGlobal, inhibitColumnsLocal inhibitColumnsFunc) []int {
+		return []int{0, 1, 2, 3, 4}
+	}
+
+	inputVector := Make1DBool([]int{1, 0, 1, 0, 1, 0, 0, 1, 1})
+	activeArray := make([]bool, 5)
+
+	for i := 0; i < 20; i++ {
+		sp.Compute(inputVector, true, activeArray, inhibitColumnsMock)
+	}
+
+	for i := 0; i < 20; i++ {
+		perm := Float64SliceToInt(GetRowFromSM(sp.permanences, i))
+		assert.Equal(t, inputVector, Make1DBool(perm))
+	}
+
+}
+
 // func TestExactOutput(t *testing.T) {
 // 	/*
 // 	 Given a specific input and initialization params the SP should return this
@@ -1402,7 +1451,7 @@ func TestMapPotential1D(t *testing.T) {
 // 	//activeArray = numpy.zeros(2048)
 // 	active := make([]bool, 2048)
 // 	//sp.compute(inputArray, 1, activeArray)
-// 	sp.Compute(inputVector, true, active)
+// 	sp.Compute(inputVector, true, active, sp.inhibitColumns)
 // 	//sp.Compute(inputVector, learn, activeArray)
 // 	// Get only the active column indices
 // 	//spOutput = [i for i, v in enumerate(activeArray) if v != 0]
@@ -1418,6 +1467,22 @@ func TestMapPotential1D(t *testing.T) {
 // }
 
 //----- Helper functions -------------
+
+func Float64SliceToInt(values []float64) []int {
+	result := make([]int, len(values))
+	for i, val := range values {
+		result[i] = int(val)
+	}
+	return result
+}
+
+func GetRowFromSM(mat *matrix.SparseMatrix, row int) []float64 {
+	result := make([]float64, mat.Cols())
+	for i := 0; i < mat.Cols(); i++ {
+		result[i] = mat.Get(row, i)
+	}
+	return result
+}
 
 func AlmostEqual(a, b float64) bool {
 	ar := RoundPrec(a, 2)

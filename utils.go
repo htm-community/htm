@@ -2,9 +2,11 @@ package htm
 
 import (
 	//"fmt"
+	"fmt"
 	"math"
 	"math/big"
 	"math/rand"
+	"time"
 )
 
 type TupleInt struct {
@@ -307,4 +309,9 @@ func RandomSample(length int) []float64 {
 	}
 
 	return result
+}
+
+func timeTrack(start time.Time, name string) {
+	elapsed := time.Since(start)
+	fmt.Printf("%s took %s \n", name, elapsed)
 }
