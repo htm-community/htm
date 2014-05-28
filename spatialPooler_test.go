@@ -30,7 +30,7 @@ func getConnected(perm []float64, sp *SpatialPooler) (int, []bool) {
 
 func TestPermanenceInit(t *testing.T) {
 	sp := SpatialPooler{}
-	sp.InputDimensions = []int{1, 10}
+	sp.InputDimensions = []int{10}
 	sp.numInputs = 10
 	sp.SynPermConnected = 0.1
 	sp.SynPermActiveInc = 0.1
@@ -101,8 +101,8 @@ func TestPermanenceInit(t *testing.T) {
 func TestRaisePermanenceThreshold(t *testing.T) {
 
 	sp := SpatialPooler{}
-	sp.InputDimensions = []int{1, 5}
-	sp.ColumnDimensions = []int{1, 5}
+	sp.InputDimensions = []int{5}
+	sp.ColumnDimensions = []int{5}
 	sp.numColumns = 5
 	sp.numInputs = 5
 	sp.SynPermConnected = 0.1
@@ -158,7 +158,7 @@ func TestRaisePermanenceThreshold(t *testing.T) {
 func TestStripNever(t *testing.T) {
 	sp := SpatialPooler{}
 
-	sp.activeDutyCycles = []float64{0.5, 0.1, 0, 0.2, 0.4, 0}
+	sp.activeDutyCycles = []float64{0.50, 0.1, 0, 0.2, 0.4, 0}
 	activeColumns := []int{0, 1, 2, 4}
 	stripped := sp.stripNeverLearned(activeColumns)
 	trueStripped := []int{0, 1, 4}
@@ -194,6 +194,34 @@ func TestStripNever(t *testing.T) {
 		if stripped[i] != trueStripped[i] {
 			t.Errorf("stripped %v was %v expected %v", i, stripped[i], trueStripped[i])
 		}
+	}
+
+}
+
+func TestAvgConnectedSpanForColumn2D(t *testing.T) {
+	sp := SpatialPooler{}
+	sp.InputDimensions = []int{8}
+	sp.numInputs = 8
+	sp.numColumns = 9
+	sp.ColumnDimensions = []int{9}
+
+	ints := [][]int{{0, 1, 0, 1, 0, 1, 0, 1},
+		{0, 0, 0, 1, 0, 0, 0, 1},
+		{0, 0, 0, 0, 0, 0, 1, 0},
+		{0, 0, 1, 0, 0, 0, 1, 0},
+		{0, 0, 0, 0, 0, 0, 0, 0},
+		{0, 1, 1, 0, 0, 0, 0, 0},
+		{0, 0, 1, 1, 1, 0, 0, 0},
+		{0, 0, 1, 0, 1, 0, 0, 0},
+		{1, 1, 1, 1, 1, 1, 1, 1}}
+
+	sp.connectedSynapses = NewSparseBinaryMatrixFromInts(ints)
+
+	trueAvgConnectedSpan := []int{7, 5, 1, 5, 0, 2, 3, 3, 8}
+
+	for i := 0; i < sp.numColumns; i++ {
+		connectedSpan := sp.avgConnectedSpanForColumnND(i)
+		assert.Equal(t, trueAvgConnectedSpan[i], connectedSpan)
 	}
 
 }
@@ -362,6 +390,8 @@ func TestCalculateOverlap(t *testing.T) {
 	sp := SpatialPooler{}
 	sp.numInputs = 10
 	sp.numColumns = 5
+	sp.InputDimensions = []int{10}
+	sp.ColumnDimensions = []int{5}
 
 	sp.connectedSynapses = NewSparseBinaryMatrixFromDense([][]bool{
 		{true, true, true, true, true, true, true, true, true, true},
@@ -847,7 +877,7 @@ func TestInhibitColumnsLocal(t *testing.T) {
 
 }
 
-func UpdateBoostFactorsTest(t *testing.T) {
+func TestUpdateBoostFactors(t *testing.T) {
 	sp := SpatialPooler{}
 	sp.MaxBoost = 10.0
 	sp.numColumns = 6
@@ -1444,9 +1474,7 @@ func TestCompute2(t *testing.T) {
 // 	*/
 // 	spParams := NewSpParams()
 // 	spParams.InputDimensions = []int{1, 188}
-// 	//sp.numInputs = 188
 // 	spParams.ColumnDimensions = []int{2048, 1}
-// 	//sp.numColumns = 2048
 // 	spParams.PotentialRadius = 94
 // 	spParams.PotentialPct = 0.5
 // 	spParams.GlobalInhibition = true
@@ -1454,17 +1482,13 @@ func TestCompute2(t *testing.T) {
 // 	spParams.NumActiveColumnsPerInhArea = 40.0
 // 	spParams.StimulusThreshold = 0
 // 	spParams.SynPermInactiveDec = 0.01
-
+// 	spParams.SynPermActiveInc = 0.1
 // 	spParams.SynPermConnected = 0.1
 // 	spParams.MinPctOverlapDutyCycle = 0.001
 // 	spParams.MinPctActiveDutyCycle = 0.001
 // 	spParams.DutyCyclePeriod = 1000
 // 	spParams.MaxBoost = 10.0
 // 	sp := NewSpatialPooler(spParams)
-// 	//sp := SpatialPooler{}
-// 	sp.SynPermActiveInc = 0.1
-
-// 	//sp.spVerbosity = 0
 
 // 	expectedOutput := []int{10, 29, 110, 114, 210, 221, 253, 260, 289, 340, 393, 408,
 // 		473, 503, 534, 639, 680, 712, 739, 791, 905, 912, 961,
@@ -1490,7 +1514,6 @@ func TestCompute2(t *testing.T) {
 
 // 	inputVector := Make1DBool(inputInts)
 // 	//inputArray = numpy.array(inputVector).astype(realDType)
-// 	//input :=
 // 	//activeArray = numpy.zeros(2048)
 // 	active := make([]bool, 2048)
 // 	//sp.compute(inputArray, 1, activeArray)

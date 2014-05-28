@@ -54,6 +54,13 @@ func FillSliceFloat64(values []float64, value float64) {
 	}
 }
 
+//Populates bool slice with specified value
+func FillSliceBool(values []bool, value bool) {
+	for i := range values {
+		values[i] = value
+	}
+}
+
 //Returns the subset of values specified by indices
 func SubsetSliceInt(values, indices []int) []int {
 	result := make([]int, len(indices))
