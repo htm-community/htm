@@ -61,6 +61,13 @@ func FillSliceBool(values []bool, value bool) {
 	}
 }
 
+//Populates bool slice with specified value
+func FillSliceRangeBool(values []bool, value bool, start, length int) {
+	for i := 0; i < length; i++ {
+		values[start+i] = value
+	}
+}
+
 //Returns the subset of values specified by indices
 func SubsetSliceInt(values, indices []int) []int {
 	result := make([]int, len(indices))
@@ -145,17 +152,17 @@ func ContainsFloat64(q float64, vals []float64) bool {
 	return false
 }
 
-type CompareInt func(int) bool
+// type CompareInt func(int) bool
 
-func CountInt(q CompareInt, vals []int) int {
-	count := 0
-	for i := range vals {
-		if q(i) {
-			count++
-		}
-	}
-	return count
-}
+// func CountInt(q CompareInt, vals []int) int {
+// 	count := 0
+// 	for i := range vals {
+// 		if q(i) {
+// 			count++
+// 		}
+// 	}
+// 	return count
+// }
 
 func randFloatRange(min, max float64) float64 {
 	return rand.Float64()*(max-min) + min
@@ -288,6 +295,28 @@ func Make1DBool(values []int) []bool {
 }
 
 //Returns number of on bits
+func CountInt(values []int, value int) int {
+	count := 0
+	for _, val := range values {
+		if val == value {
+			count++
+		}
+	}
+	return count
+}
+
+//Returns number of on bits
+func CountFloat64(values []float64, value float64) int {
+	count := 0
+	for _, val := range values {
+		if val == value {
+			count++
+		}
+	}
+	return count
+}
+
+//Returns number of on bits
 func CountTrue(values []bool) int {
 	count := 0
 	for _, val := range values {
@@ -321,4 +350,12 @@ func RandomSample(length int) []float64 {
 func timeTrack(start time.Time, name string) {
 	elapsed := time.Since(start)
 	fmt.Printf("%s took %s \n", name, elapsed)
+}
+
+func SumSliceFloat64(values []float64) float64 {
+	result := 0.0
+	for _, val := range values {
+		result += val
+	}
+	return result
 }
