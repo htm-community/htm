@@ -192,7 +192,6 @@ func phase2(t *testing.T, bt *boostTest) {
 	activeSum := 0.0
 	for idx, val := range bt.sp.activeDutyCycles {
 		if bt.winningIteration[idx] == 0 {
-			//assert.Equal(t, expected, actual, ...)
 			activeSum += val
 		}
 	}
@@ -289,8 +288,8 @@ func BoostTest(t *testing.T) {
 	spParams.DutyCyclePeriod = 10
 	bt.sp = NewSpatialPooler(spParams)
 
-	// # Create a set of input vectors, x
-	// # B,C,D don't overlap at all with other patterns
+	// Create a set of input vectors, x
+	// B,C,D don't overlap at all with other patterns
 	bt.x = make([][]bool, 5)
 	for i := range bt.x {
 		bt.x[i] = make([]bool, bt.sp.numInputs)
