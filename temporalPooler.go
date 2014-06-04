@@ -54,7 +54,7 @@ type TemporalPooler struct {
 	cells           [][][]Segment
 	lrnIterationIdx int
 	iterationIdx    int
-	segID           int
+	segId           int
 	CurrentOutput   []bool
 	pamCounter      int
 }
