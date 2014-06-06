@@ -142,3 +142,64 @@ func (s *Segment) dutyCycle(active, readOnly bool) float64 {
 	return dutyCycle
 
 }
+
+/*
+Free up some synapses in this segment. We always free up inactive
+synapses (lowest permanence freed up first) before we start to free up
+active ones.
+
+@param numToFree number of synapses to free up
+@param inactiveSynapseIndices list of the inactive synapse indices.
+*/
+
+func (s *Segment) freeNSynapses(numToFree int, inactiveSynapseIndices []int) {
+	//Make sure numToFree isn't larger than the total number of syns we have
+	if numToFree > len(s.syns) {
+		panic("Number to free cannot be larger than existing synapses.")
+	}
+
+	var candidates []int
+	// Remove the lowest perm inactive synapses first
+	if len(inactiveSynapseIndices) > 0 {
+		perms := make([]float64, len(inactiveSynapseIndices))
+		for idx, val := range perms {
+			perms[idx] = s.syns[idx].Permanence
+		}
+		//sort perms
+		cSize := mathutil.Min(numToFree, len(perms))
+		candidates = make([]int, cSize)
+		for i := 0; i < cSize; i++ {
+			candidates[i] = inactiveSynapseIndices[perms[i]]
+		}
+	}
+
+	// Do we need more? if so, remove the lowest perm active synapses too
+	var activeSynIndices []int
+	if len(candidates) < numToFree {
+		for i := 0; i < len(s.syns); i++ {
+			if !ContainsInt(i, inactiveSynapseIndices) {
+				activeSynIndices = append(activeSynIndices, i)
+			}
+		}
+
+		perms := make([]float64, len(activeSynIndices))
+		for i := range perms {
+			perms[i] = s.syns[i].Permanence
+		}
+		moreToFree := numTofree - len(candidates)
+		moreCandidates := make([]int, moreToFree)
+		for i := 0; i < moreToFree; i++ {
+			candiates = append(candidates, activeSynIndices[perms[i]])
+		}
+	}
+
+	// Delete candidate syns by copying undeleted to new slice
+	var newSyns []Synapse
+	for idx, val := range s.syns {
+		if !ContainsInt(val, candidates) {
+			newSyns = append(newSyns, val)
+		}
+	}
+	s.syns = newSyns
+
+}
