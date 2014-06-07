@@ -203,3 +203,37 @@ func (s *Segment) freeNSynapses(numToFree int, inactiveSynapseIndices []int) {
 	s.syns = newSyns
 
 }
+
+/*
+Update a set of synapses in the segment.
+
+param synapses List of synapse indices to update
+param delta How much to add to each permanence
+
+returns True if synapse reached 0
+*/
+
+func (s *Segment) updateSynapse(synapses []int, delta float64) {
+	hitZero = false
+
+	if delta > 0 {
+		for idx, _ := range synapses {
+			s.syns[idx].Permanence += delta
+			// Cap synapse permanence at permanenceMax
+			if s.syns[idx].Permanence > s.tp.params.PermanenceMax {
+				s.syns[idx].Permanence = s.tp.params.PermanenceMax
+			}
+		}
+	} else {
+		for idx, _ := range synapses {
+			s.syns[idx].Permanence += delta
+			// Cap min synapse permanence to 0 in case there is no global decay
+			if s.syns[idx] <= 0 {
+				s.syns[idx].Permanence = 0
+				hitZero = true
+			}
+		}
+	}
+
+	return hitZero
+}

@@ -26,7 +26,7 @@ type TemporalPoolerParams struct {
 	NewSynapseCount        int
 	PermanenceInc          float64
 	PermanenceDec          float64
-	PermanenceMax          int
+	PermanenceMax          float64
 	GlobalDecay            int
 	ActivationThreshold    int
 	DoPooling              bool
