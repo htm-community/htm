@@ -237,3 +237,11 @@ func (s *Segment) updateSynapse(synapses []int, delta float64) {
 
 	return hitZero
 }
+
+/*
+Adds a new synapse
+*/
+
+func (s *Segment) AddSynapse(srcCellCol, srcCellIdx, perm) {
+	s.syns = append(s.syns, Synapse{srcCellCol, srcCellIdx, perm})
+}
