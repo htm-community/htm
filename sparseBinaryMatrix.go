@@ -195,6 +195,11 @@ func (sm *SparseBinaryMatrix) RowAndSum(row []bool) []int {
 	return result
 }
 
+//Clears  all entries
+func (sm *SparseBinaryMatrix) Clear() {
+	sm.Entries = nil
+}
+
 func (sm *SparseBinaryMatrix) ToString() string {
 	var buffer bytes.Buffer
 
