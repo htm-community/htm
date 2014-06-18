@@ -217,6 +217,21 @@ func (sm *SparseBinaryMatrix) TotalTrueCols() int {
 	return len(hitCols)
 }
 
+// Ors 2 matrices
+func (sm *SparseBinaryMatrix) Or(sm2 *SparseBinaryMatrix) *SparseBinaryMatrix {
+	result := NewSparseBinaryMatrix(sm.Height, sm.Width)
+
+	for _, val := range sm.Entries {
+		result.Set(val.Row, val.Col, true)
+	}
+
+	for _, val := range sm2.Entries {
+		result.Set(val.Row, val.Col, true)
+	}
+
+	return result
+}
+
 //Clears  all entries
 func (sm *SparseBinaryMatrix) Clear() {
 	sm.Entries = nil
