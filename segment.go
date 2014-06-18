@@ -1,12 +1,13 @@
 package htm
 
 import (
-	"fmt"
+	//"fmt"
 	"github.com/cznic/mathutil"
-	"github.com/skelterjohn/go.matrix"
+	//"github.com/skelterjohn/go.matrix"
 	"math"
-	"math/rand"
-	"sort"
+	//"math/rand"
+	//"sort"
+	"github.com/gonum/floats"
 )
 
 type Synapse struct {
@@ -24,7 +25,7 @@ type Segment struct {
 	lastActiveIteration       int
 	positiveActivations       int
 	totalActivations          int
-	lastPosDutyCycle          int
+	lastPosDutyCycle          float64
 	lastPosDutyCycleIteration int
 	syns                      []Synapse
 	dutyCycleTiers            []int
@@ -35,18 +36,17 @@ type Segment struct {
 func NewSegment(tp *TemporalPooler, isSequenceSeg bool) *Segment {
 	seg := Segment{}
 	seg.tp = tp
-	seg.segId = tp.segID
+	seg.segId = tp.GetSegId()
 	seg.isSequenceSeg = isSequenceSeg
 	seg.lastActiveIteration = tp.lrnIterationIdx
 	seg.positiveActivations = 1
 	seg.totalActivations = 1
 
-	seg.lastPosDutyCycle = 1.0 / tp.lrnIterationIdx
+	seg.lastPosDutyCycle = 1.0 / float64(tp.lrnIterationIdx)
 	seg.lastPosDutyCycleIteration = tp.lrnIterationIdx
 
 	seg.dutyCycleTiers = []int{0, 100, 320, 1000,
-		3200, 10000, 32000, 100000,
-		320000}
+		3200, 10000, 32000, 100000, 320000}
 
 	seg.dutyCycleAlphas = []float64{0, 0.0032, 0.0010, 0.00032,
 		0.00010, 0.000032, 0.00001, 0.0000032,
@@ -101,7 +101,7 @@ func (s *Segment) dutyCycle(active, readOnly bool) float64 {
 
 	// For tier #0, compute it from total number of positive activations seen
 	if s.tp.lrnIterationIdx <= s.dutyCycleTiers[1] {
-		dutyCycle := s.positiveActivations / s.tp.lrnIterationIdx
+		dutyCycle := float64(s.positiveActivations) / float64(s.tp.lrnIterationIdx)
 		if !readOnly {
 			s.lastPosDutyCycleIteration = s.tp.lrnIterationIdx
 			s.lastPosDutyCycle = dutyCycle
@@ -127,7 +127,7 @@ func (s *Segment) dutyCycle(active, readOnly bool) float64 {
 	}
 
 	// Update duty cycle
-	dutyCycle := math.Pow(1.0-alpha, age) * s.lastPosDutyCycle
+	dutyCycle := math.Pow(1.0-alpha, float64(age)) * s.lastPosDutyCycle
 
 	if active {
 		dutyCycle += alpha
@@ -140,7 +140,6 @@ func (s *Segment) dutyCycle(active, readOnly bool) float64 {
 	}
 
 	return dutyCycle
-
 }
 
 /*
@@ -162,14 +161,17 @@ func (s *Segment) freeNSynapses(numToFree int, inactiveSynapseIndices []int) {
 	// Remove the lowest perm inactive synapses first
 	if len(inactiveSynapseIndices) > 0 {
 		perms := make([]float64, len(inactiveSynapseIndices))
-		for idx, val := range perms {
+		for idx, _ := range perms {
 			perms[idx] = s.syns[idx].Permanence
 		}
+		var indexes []int
+		floats.Argsort(perms, indexes)
 		//sort perms
 		cSize := mathutil.Min(numToFree, len(perms))
 		candidates = make([]int, cSize)
+		//indexes[0:cSize]
 		for i := 0; i < cSize; i++ {
-			candidates[i] = inactiveSynapseIndices[perms[i]]
+			candidates[i] = inactiveSynapseIndices[indexes[i]]
 		}
 	}
 
@@ -186,17 +188,20 @@ func (s *Segment) freeNSynapses(numToFree int, inactiveSynapseIndices []int) {
 		for i := range perms {
 			perms[i] = s.syns[i].Permanence
 		}
-		moreToFree := numTofree - len(candidates)
-		moreCandidates := make([]int, moreToFree)
+		var indexes []int
+		floats.Argsort(perms, indexes)
+
+		moreToFree := numToFree - len(candidates)
+		//moreCandidates := make([]int, moreToFree)
 		for i := 0; i < moreToFree; i++ {
-			candiates = append(candidates, activeSynIndices[perms[i]])
+			candidates = append(candidates, activeSynIndices[indexes[i]])
 		}
 	}
 
 	// Delete candidate syns by copying undeleted to new slice
 	var newSyns []Synapse
 	for idx, val := range s.syns {
-		if !ContainsInt(val, candidates) {
+		if !ContainsInt(idx, candidates) {
 			newSyns = append(newSyns, val)
 		}
 	}
@@ -213,8 +218,8 @@ param delta How much to add to each permanence
 returns True if synapse reached 0
 */
 
-func (s *Segment) updateSynapse(synapses []int, delta float64) {
-	hitZero = false
+func (s *Segment) updateSynapse(synapses []int, delta float64) bool {
+	hitZero := false
 
 	if delta > 0 {
 		for idx, _ := range synapses {
@@ -228,7 +233,7 @@ func (s *Segment) updateSynapse(synapses []int, delta float64) {
 		for idx, _ := range synapses {
 			s.syns[idx].Permanence += delta
 			// Cap min synapse permanence to 0 in case there is no global decay
-			if s.syns[idx] <= 0 {
+			if s.syns[idx].Permanence <= 0 {
 				s.syns[idx].Permanence = 0
 				hitZero = true
 			}
@@ -242,6 +247,6 @@ func (s *Segment) updateSynapse(synapses []int, delta float64) {
 Adds a new synapse
 */
 
-func (s *Segment) AddSynapse(srcCellCol, srcCellIdx, perm) {
+func (s *Segment) AddSynapse(srcCellCol, srcCellIdx int, perm float64) {
 	s.syns = append(s.syns, Synapse{srcCellCol, srcCellIdx, perm})
 }

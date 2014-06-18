@@ -1,12 +1,12 @@
 package htm
 
 import (
-	"fmt"
-	"github.com/cznic/mathutil"
-	"github.com/skelterjohn/go.matrix"
-	"math"
-	"math/rand"
-	"sort"
+	//"fmt"
+	//"github.com/cznic/mathutil"
+	"github.com/zacg/go.matrix"
+	//"math"
+	//"math/rand"
+	//"sort"
 )
 
 type TpOutputType int
@@ -47,6 +47,62 @@ type TemporalPoolerParams struct {
 	outputType               TpOutputType
 }
 
+type DynamicState struct {
+	//orginally dynamic vars
+	lrnActiveState     *SparseBinaryMatrix // t
+	lrnActiveStateLast *SparseBinaryMatrix // t-1
+
+	lrnPredictedState     *SparseBinaryMatrix
+	lrnPredictedStateLast *SparseBinaryMatrix
+
+	infActiveState          *SparseBinaryMatrix
+	infActiveStateLast      *SparseBinaryMatrix
+	infActiveStateBackup    *SparseBinaryMatrix
+	infActiveStateCandidate *SparseBinaryMatrix
+
+	infPredictedState          *SparseBinaryMatrix
+	infPredictedStateLast      *SparseBinaryMatrix
+	infPredictedStateBackup    *SparseBinaryMatrix
+	infPredictedStateCandidate *SparseBinaryMatrix
+
+	cellConfidence          *matrix.DenseMatrix
+	cellConfidenceLast      *matrix.DenseMatrix
+	cellConfidenceCandidate *matrix.DenseMatrix
+
+	colConfidence          []float64
+	colConfidenceLast      []float64
+	colConfidenceCandidate []float64
+}
+
+func (ds *DynamicState) Copy() *DynamicState {
+	result := new(DynamicState)
+	result.lrnActiveState = ds.lrnActiveState.Copy()
+	result.lrnActiveStateLast = ds.lrnActiveStateLast.Copy()
+
+	result.lrnPredictedState = ds.lrnPredictedState.Copy()
+	result.lrnPredictedStateLast = ds.lrnPredictedStateLast.Copy()
+
+	result.infActiveState = ds.infActiveState.Copy()
+	result.infActiveStateLast = ds.infActiveStateLast.Copy()
+	result.infActiveStateBackup = ds.infActiveStateBackup.Copy()
+	result.infActiveStateCandidate = ds.infActiveStateCandidate.Copy()
+
+	result.infPredictedState = ds.infPredictedState.Copy()
+	result.infPredictedStateLast = ds.infPredictedStateLast.Copy()
+	result.infPredictedStateBackup = ds.infPredictedStateBackup.Copy()
+	result.infPredictedStateCandidate = ds.infPredictedStateCandidate.Copy()
+
+	result.cellConfidence = ds.cellConfidence.Copy()
+	result.cellConfidenceCandidate = ds.cellConfidenceCandidate.Copy()
+	result.cellConfidenceLast = ds.cellConfidenceLast.Copy()
+
+	copy(result.colConfidence, ds.colConfidence)
+	copy(result.colConfidenceCandidate, ds.colConfidenceCandidate)
+	copy(result.colConfidenceLast, ds.colConfidenceLast)
+
+	return result
+}
+
 type TemporalPooler struct {
 	params          TemporalPoolerParams
 	numberOfCells   int
@@ -78,34 +134,11 @@ type TemporalPooler struct {
 
 	prevLrnPatterns [][]int
 
-	//orginally dynamic vars
-	lrnActiveState     SparseBinaryMatrix
-	lrnActiveStateLast SparseBinaryMatrix
-
-	lrnPredictedState     SparseBinaryMatrix
-	lrnPredictedStateLast SparseBinaryMatrix
-
-	infActiveState          SparseBinaryMatrix
-	infActiveStateLast      SparseBinaryMatrix
-	infActiveStateBackup    SparseBinaryMatrix
-	infActiveStateCandidate SparseBinaryMatrix
-
-	infPredictedState          SparseBinaryMatrix
-	infPredictedStateLast      SparseBinaryMatrix
-	infPredictedStateBackup    SparseBinaryMatrix
-	infPredictedStateCandidate SparseBinaryMatrix
-
-	cellConfidence          matrix.Matrix
-	cellConfidenceLast      matrix.Matrix
-	cellConfidenceCandidate matrix.Matrix
-
-	colConfidence          []float64
-	colConfidenceLast      []float64
-	colConfidenceCandidate []float64
+	DynamicState *DynamicState
 }
 
 func NewTemportalPooler(tParams TemporalPoolerParams) *TemporalPooler {
-	tp := TemporalPooler{}
+	tp := new(TemporalPooler)
 
 	//validate args
 	if tParams.PamLength <= 0 {
@@ -113,7 +146,7 @@ func NewTemportalPooler(tParams TemporalPoolerParams) *TemporalPooler {
 	}
 
 	//Fixed size CLA mode
-	if maxSegmentsPerCell != -1 || maxSynapsesPerSegment != -1 {
+	if tParams.MaxSegmentsPerCell != -1 || tParams.MaxSynapsesPerSegment != -1 {
 		//validate args
 		if tParams.MaxSegmentsPerCell <= 0 {
 			panic("Maxsegs must be greater than 0")
@@ -127,7 +160,7 @@ func NewTemportalPooler(tParams TemporalPoolerParams) *TemporalPooler {
 		if tParams.MaxAge != 0 {
 			panic("Max age must be 0")
 		}
-		if !(tParams.MaxSegmentsPerSegment >= tParams.NewSynapseCount) {
+		if !(tParams.MaxSynapsesPerSegment >= tParams.NewSynapseCount) {
 			panic("maxSynapsesPerSegment must be >= newSynapseCount")
 		}
 
@@ -146,17 +179,25 @@ func NewTemportalPooler(tParams TemporalPoolerParams) *TemporalPooler {
 
 		tp.lrnIterationIdx = 0
 		tp.iterationIdx = 0
-		tp.segID = 0
+		tp.segId = 0
 
 		// pamCounter gets reset to pamLength whenever we detect that the learning
 		// state is making good predictions (at least half the columns predicted).
 		// Whenever we do not make a good prediction, we decrement pamCounter.
 		// When pamCounter reaches 0, we start the learn state over again at start
 		// cells.
-		tp.pamCounter = tParams.pamLength
+		tp.pamCounter = tParams.PamLength
 
 	}
 
+	return tp
+}
+
+//Returns new segId
+func (su *TemporalPooler) GetSegId() int {
+	result := su.segId
+	su.segId++
+	return result
 }
 
 /*
@@ -172,7 +213,7 @@ func NewTemportalPooler(tParams TemporalPoolerParams) *TemporalPooler {
 
 func (su *TemporalPooler) columnConfidences() []float64 {
 	//ignore cellconfidence param for now
-	return su.colConfidence
+	return su.DynamicState.colConfidence
 }
 
 /*
@@ -183,11 +224,11 @@ func (su *TemporalPooler) columnConfidences() []float64 {
 
 func (su *TemporalPooler) topDownCompute() []float64 {
 	/*
-		 For now, we will assume there is no one above us and that bottomUpOut is
-	     simply the output that corresponds to our currently stored column
-	     confidences.
+			 For now, we will assume there is no one above us and that bottomUpOut is
+		     simply the output that corresponds to our currently stored column
+		     confidences.
 
-	     Simply return the column confidences
+		     Simply return the column confidences
 	*/
 
 	return su.columnConfidences()
@@ -213,6 +254,51 @@ The ith row gives the tp prediction for each column at
 a future timestep (t+i+1).
 */
 
-func (su *TemporalPooler) predict(nSteps int) {
+func (su *TemporalPooler) predict(nSteps int) *matrix.DenseMatrix {
+	// Save the TP dynamic state, we will use to revert back in the end
+	//pristineTPDynamicState = self._getTPDynamicState()
+	pristineTPDynamicState := su.DynamicState.Copy()
+
+	//assert (nSteps>0)
+	if nSteps <= 0 {
+		panic("nSteps must be greater than zero")
+	}
+
+	// multiStepColumnPredictions holds all the future prediction.
+	var elements []float64
+	multiStepColumnPredictions := matrix.MakeDenseMatrix(elements, nSteps, su.params.NumberOfCols)
+
+	// This is a (nSteps-1)+half loop. Phase 2 in both learn and infer methods
+	// already predicts for timestep (t+1). We use that prediction for free and
+	// save the half-a-loop of work.
+
+	step := 0
+
+	for {
+		multiStepColumnPredictions.FillRow(step, su.topDownCompute())
+		if step == nSteps-1 {
+			break
+		}
+		step += 1
+
+		//Copy t-1 into t
+		su.DynamicState.infActiveState = su.DynamicState.infActiveStateLast
+		su.DynamicState.infPredictedState = su.DynamicState.infPredictedStateLast
+		su.DynamicState.cellConfidence = su.DynamicState.cellConfidenceLast
+
+		// Predicted state at "t-1" becomes the active state at "t"
+		su.DynamicState.infActiveState = su.DynamicState.infPredictedState
+
+		// Predicted state and confidence are set in phase2.
+		su.DynamicState.infPredictedState.Clear()
+		su.DynamicState.cellConfidence.Fill(0.0)
+		//su.inferPhase2()
+	}
+
+	// Revert the dynamic state to the saved state
+	//su.setTPDynamicState(pristineTPDynamicState)
+	su.DynamicState = pristineTPDynamicState
+
+	return multiStepColumnPredictions
 
 }

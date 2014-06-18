@@ -200,6 +200,19 @@ func (sm *SparseBinaryMatrix) Clear() {
 	sm.Entries = nil
 }
 
+//Copys a matrix
+func (sm *SparseBinaryMatrix) Copy() *SparseBinaryMatrix {
+	result := new(SparseBinaryMatrix)
+	result.Width = sm.Width
+	result.Height = sm.Height
+	result.Entries = make([]SparseEntry, len(sm.Entries))
+	for idx, val := range sm.Entries {
+		result.Entries[idx] = val
+	}
+
+	return result
+}
+
 func (sm *SparseBinaryMatrix) ToString() string {
 	var buffer bytes.Buffer
 
