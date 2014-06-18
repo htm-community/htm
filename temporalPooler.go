@@ -3,6 +3,7 @@ package htm
 import (
 	//"fmt"
 	//"github.com/cznic/mathutil"
+	"github.com/zacg/floats"
 	"github.com/zacg/go.matrix"
 	//"math"
 	//"math/rand"
@@ -113,6 +114,7 @@ type TemporalPooler struct {
 	segId           int
 	CurrentOutput   []bool
 	pamCounter      int
+	avgInputDensity float64
 
 	//ephemeral state
 	segmentUpdates map[TupleInt][]UpdateState
@@ -254,51 +256,171 @@ The ith row gives the tp prediction for each column at
 a future timestep (t+i+1).
 */
 
-func (su *TemporalPooler) predict(nSteps int) *matrix.DenseMatrix {
+func (tp *TemporalPooler) predict(nSteps int) *matrix.DenseMatrix {
 	// Save the TP dynamic state, we will use to revert back in the end
-	//pristineTPDynamicState = self._getTPDynamicState()
-	pristineTPDynamicState := su.DynamicState.Copy()
+	pristineTPDynamicState := tp.DynamicState.Copy()
 
-	//assert (nSteps>0)
 	if nSteps <= 0 {
 		panic("nSteps must be greater than zero")
 	}
 
 	// multiStepColumnPredictions holds all the future prediction.
 	var elements []float64
-	multiStepColumnPredictions := matrix.MakeDenseMatrix(elements, nSteps, su.params.NumberOfCols)
+	multiStepColumnPredictions := matrix.MakeDenseMatrix(elements, nSteps, tp.params.NumberOfCols)
 
 	// This is a (nSteps-1)+half loop. Phase 2 in both learn and infer methods
 	// already predicts for timestep (t+1). We use that prediction for free and
 	// save the half-a-loop of work.
 
 	step := 0
-
 	for {
-		multiStepColumnPredictions.FillRow(step, su.topDownCompute())
+		multiStepColumnPredictions.FillRow(step, tp.topDownCompute())
 		if step == nSteps-1 {
 			break
 		}
 		step += 1
 
 		//Copy t-1 into t
-		su.DynamicState.infActiveState = su.DynamicState.infActiveStateLast
-		su.DynamicState.infPredictedState = su.DynamicState.infPredictedStateLast
-		su.DynamicState.cellConfidence = su.DynamicState.cellConfidenceLast
+		tp.DynamicState.infActiveState = tp.DynamicState.infActiveStateLast
+		tp.DynamicState.infPredictedState = tp.DynamicState.infPredictedStateLast
+		tp.DynamicState.cellConfidence = tp.DynamicState.cellConfidenceLast
 
 		// Predicted state at "t-1" becomes the active state at "t"
-		su.DynamicState.infActiveState = su.DynamicState.infPredictedState
+		tp.DynamicState.infActiveState = tp.DynamicState.infPredictedState
 
 		// Predicted state and confidence are set in phase2.
-		su.DynamicState.infPredictedState.Clear()
-		su.DynamicState.cellConfidence.Fill(0.0)
-		//su.inferPhase2()
+		tp.DynamicState.infPredictedState.Clear()
+		tp.DynamicState.cellConfidence.Fill(0.0)
+		tp.inferPhase2()
 	}
 
 	// Revert the dynamic state to the saved state
-	//su.setTPDynamicState(pristineTPDynamicState)
-	su.DynamicState = pristineTPDynamicState
+	tp.DynamicState = pristineTPDynamicState
 
 	return multiStepColumnPredictions
+
+}
+
+/*
+ This routine computes the activity level of a segment given activeState.
+It can tally up only connected synapses (permanence >= connectedPerm), or
+all the synapses of the segment, at either t or t-1.
+*/
+
+func (tp *TemporalPooler) getSegmentActivityLevel(seg Segment, activeState *SparseBinaryMatrix, connectedSynapsesOnly bool) int {
+	activity := 0
+	if connectedSynapsesOnly {
+		for _, val := range seg.syns {
+			if val.Permanence >= tp.params.ConnectedPerm {
+				if activeState.Get(val.SrcCellIdx, val.SrcCellCol) {
+					activity++
+				}
+			}
+		}
+	} else {
+		for _, val := range seg.syns {
+			if activeState.Get(val.SrcCellIdx, val.SrcCellCol) {
+				activity++
+			}
+		}
+	}
+
+	return activity
+}
+
+/*
+	 A segment is active if it has >= activationThreshold connected
+	synapses that are active due to activeState.
+*/
+
+func (tp *TemporalPooler) isSegmentActive(seg Segment, activeState *SparseBinaryMatrix) bool {
+
+	if len(seg.syns) < tp.params.ActivationThreshold {
+		return false
+	}
+
+	activity := 0
+	for _, val := range seg.syns {
+		if val.Permanence >= tp.params.ConnectedPerm {
+			if activeState.Get(val.SrcCellIdx, val.SrcCellCol) {
+				activity++
+				if activity >= tp.params.ActivationThreshold {
+					return true
+				}
+			}
+
+		}
+	}
+
+	return false
+}
+
+/*
+ Phase 2 for the inference state. The computes the predicted state, then
+checks to insure that the predicted state is not over-saturated, i.e.
+look too close like a burst. This indicates that there were so many
+separate paths learned from the current input columns to the predicted
+input columns that bursting on the current input columns is most likely
+generated mix and match errors on cells in the predicted columns. If
+we detect this situation, we instead turn on only the start cells in the
+current active columns and re-generate the predicted state from those.
+
+returns True if we have a decent guess as to the next input.
+Returing False from here indicates to the caller that we have
+reached the end of a learned sequence.
+
+This looks at:
+- infActiveState
+
+This modifies:
+-  infPredictedState
+-  colConfidence
+-  cellConfidence
+*/
+
+func (tp *TemporalPooler) inferPhase2() bool {
+	// Init to zeros to start
+	tp.DynamicState.infPredictedState.Clear()
+	tp.DynamicState.cellConfidence.Fill(0)
+	FillSliceFloat64(tp.DynamicState.colConfidence, 0)
+
+	// Phase 2 - Compute new predicted state and update cell and column
+	// confidences
+	for c := 0; c < tp.params.NumberOfCols; c++ {
+		for i := 0; i < tp.params.CellsPerColumn; i++ {
+			// For each segment in the cell
+			for _, seg := range tp.cells[c][i] {
+				// Check if it has the min number of active synapses
+				numActiveSyns := tp.getSegmentActivityLevel(seg, tp.DynamicState.infActiveState, false)
+				if numActiveSyns < tp.params.ActivationThreshold {
+					continue
+				}
+
+				//Incorporate the confidence into the owner cell and column
+				dc := seg.dutyCycle(false, false)
+				tp.DynamicState.cellConfidence.Set(c, i, tp.DynamicState.cellConfidence.Get(c, i)+dc)
+				tp.DynamicState.colConfidence[c] += dc
+
+				if tp.isSegmentActive(seg, tp.DynamicState.infActiveState) {
+					tp.DynamicState.infPredictedState.Set(c, i, true)
+				}
+			}
+		}
+
+	}
+
+	// Normalize column and cell confidences
+	sumConfidences := SumSliceFloat64(tp.DynamicState.colConfidence)
+
+	if sumConfidences > 0 {
+		floats.DivConst(sumConfidences, tp.DynamicState.colConfidence)
+		//floats.DivConst(sumConfidences, tp.DynamicState.cellConfidence)
+		tp.DynamicState.cellConfidence.DivScaler(sumConfidences)
+	}
+
+	// Are we predicting the required minimum number of columns?
+	numPredictedCols := float64(tp.DynamicState.infPredictedState.TotalTrueCols())
+
+	return numPredictedCols >= (0.5 * tp.avgInputDensity)
 
 }
