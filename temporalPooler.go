@@ -112,7 +112,7 @@ type TemporalPooler struct {
 	lrnIterationIdx int
 	iterationIdx    int
 	segId           int
-	CurrentOutput   []bool
+	CurrentOutput   *SparseBinaryMatrix
 	pamCounter      int
 	avgInputDensity float64
 
@@ -414,7 +414,6 @@ func (tp *TemporalPooler) inferPhase2() bool {
 
 	if sumConfidences > 0 {
 		floats.DivConst(sumConfidences, tp.DynamicState.colConfidence)
-		//floats.DivConst(sumConfidences, tp.DynamicState.cellConfidence)
 		tp.DynamicState.cellConfidence.DivScaler(sumConfidences)
 	}
 
@@ -423,4 +422,44 @@ func (tp *TemporalPooler) inferPhase2() bool {
 
 	return numPredictedCols >= (0.5 * tp.avgInputDensity)
 
+}
+
+/*
+Computes output for both learning and inference. In both cases, the
+output is the boolean OR of activeState and predictedState at t.
+Stores currentOutput for checkPrediction.
+*/
+
+func (tp *TemporalPooler) computeOutput() []bool {
+
+	switch tp.params.outputType {
+	case ActiveState1CellPerCol:
+		// Fire only the most confident cell in columns that have 2 or more
+		// active cells
+
+		mostActiveCellPerCol := tp.DynamicState.cellConfidence.ArgMaxCols()
+		tp.CurrentOutput = NewSparseBinaryMatrix(tp.DynamicState.infActiveState.Height, tp.DynamicState.infActiveState.Width)
+
+		// Turn on the most confident cell in each column. Note here that
+		// Columns refers to TP columns, even though each TP column is a row
+		// in the matrix.
+		for i := 0; i < tp.CurrentOutput.Height; i++ {
+			//only on active cols
+			if len(tp.DynamicState.infActiveState.GetRowIndices(i)) != 0 {
+				tp.CurrentOutput.Set(i, mostActiveCellPerCol[i], true)
+			}
+		}
+
+		break
+	case ActiveState:
+		tp.CurrentOutput = tp.DynamicState.infActiveState.Copy()
+		break
+	case Normal:
+		tp.CurrentOutput = tp.DynamicState.infPredictedState.Or(tp.DynamicState.infActiveState)
+		break
+	default:
+		panic("Unknown output type")
+	}
+
+	return tp.CurrentOutput.Flatten()
 }
