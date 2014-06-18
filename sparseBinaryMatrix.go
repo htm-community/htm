@@ -195,6 +195,28 @@ func (sm *SparseBinaryMatrix) RowAndSum(row []bool) []int {
 	return result
 }
 
+//Returns # of rows with at least 1 true value
+func (sm *SparseBinaryMatrix) TotatTrueRows() int {
+	var hitRows []int
+	for _, val := range sm.Entries {
+		if !ContainsInt(val.Row, hitRows) {
+			hitRows = append(hitRows, val.Row)
+		}
+	}
+	return len(hitRows)
+}
+
+//Returns # of cols with at least 1 true value
+func (sm *SparseBinaryMatrix) TotalTrueCols() int {
+	var hitCols []int
+	for _, val := range sm.Entries {
+		if !ContainsInt(val.Col, hitCols) {
+			hitCols = append(hitCols, val.Col)
+		}
+	}
+	return len(hitCols)
+}
+
 //Clears  all entries
 func (sm *SparseBinaryMatrix) Clear() {
 	sm.Entries = nil
