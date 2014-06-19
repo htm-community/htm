@@ -237,6 +237,13 @@ func (sm *SparseBinaryMatrix) Clear() {
 	sm.Entries = nil
 }
 
+//Fills specified row with specified value
+func (sm *SparseBinaryMatrix) FillRow(row int, val bool) {
+	for j := 0; j < sm.Width; j++ {
+		sm.Set(row, j, val)
+	}
+}
+
 //Copys a matrix
 func (sm *SparseBinaryMatrix) Copy() *SparseBinaryMatrix {
 	result := new(SparseBinaryMatrix)
