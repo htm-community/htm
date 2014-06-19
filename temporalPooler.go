@@ -105,16 +105,17 @@ func (ds *DynamicState) Copy() *DynamicState {
 }
 
 type TemporalPooler struct {
-	params          TemporalPoolerParams
-	numberOfCells   int
-	activeColumns   []int
-	cells           [][][]Segment
-	lrnIterationIdx int
-	iterationIdx    int
-	segId           int
-	CurrentOutput   *SparseBinaryMatrix
-	pamCounter      int
-	avgInputDensity float64
+	params              TemporalPoolerParams
+	numberOfCells       int
+	activeColumns       []int
+	cells               [][][]Segment
+	lrnIterationIdx     int
+	iterationIdx        int
+	segId               int
+	CurrentOutput       *SparseBinaryMatrix
+	pamCounter          int
+	avgInputDensity     float64
+	avgLearnedSeqLength float64
 
 	//ephemeral state
 	segmentUpdates map[TupleInt][]UpdateState
@@ -462,4 +463,19 @@ func (tp *TemporalPooler) computeOutput() []bool {
 	}
 
 	return tp.CurrentOutput.Flatten()
+}
+
+/*
+Update our moving average of learned sequence length.
+*/
+
+func (tp *TemporalPooler) updateAvgLearnedSeqLength(prevSeqLength float64) {
+	alpha := 0.0
+	if tp.lrnIterationIdx < 100 {
+		alpha = 0.5
+	} else {
+		alpha = 0.1
+	}
+
+	tp.avgLearnedSeqLength = ((1.0-alpha)*tp.avgLearnedSeqLength + (alpha * prevSeqLength))
 }
