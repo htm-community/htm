@@ -479,3 +479,55 @@ func (tp *TemporalPooler) updateAvgLearnedSeqLength(prevSeqLength float64) {
 
 	tp.avgLearnedSeqLength = ((1.0-alpha)*tp.avgLearnedSeqLength + (alpha * prevSeqLength))
 }
+
+/*
+ Update the inference active state from the last set of predictions
+and the current bottom-up.
+
+This looks at:
+- infPredictedState['t-1']
+This modifies:
+- infActiveState['t']
+
+param activeColumns list of active bottom-ups
+param useStartCells If true, ignore previous predictions and simply turn on
+the start cells in the active columns
+returns True if the current input was sufficiently predicted, OR
+if we started over on startCells.
+False indicates that the current input was NOT predicted,
+and we are now bursting on most columns.
+*/
+
+func (tp *TemporalPooler) inferPhase1(activeColumns []int, useStartCells bool) bool {
+	// Start with empty active state
+	tp.DynamicState.infActiveState.Clear()
+
+	// Phase 1 - turn on predicted cells in each column receiving bottom-up
+	// If we are following a reset, activate only the start cell in each
+	// column that has bottom-up
+	numPredictedColumns := 0
+	if useStartCells {
+		for _, val := range activeColumns {
+			tp.DynamicState.infActiveState.Set(val, 0, true)
+		}
+	} else {
+		// else, turn on any predicted cells in each column. If there are none, then
+		// turn on all cells (burst the column)
+		for _, val := range activeColumns {
+			predictingCells := tp.DynamicState.infPredictedStateLast.GetRowIndices(val)
+			numPredictingCells := len(predictingCells)
+
+			if numPredictingCells > 0 {
+				//may have to set instead of replace
+				tp.DynamicState.infActiveState.ReplaceRowByIndices(val, predictingCells)
+				numPredictedColumns++
+			} else {
+				tp.DynamicState.infActiveState.FillRow(val, true) // whole column bursts
+			}
+		}
+	}
+
+	// Did we predict this input well enough?
+	return useStartCells || numPredictedColumns >= int(0.50*float64(len(activeColumns)))
+
+}
