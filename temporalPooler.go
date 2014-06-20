@@ -116,6 +116,7 @@ type TemporalPooler struct {
 	pamCounter          int
 	avgInputDensity     float64
 	avgLearnedSeqLength float64
+	resetCalled         bool
 
 	//ephemeral state
 	segmentUpdates map[TupleInt][]UpdateState
@@ -775,4 +776,51 @@ func (tp *TemporalPooler) inferBacktrack(activeColumns []int) {
 
 	// Restore the original predicted state.
 	tp.DynamicState.infPredictedState = tp.DynamicState.infPredictedStateBackup
+}
+
+/*
+ Update the inference state. Called from compute() on every iteration.
+param activeColumns The list of active column indices.
+*/
+
+func (tp *TemporalPooler) updateInferenceState(activeColumns []int) {
+
+	// Copy t to t-1
+	tp.DynamicState.infActiveStateLast = tp.DynamicState.infActiveState.Copy()
+	tp.DynamicState.infPredictedStateLast = tp.DynamicState.infPredictedState.Copy()
+	tp.DynamicState.cellConfidenceLast = tp.DynamicState.cellConfidence.Copy()
+	copy(tp.DynamicState.colConfidenceLast, tp.DynamicState.colConfidence)
+
+	// Each phase will zero/initilize the 't' states that it affects
+
+	// Update our inference input history
+	if tp.params.MaxInfBacktrack > 0 {
+		if len(tp.prevInfPatterns) > tp.params.MaxInfBacktrack {
+			//pop prev pattern
+			tp.prevInfPatterns = tp.prevInfPatterns[:len(tp.prevInfPatterns)-1]
+		}
+		tp.prevInfPatterns = append(tp.prevInfPatterns, activeColumns)
+	}
+
+	// Compute the active state given the predictions from last time step and
+	// the current bottom-up
+	inSequence := tp.inferPhase1(activeColumns, tp.resetCalled)
+
+	// If this input was considered unpredicted, let's go back in time and
+	// replay the recent inputs from start cells and see if we can lock onto
+	// this current set of inputs that way.
+	if !inSequence {
+		// inferBacktrack() will call inferPhase2() for us.
+		tp.inferBacktrack(activeColumns)
+		return
+	}
+
+	// Compute the predicted cells and the cell and column confidences
+	inSequence = tp.inferPhase2()
+
+	if !inSequence {
+		// inferBacktrack() will call inferPhase2() for us.
+		tp.inferBacktrack(activeColumns)
+	}
+
 }
