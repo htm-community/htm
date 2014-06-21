@@ -864,3 +864,95 @@ func (tp *TemporalPooler) cleanUpdatesList(col, cellIdx int, seg Segment) {
 	}
 
 }
+
+/*
+ This method goes through a list of segments for a given cell and
+deletes all synapses whose permanence is less than minPermanence and deletes
+any segments that have less than minNumSyns synapses remaining.
+
+param colIdx Column index
+param cellIdx Cell index within the column
+param segList List of segment references
+param minPermanence Any syn whose permamence is 0 or < minPermanence will
+be deleted.
+param minNumSyns Any segment with less than minNumSyns synapses remaining
+in it will be deleted.
+
+returns tuple (numSegsRemoved, numSynsRemoved)
+*/
+
+func (tp *TemporalPooler) trimSegmentsInCell(colIdx, cellIdx int, segList []Segment,
+	minPermanence float64, minNumSyns int) (int, int) {
+
+	// Fill in defaults
+	//minPermanence = tp.connectedPerm
+	//minNumSyns = tp.activationThreshold
+
+	// Loop through all segments
+	nSegsRemoved, nSynsRemoved := 0, 0
+	var segsToDel []Segment // collect and remove segments outside the loop
+
+	for idx, segment := range segList {
+		// List if synapses to delete
+		var synsToDel []Synapse
+
+		for idx, syn := range segment.syns {
+			if syn.Permanence < minPermanence {
+				synsToDel = append(synsToDel, syn)
+			}
+		}
+
+		nSynsRemoved := 0
+		if len(synsToDel) == len(segment.syns) {
+			segsToDel = append(segsToDel, segment) // will remove the whole segment
+		} else {
+			if len(synsToDel) > 0 {
+				var temp []Synapse
+				for _, osyn := range segment.syns {
+					found := false
+					for idx, syn := range synsToDel {
+						if syn == osyn {
+							found = true
+							break
+						}
+						nSynsRemoved++
+					}
+					if !found {
+						temp = append(temp, osyn)
+					}
+				}
+				segment.syns = temp
+				nSynsRemoved += len(synsToDel)
+
+				//for syn in synsToDel: // remove some synapses on segment
+				//	segment.syns.remove(syn)
+
+			}
+
+			if len(segment.syns) < minNumSyns {
+				segsToDel = append(segsToDel, segment)
+			}
+		}
+	}
+
+	// Remove segments that don't have enough synapses and also take them
+	// out of the segment update list, if they are in there
+	nSegsRemoved += len(segsToDel)
+
+	// remove some segments of this cell
+	for _, seg := range segsToDel {
+		tp.cleanUpdatesList(colIdx, cellIdx, seg)
+		for idx, val := range tp.cells[colIdx][cellIdx] {
+			if val == seg {
+				tp.cells[colIdx][cellIdx] =
+					copy(tp.cells[colIdx][cellIdx][idx:], tp.cells[colIdx][cellIdx][idx+1:])
+				tp.cells[colIdx][cellIdx][len(tp.cells[colIdx][cellIdx])-1] = nil // or the zero value of T
+				tp.cells[colIdx][cellIdx] = tp.cells[colIdx][cellIdx][:len(tp.cells[colIdx][cellIdx])-1]
+				break
+			}
+		}
+		nSynsRemoved += len(seg.syns)
+	}
+
+	return nSegsRemoved, nSynsRemoved
+}
