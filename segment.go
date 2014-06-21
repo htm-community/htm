@@ -218,7 +218,7 @@ param delta How much to add to each permanence
 returns True if synapse reached 0
 */
 
-func (s *Segment) updateSynapse(synapses []int, delta float64) bool {
+func (s *Segment) updateSynapses(synapses []int, delta float64) bool {
 	hitZero := false
 
 	if delta > 0 {

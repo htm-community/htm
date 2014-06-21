@@ -65,8 +65,8 @@ by permanenceDec.
 
 We also increment the positiveActivations count of the segment.
 
-@param segUpdate SegmentUpdate instance
-@returns True if some synapses were decremented to 0 and the segment is a
+param segUpdate SegmentUpdate instance
+returns True if some synapses were decremented to 0 and the segment is a
 candidate for trimming
 */
 
@@ -85,9 +85,7 @@ func (segUpdate *SegmentUpdate) adaptSegments(tp *TemporalPooler) bool {
 	// synToCreate is not empty only if positiveReinforcement is True.
 	// NOTE: the synapse indices start at *1* to skip the segment flags.
 	activeSynapses := segUpdate.activeSynapses
-	//segment := segUpdate.segment
 
-	//synToUpdate := set([syn for syn in activeSynapses if type(syn) == int])
 	var synToUpdate []int
 	for _, val := range activeSynapses {
 		if !val.New {
@@ -105,8 +103,6 @@ func (segUpdate *SegmentUpdate) adaptSegments(tp *TemporalPooler) bool {
 		segment.dutyCycle(true, false)
 
 		// First, decrement synapses that are not active
-		// s is a synapse *index*, with index 0 in the segment being the tuple
-		// (segId, sequence segment flag). See below, creation of segments.
 		lastSynIndex := len(segment.syns) - 1
 
 		var inactiveSynIndices []int
@@ -119,7 +115,6 @@ func (segUpdate *SegmentUpdate) adaptSegments(tp *TemporalPooler) bool {
 		trimSegment = segment.updateSynapses(inactiveSynIndices, -tp.params.PermanenceDec)
 
 		// Now, increment active synapses
-		//activeSynIndices = [syn for syn in synToUpdate if syn <= lastSynIndex]
 		var activeSynIndices []int
 		for _, val := range activeSynapses {
 			if val.Index <= lastSynIndex {

@@ -18,6 +18,14 @@ const (
 	ActiveState1CellPerCol TpOutputType = 2
 )
 
+type ProcessAction int
+
+const (
+	Update ProcessAction = 0
+	Keep   ProcessAction = 1
+	Remove ProcessAction = 2
+)
+
 type TemporalPoolerParams struct {
 	NumberOfCols           int
 	CellsPerColumn         int
@@ -823,4 +831,14 @@ func (tp *TemporalPooler) updateInferenceState(activeColumns []int) {
 		tp.inferBacktrack(activeColumns)
 	}
 
+}
+
+/*
+Remove a segment update (called when seg update expires or is processed)
+*/
+
+func (tp *TemporalPooler) removeSegmentUpdate(updateState UpdateState) {
+	// Key is stored in segUpdate itself...
+	key := TupleInt{updateState.Update.columnIdx, updateState.Update.cellIdx}
+	delete(tp.segmentUpdates, key)
 }
