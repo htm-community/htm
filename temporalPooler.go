@@ -842,3 +842,25 @@ func (tp *TemporalPooler) removeSegmentUpdate(updateState UpdateState) {
 	key := TupleInt{updateState.Update.columnIdx, updateState.Update.cellIdx}
 	delete(tp.segmentUpdates, key)
 }
+
+/*
+ Removes any update that would be for the given col, cellIdx, segIdx.
+NOTE: logically, we need to do this when we delete segments, so that if
+an update refers to a segment that was just deleted, we also remove
+that update from the update list. However, I haven't seen it trigger
+in any of the unit tests yet, so it might mean that it's not needed
+and that situation doesn't occur, by construction.
+*/
+
+func (tp *TemporalPooler) cleanUpdatesList(col, cellIdx int, seg Segment) {
+	for idx, val := range tp.segmentUpdates {
+		if idx.A == col && idx.B == cellIdx {
+			for _, update := range val {
+				if update.Update.segment == seg {
+					tp.removeSegmentUpdate(update)
+				}
+			}
+		}
+	}
+
+}
