@@ -956,3 +956,82 @@ func (tp *TemporalPooler) trimSegmentsInCell(colIdx, cellIdx int, segList []Segm
 
 	return nSegsRemoved, nSynsRemoved
 }
+
+/*
+ Go through the list of accumulated segment updates and process them
+as follows:
+
+if the segment update is too old, remove the update
+else if the cell received bottom-up, update its permanences
+else if it's still being predicted, leave it in the queue
+else remove it.
+*/
+
+func (tp *TemporalPooler) processSegmentUpdates(activeColumns []int) {
+	// The segmentUpdates dict has keys which are the column,cellIdx of the
+	// owner cell. The values are lists of segment updates for that cell
+	var removeKeys []TupleInt
+	var trimSegments []UpdateState
+
+	for key, updateList := range tp.segmentUpdates {
+		// Get the column number and cell index of the owner cell
+		var action ProcessAction
+
+		// If the cell received bottom-up, update its segments
+		if ContainsInt(key.A, activeColumns) {
+			action = Update
+		} else {
+			// If not, either keep it around if it's still predicted, or remove it
+			// If it is still predicted, and we are pooling, keep it around
+			if tp.params.DoPooling && tp.DynamicState.lrnPredictedState.Get(key.A, key.B) {
+				action = Keep
+			} else {
+				action = Remove
+			}
+		}
+
+		// Process each segment for this cell. Each segment entry contains
+		// [creationDate, SegmentState]
+		var updateListKeep []SegmentUpdate
+		if action != Remove {
+			for idx, updateState := range updateList {
+				// If this segment has expired. Ignore this update (and hence remove it
+				// from list)
+				if tp.lrnIterationIdx-updateState.CreationDate > tp.params.SegUpdateValidDuration {
+					continue
+				}
+
+				if action == Update {
+					trimSegment := SegmentUpdate.adaptSegments(tp)
+					if trimSegment {
+						trimSegments = append(trimSegments, updateState)
+					}
+				} else {
+					// Keep segments that haven't expired yet (the cell is still being
+					// predicted)
+					updateListKeep = append(updateListKeep, updateState)
+
+				}
+
+			}
+		}
+
+		tp.segmentUpdates[key] = updateListKeep
+		if len(updateListKeep) == 0 {
+			removeKeys = append(removeKeys, key)
+		}
+
+	} //end segment update loop
+
+	// Clean out empty segment updates
+	for _, k := range removeKeys {
+		delete(tp.segmentUpdates, k)
+	}
+
+	// Trim segments that had synapses go to 0
+	for idx, val := range trimSegments {
+		ud := val.Update
+		tp.trimSegmentsInCell(ud.colIdx, ud.cellIdx, []Segment{&ud.segment}, 0.00001, 0)
+	}
+
+}
