@@ -856,7 +856,7 @@ func (tp *TemporalPooler) cleanUpdatesList(col, cellIdx int, seg Segment) {
 	for idx, val := range tp.segmentUpdates {
 		if idx.A == col && idx.B == cellIdx {
 			for _, update := range val {
-				if update.Update.segment == seg {
+				if update.Update.segment.Equals(&seg) {
 					tp.removeSegmentUpdate(update)
 				}
 			}
@@ -892,11 +892,11 @@ func (tp *TemporalPooler) trimSegmentsInCell(colIdx, cellIdx int, segList []Segm
 	nSegsRemoved, nSynsRemoved := 0, 0
 	var segsToDel []Segment // collect and remove segments outside the loop
 
-	for idx, segment := range segList {
+	for _, segment := range segList {
 		// List if synapses to delete
 		var synsToDel []Synapse
 
-		for idx, syn := range segment.syns {
+		for _, syn := range segment.syns {
 			if syn.Permanence < minPermanence {
 				synsToDel = append(synsToDel, syn)
 			}
@@ -910,7 +910,7 @@ func (tp *TemporalPooler) trimSegmentsInCell(colIdx, cellIdx int, segList []Segm
 				var temp []Synapse
 				for _, osyn := range segment.syns {
 					found := false
-					for idx, syn := range synsToDel {
+					for _, syn := range synsToDel {
 						if syn == osyn {
 							found = true
 							break
@@ -943,10 +943,9 @@ func (tp *TemporalPooler) trimSegmentsInCell(colIdx, cellIdx int, segList []Segm
 	for _, seg := range segsToDel {
 		tp.cleanUpdatesList(colIdx, cellIdx, seg)
 		for idx, val := range tp.cells[colIdx][cellIdx] {
-			if val == seg {
-				tp.cells[colIdx][cellIdx] =
-					copy(tp.cells[colIdx][cellIdx][idx:], tp.cells[colIdx][cellIdx][idx+1:])
-				tp.cells[colIdx][cellIdx][len(tp.cells[colIdx][cellIdx])-1] = nil // or the zero value of T
+			if val.Equals(&seg) {
+				copy(tp.cells[colIdx][cellIdx][idx:], tp.cells[colIdx][cellIdx][idx+1:])
+				tp.cells[colIdx][cellIdx][len(tp.cells[colIdx][cellIdx])-1] = Segment{}
 				tp.cells[colIdx][cellIdx] = tp.cells[colIdx][cellIdx][:len(tp.cells[colIdx][cellIdx])-1]
 				break
 			}
@@ -992,9 +991,9 @@ func (tp *TemporalPooler) processSegmentUpdates(activeColumns []int) {
 
 		// Process each segment for this cell. Each segment entry contains
 		// [creationDate, SegmentState]
-		var updateListKeep []SegmentUpdate
+		var updateListKeep []UpdateState
 		if action != Remove {
-			for idx, updateState := range updateList {
+			for _, updateState := range updateList {
 				// If this segment has expired. Ignore this update (and hence remove it
 				// from list)
 				if tp.lrnIterationIdx-updateState.CreationDate > tp.params.SegUpdateValidDuration {
@@ -1002,7 +1001,7 @@ func (tp *TemporalPooler) processSegmentUpdates(activeColumns []int) {
 				}
 
 				if action == Update {
-					trimSegment := SegmentUpdate.adaptSegments(tp)
+					trimSegment := updateState.Update.adaptSegments(tp)
 					if trimSegment {
 						trimSegments = append(trimSegments, updateState)
 					}
@@ -1029,9 +1028,69 @@ func (tp *TemporalPooler) processSegmentUpdates(activeColumns []int) {
 	}
 
 	// Trim segments that had synapses go to 0
-	for idx, val := range trimSegments {
+	for _, val := range trimSegments {
 		ud := val.Update
-		tp.trimSegmentsInCell(ud.colIdx, ud.cellIdx, []Segment{&ud.segment}, 0.00001, 0)
+		tp.trimSegmentsInCell(ud.columnIdx, ud.cellIdx, []Segment{*ud.segment}, 0.00001, 0)
 	}
 
 }
+
+/*
+ A utility method called from learnBacktrack. This will backtrack
+starting from the given startOffset in our prevLrnPatterns queue.
+
+It returns True if the backtrack was successful and we managed to get
+predictions all the way up to the current time step.
+
+If readOnly, then no segments are updated or modified, otherwise, all
+segment updates that belong to the given path are applied.
+
+This updates/modifies:
+- lrnActiveState['t']
+
+This trashes:
+- lrnPredictedState['t']
+- lrnPredictedState['t-1']
+- lrnActiveState['t-1']
+
+param startOffset Start offset within the prevLrnPatterns input history
+returns True if we managed to lock on to a sequence that started
+earlier.
+If False, we lost predictions somewhere along the way
+leading up to the current time.
+*/
+
+// func (tp *TemporalPooler) updateInferenceState(startOffset int, readOnly bool) {
+// 	// How much input history have we accumulated?
+// 	// The current input is always at the end of self._prevInfPatterns (at
+// 	// index -1), but it is also evaluated as a potential starting point by
+// 	// turning on it's start cells and seeing if it generates sufficient
+// 	// predictions going forward.
+// 	numPrevPatterns := len(tp.prevLrnPatterns)
+
+// 	// This is an easy to use label for the current time step
+// 	currentTimeStepsOffset := numPrevPatterns - 1
+
+// 	// Clear out any old segment updates. learnPhase2() adds to the segment
+// 	// updates if we're not readOnly
+// 	if !readOnly {
+// 		tp.segmentUpdates = nil
+// 	}
+
+// 	// Play through up to the current time step
+// 	inSequence := true
+// 	for offset := startOffset; offset < numPrevPatterns; offset++ {
+// 		// Copy predicted and active states into t-1
+// 		tp.DynamicState.lrnPredictedStateLast = tp.DynamicState.lrnPredictedState.Copy()
+// 		tp.DynamicState.lrnActiveStateLast = tp.DynamicState.lrnActiveState.Copy()
+
+// 		// Get the input pattern
+// 		inputColumns := tp.prevLrnPatterns[offset]
+
+// 		// Apply segment updates from the last set of predictions
+// 		if !readOnly {
+// 			tp.processSegmentUpdates(inputColumns)
+// 		}
+
+// 	}
+// }
