@@ -32,6 +32,52 @@ type Segment struct {
 	dutyCycleAlphas           []float64
 }
 
+func (s *Segment) Equals(seg *Segment) bool {
+	synsEqual := true
+
+	if len(s.syns) != len(seg.syns) {
+		return false
+	}
+
+	for idx, val := range s.syns {
+		if seg.syns[idx].Permanence != val.Permanence ||
+			seg.syns[idx].SrcCellCol != val.SrcCellCol || seg.syns[idx].SrcCellIdx != val.SrcCellIdx {
+			return false
+		}
+	}
+
+	if len(s.dutyCycleTiers) != len(seg.dutyCycleTiers) {
+		return false
+	}
+
+	for idx, val := range s.dutyCycleTiers {
+		if seg.dutyCycleTiers[idx] != val {
+			return false
+		}
+	}
+
+	if len(s.dutyCycleAlphas) != len(seg.dutyCycleAlphas) {
+		return false
+	}
+
+	for idx, val := range s.dutyCycleAlphas {
+		if seg.dutyCycleAlphas[idx] != val {
+			return false
+		}
+	}
+
+	return synsEqual &&
+		s.tp == seg.tp &&
+		s.segId == seg.segId &&
+		s.isSequenceSeg == seg.isSequenceSeg &&
+		s.lastActiveIteration == seg.lastActiveIteration &&
+		s.positiveActivations == seg.positiveActivations &&
+		s.totalActivations == seg.totalActivations &&
+		s.lastPosDutyCycle == seg.lastPosDutyCycle &&
+		s.lastPosDutyCycleIteration == seg.lastPosDutyCycleIteration
+
+}
+
 //Creates a new segment
 func NewSegment(tp *TemporalPooler, isSequenceSeg bool) *Segment {
 	seg := Segment{}
