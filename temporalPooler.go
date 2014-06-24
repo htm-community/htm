@@ -2,11 +2,11 @@ package htm
 
 import (
 	//"fmt"
-	//"github.com/cznic/mathutil"
+	"github.com/cznic/mathutil"
 	"github.com/zacg/floats"
 	"github.com/zacg/go.matrix"
-	//"math"
-	//"math/rand"
+	"math"
+	"math/rand"
 	//"sort"
 )
 
@@ -1036,61 +1036,49 @@ func (tp *TemporalPooler) processSegmentUpdates(activeColumns []int) {
 }
 
 /*
- A utility method called from learnBacktrack. This will backtrack
-starting from the given startOffset in our prevLrnPatterns queue.
+ Find weakly activated cell in column with at least minThreshold active
+synapses.
 
-It returns True if the backtrack was successful and we managed to get
-predictions all the way up to the current time step.
+param c which column to look at
+param activeState the active cells
+param minThreshold minimum number of synapses required
 
-If readOnly, then no segments are updated or modified, otherwise, all
-segment updates that belong to the given path are applied.
-
-This updates/modifies:
-- lrnActiveState['t']
-
-This trashes:
-- lrnPredictedState['t']
-- lrnPredictedState['t-1']
-- lrnActiveState['t-1']
-
-param startOffset Start offset within the prevLrnPatterns input history
-returns True if we managed to lock on to a sequence that started
-earlier.
-If False, we lost predictions somewhere along the way
-leading up to the current time.
+returns tuple (cellIdx, segment, numActiveSynapses)
 */
 
-// func (tp *TemporalPooler) updateInferenceState(startOffset int, readOnly bool) {
-// 	// How much input history have we accumulated?
-// 	// The current input is always at the end of self._prevInfPatterns (at
-// 	// index -1), but it is also evaluated as a potential starting point by
-// 	// turning on it's start cells and seeing if it generates sufficient
-// 	// predictions going forward.
-// 	numPrevPatterns := len(tp.prevLrnPatterns)
+func (tp *TemporalPooler) getBestMatchingCell(c int, activeState *SparseBinaryMatrix, minThreshold int) (int, *Segment, int) {
+	// Collect all cells in column c that have at least minThreshold in the most
+	// activated segment
+	bestActivityInCol := minThreshold
+	bestSegIdxInCol := -1
+	bestCellInCol := -1
 
-// 	// This is an easy to use label for the current time step
-// 	currentTimeStepsOffset := numPrevPatterns - 1
+	for i := 0; i < tp.params.CellsPerColumn; i++ {
+		maxSegActivity := 0
+		maxSegIdx := 0
 
-// 	// Clear out any old segment updates. learnPhase2() adds to the segment
-// 	// updates if we're not readOnly
-// 	if !readOnly {
-// 		tp.segmentUpdates = nil
-// 	}
+		for idx, s := range tp.cells[c][i] {
+			activity := tp.getSegmentActivityLevel(s, activeState, false)
 
-// 	// Play through up to the current time step
-// 	inSequence := true
-// 	for offset := startOffset; offset < numPrevPatterns; offset++ {
-// 		// Copy predicted and active states into t-1
-// 		tp.DynamicState.lrnPredictedStateLast = tp.DynamicState.lrnPredictedState.Copy()
-// 		tp.DynamicState.lrnActiveStateLast = tp.DynamicState.lrnActiveState.Copy()
+			if activity > maxSegActivity {
+				maxSegActivity = activity
+				maxSegIdx = idx
+			}
 
-// 		// Get the input pattern
-// 		inputColumns := tp.prevLrnPatterns[offset]
+		}
 
-// 		// Apply segment updates from the last set of predictions
-// 		if !readOnly {
-// 			tp.processSegmentUpdates(inputColumns)
-// 		}
+		if maxSegActivity >= bestActivityInCol {
+			bestActivityInCol = maxSegActivity
+			bestSegIdxInCol = maxSegIdx
+			bestCellInCol = i
+		}
 
-// 	}
-// }
+	}
+
+	if bestCellInCol == -1 {
+		return -1, nil, -1
+	} else {
+		return bestCellInCol, &tp.cells[c][bestCellInCol][bestSegIdxInCol], bestActivityInCol
+	}
+
+}
