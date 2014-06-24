@@ -5,7 +5,7 @@ import (
 	"github.com/cznic/mathutil"
 	"github.com/zacg/floats"
 	"github.com/zacg/go.matrix"
-	"math"
+	//"math"
 	"math/rand"
 	//"sort"
 )
@@ -1091,7 +1091,7 @@ func (tp *TemporalPooler) getBestMatchingCell(c int, activeState *SparseBinaryMa
  timeStep = t, and we cache that set of candidates.
 */
 
-func (tp *TemporalPooler) chooseCellsToLearnFrom(s *Segment, n int, activeState *SparseBinaryMatrix) *[]TupleInt {
+func (tp *TemporalPooler) chooseCellsToLearnFrom(s *Segment, n int, activeState *SparseBinaryMatrix) []SparseEntry {
 	if n <= 0 {
 		return nil
 	}
@@ -1103,15 +1103,15 @@ func (tp *TemporalPooler) chooseCellsToLearnFrom(s *Segment, n int, activeState 
 		return nil
 	}
 
-	var candidates []TupleInt
+	var candidates []SparseEntry
 
 	if s != nil {
 		// We exclude any synapse that is already in this segment.
-		for idx, cand := range activeState.Entries {
+		for _, cand := range activeState.Entries {
 			found := false
-			for _, syn := range Segment.syns {
-				if syn.SrcCellCol == cand.B &&
-					syn.SrcCellIdx == cand.A {
+			for _, syn := range s.syns {
+				if syn.SrcCellCol == cand.Col &&
+					syn.SrcCellIdx == cand.Row {
 					found = true
 					break
 				}
@@ -1121,24 +1121,25 @@ func (tp *TemporalPooler) chooseCellsToLearnFrom(s *Segment, n int, activeState 
 			}
 		}
 	} else {
-		copy(cands, activeState.Entries)
+		copy(candidates, activeState.Entries)
 	}
 
 	// If we have no more candidates than requested, return all of them,
 	// no shuffle necessary.
-	if len(cands) <= n {
+	if len(candidates) <= n {
 		return candidates
 	}
 
 	//if only one is required pick a random candidate
 	if n == 1 {
 		idx := rand.Intn(len(candidates))
-		return []TupleInt{TupleInt{canidates[idx].A, candidates[idx].B}} // col and cell idx in col
+		return []SparseEntry{candidates[idx]} // col and cell idx in col
 	}
 
 	// If we need more than one candidate pick a random selection
-	idxs := RandomSample(mathutil.Min(n, len(candidates)))
-	result := make([]tuple, len(idxs))
+	size := mathutil.Min(n, len(candidates))
+	idxs := RandomInts(size, size)
+	result := make([]SparseEntry, len(idxs))
 	for idx, val := range idxs {
 		result[idx] = candidates[val]
 	}
@@ -1163,7 +1164,7 @@ func (tp *TemporalPooler) getCellForNewSegment(colIdx int) int {
 		i := 0
 		if tp.params.CellsPerColumn > 1 {
 			// Don't ever choose the start cell (cell # 0) in each column
-			i := rand.Intn(tp.params.CellsPerColumn-1) + 1
+			i = rand.Intn(tp.params.CellsPerColumn-1) + 1
 		}
 		return i
 	}
@@ -1186,7 +1187,7 @@ func (tp *TemporalPooler) getCellForNewSegment(colIdx int) int {
 	}
 
 	for i := minIdx; i <= maxIdx; i++ {
-		numSegs := len(tp.cells[colidx][i])
+		numSegs := len(tp.cells[colIdx][i])
 		if numSegs < tp.params.MaxSegmentsPerCell {
 			candidateCellIdxs = append(candidateCellIdxs, i)
 		}
@@ -1195,12 +1196,7 @@ func (tp *TemporalPooler) getCellForNewSegment(colIdx int) int {
 	// If we found one, return with it. Note we need to use _random to maintain
 	// correspondence with CPP code.
 	if len(candidateCellIdxs) > 0 {
-		idxs := RandomSample(len(candidateCellIdxs))
-		result := make([]int, len(candidateCellIdxs))
-		for idx, val := range idxs {
-			result[idx] = candidateCellIdxs[val]
-		}
-		return result
+		return candidateCellIdxs[rand.Intn(len(candidateCellIdxs))]
 	}
 
 	// All cells in the column are full, find a segment to free up
@@ -1226,10 +1222,38 @@ func (tp *TemporalPooler) getCellForNewSegment(colIdx int) int {
 
 	//delete segment from cells
 	copy(tp.cells[colIdx][candidateCellIdx][candidateSegIdx:], tp.cells[colIdx][candidateCellIdx][candidateSegIdx+1:])
-	tp.cells[colIdx][candidateCellIdx][len(tp.cells[colIdx][candidateCellIdx])-1] = nil // or the zero value of T
+	tp.cells[colIdx][candidateCellIdx][len(tp.cells[colIdx][candidateCellIdx])-1] = Segment{} // or the zero value of T
 	tp.cells[colIdx][candidateCellIdx] = tp.cells[colIdx][candidateCellIdx][:len(tp.cells[colIdx][candidateCellIdx])-1]
 
 	return candidateCellIdx
+}
+
+/*
+ For the given cell, find the segment with the largest number of active
+synapses. This routine is aggressive in finding the best match. The
+permanence value of synapses is allowed to be below connectedPerm. The number
+of active synapses is allowed to be below activationThreshold, but must be
+above minThreshold. The routine returns the segment
+*/
+
+func (tp *TemporalPooler) getBestMatchingSegment(c int, i int, activeState *SparseBinaryMatrix) *Segment {
+	maxActivity := tp.params.MinThreshold
+	which := -1
+
+	for idx, s := range tp.cells[c][i] {
+		activity := tp.getSegmentActivityLevel(s, activeState, false)
+		if activity >= maxActivity {
+			maxActivity = activity
+			which = idx
+		}
+	}
+
+	if which == -1 {
+		return nil
+	} else {
+		return &tp.cells[c][i][which]
+	}
+
 }
 
 /*
@@ -1255,7 +1279,6 @@ This modifies:
 */
 
 func (tp *TemporalPooler) learnPhase1(activeColumns []int, readOnly bool) bool {
-
 	// Save previous active state and start out on a clean slate
 	tp.DynamicState.lrnActiveState.Clear()
 
@@ -1285,9 +1308,9 @@ func (tp *TemporalPooler) learnPhase1(activeColumns []int, readOnly bool) bool {
 
 		// If no predicted cell, pick the closest matching one to reinforce, or
 		// if none exists, create a new segment on a cell in that column
-		i, s, numActive := tp.getBestMatchingCell(c, tp.DynamicState.lrnActiveStateLast, tp.params.MinThreshold)
+		i, s, _ := tp.getBestMatchingCell(c, tp.DynamicState.lrnActiveStateLast, tp.params.MinThreshold)
 
-		if s != nil && s.isSequenceSeg() {
+		if s != nil && s.isSequenceSeg {
 			tp.DynamicState.lrnActiveState.Set(c, i, true)
 			segUpdate := tp.getSegmentActiveSynapses(c, i, s, tp.DynamicState.lrnActiveStateLast, true)
 			s.totalActivations++
@@ -1296,7 +1319,7 @@ func (tp *TemporalPooler) learnPhase1(activeColumns []int, readOnly bool) bool {
 			trimSegment := segUpdate.adaptSegments(tp)
 
 			if trimSegment {
-				tp.trimSegmentsInCell(c, i, []Segment{s}, 0.00001, 0)
+				tp.trimSegmentsInCell(c, i, []Segment{*s}, 0.00001, 0)
 			}
 
 		} else {
@@ -1309,13 +1332,14 @@ func (tp *TemporalPooler) learnPhase1(activeColumns []int, readOnly bool) bool {
 			segUpdate.adaptSegments(tp) // No need to check whether perm reached 0
 		}
 
-		// Determine if we are out of sequence or not and reset our PAM counter
-		// if we are in sequence
-		numBottomUpColumns := len(activeColumns)
-
-		//true if in sequence, false if out of sequence
-		return numUnpredictedColumns < numBottomUpColumns/2
 	}
+
+	// Determine if we are out of sequence or not and reset our PAM counter
+	// if we are in sequence
+	numBottomUpColumns := len(activeColumns)
+
+	//true if in sequence, false if out of sequence
+	return numUnpredictedColumns < numBottomUpColumns/2
 
 }
 
@@ -1349,7 +1373,7 @@ func (tp *TemporalPooler) learnPhase2(readOnly bool) {
 	for c := 0; c < tp.params.NumberOfCols; c++ {
 		// Is there a cell predicted to turn on in this column?
 		i, s, numActive := tp.getBestMatchingCell(c, tp.DynamicState.lrnActiveState, tp.params.ActivationThreshold)
-		if i == nil {
+		if i == -1 {
 			continue
 		}
 
@@ -1362,7 +1386,7 @@ func (tp *TemporalPooler) learnPhase2(readOnly bool) {
 		}
 
 		//Queue up this segment for updating
-		newSyns := numActive < self.newSynapseCount
+		newSyns := numActive < tp.params.NewSynapseCount
 		segUpdate := tp.getSegmentActiveSynapses(c, i, s, tp.DynamicState.lrnActiveState, newSyns)
 
 		s.totalActivations++ // increment totalActivations
@@ -1371,9 +1395,8 @@ func (tp *TemporalPooler) learnPhase2(readOnly bool) {
 		if tp.params.DoPooling {
 			// creates a new pooling segment if no best matching segment found
 			// sum(all synapses) >= minThreshold, "weak" activation
-			predSegment := self.getBestMatchingSegment(c, i, tp.DynamicState.lrnActiveStateLast)
-			predSegment.getSegmentActiveSynapses(c, i, tp, tp.DynamicState.lrnActiveStateLast, true)
-			segUpdate = self.getSegmentActiveSynapses()
+			predSegment := tp.getBestMatchingSegment(c, i, tp.DynamicState.lrnActiveStateLast)
+			segUpdate := tp.getSegmentActiveSynapses(c, i, predSegment, tp.DynamicState.lrnActiveStateLast, true)
 			tp.addToSegmentUpdates(c, i, segUpdate)
 		}
 
@@ -1463,8 +1486,8 @@ func (tp *TemporalPooler) learnBacktrackFrom(startOffset int, readOnly bool) boo
 		// up active segments into self.segmentUpdates, unless this is readOnly
 		tp.learnPhase2(readOnly)
 
-		// Return whether or not this starting point was valid
-		return inSequence
-
 	}
+
+	// Return whether or not this starting point was valid
+	return inSequence
 }
