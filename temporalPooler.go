@@ -1318,3 +1318,65 @@ func (tp *TemporalPooler) learnPhase1(activeColumns []int, readOnly bool) bool {
 	}
 
 }
+
+/*
+ Compute the predicted segments given the current set of active cells.
+
+param readOnly True if being called from backtracking logic.
+This tells us not to increment any segment
+duty cycles or queue up any updates.
+
+This computes the lrnPredictedState['t'] and queues up any segments that
+became active (and the list of active synapses for each segment) into
+the segmentUpdates queue
+
+This looks at:
+- ref lrnActiveState['t']
+
+This modifies:
+- ref lrnPredictedState['t']
+- ref segmentUpdates
+*/
+
+func (tp *TemporalPooler) learnPhase2(readOnly bool) {
+	// Clear out predicted state to start with
+	tp.DynamicState.lrnPredictedState.Clear()
+
+	// Compute new predicted state. When computing predictions for
+	// phase 2, we predict at most one cell per column (the one with the best
+	// matching segment).
+
+	for c := 0; c < tp.params.NumberOfCols; c++ {
+		// Is there a cell predicted to turn on in this column?
+		i, s, numActive := tp.getBestMatchingCell(c, tp.DynamicState.lrnActiveState, tp.params.ActivationThreshold)
+		if i == nil {
+			continue
+		}
+
+		// Turn on the predicted state for the best matching cell and queue
+		// the pertinent segment up for an update, which will get processed if
+		// the cell receives bottom up in the future.
+		tp.DynamicState.lrnPredictedState.Set(c, i, true)
+		if readOnly {
+			continue
+		}
+
+		//Queue up this segment for updating
+		newSyns := numActive < self.newSynapseCount
+		segUpdate := tp.getSegmentActiveSynapses(c, i, s, tp.DynamicState.lrnActiveState, newSyns)
+
+		s.totalActivations++ // increment totalActivations
+		tp.addToSegmentUpdates(c, i, segUpdate)
+
+		if tp.params.DoPooling {
+			// creates a new pooling segment if no best matching segment found
+			// sum(all synapses) >= minThreshold, "weak" activation
+			predSegment := self.getBestMatchingSegment(c, i, tp.DynamicState.lrnActiveStateLast)
+			predSegment.getSegmentActiveSynapses(c, i, tp, tp.DynamicState.lrnActiveStateLast, true)
+			segUpdate = self.getSegmentActiveSynapses()
+			tp.addToSegmentUpdates(c, i, segUpdate)
+		}
+
+	}
+
+}
