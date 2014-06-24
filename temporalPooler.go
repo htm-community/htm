@@ -1082,3 +1082,65 @@ func (tp *TemporalPooler) getBestMatchingCell(c int, activeState *SparseBinaryMa
 	}
 
 }
+
+/*
+ Choose n random cells to learn from.
+
+ This function is called several times while learning with timeStep = t-1, so
+ we cache the set of candidates for that case. It's also called once with
+ timeStep = t, and we cache that set of candidates.
+*/
+
+func (tp *TemporalPooler) chooseCellsToLearnFrom(s *Segment, n int, activeState *SparseBinaryMatrix) *[]TupleInt {
+	if n <= 0 {
+		return nil
+	}
+
+	// Candidates can be empty at this point, in which case we return
+	// an empty segment list. adaptSegments will do nothing when getting
+	// that list.
+	if len(activeState.Entries) == 0 {
+		return nil
+	}
+
+	var candidates []TupleInt
+
+	if s != nil {
+		// We exclude any synapse that is already in this segment.
+		for idx, cand := range activeState.Entries {
+			found := false
+			for _, syn := range Segment.syns {
+				if syn.SrcCellCol == cand.B &&
+					syn.SrcCellIdx == cand.A {
+					found = true
+					break
+				}
+			}
+			if !found {
+				candidates = append(candidates, cand)
+			}
+		}
+	} else {
+		copy(cands, activeState.Entries)
+	}
+
+	// If we have no more candidates than requested, return all of them,
+	// no shuffle necessary.
+	if len(cands) <= n {
+		return candidates
+	}
+
+	//if only one is required pick a random candidate
+	if n == 1 {
+		idx := rand.Intn(len(candidates))
+		return []TupleInt{TupleInt{canidates[idx].A, candidates[idx].B}} // col and cell idx in col
+	}
+
+	// If we need more than one candidate pick a random selection
+	idxs := RandomSample(mathutil.Min(n, len(candidates)))
+	result := make([]tuple, len(idxs))
+	for idx, val := range idxs {
+		result[idx] = candidates[val]
+	}
+	return result
+}
