@@ -296,3 +296,39 @@ Adds a new synapse
 func (s *Segment) AddSynapse(srcCellCol, srcCellIdx int, perm float64) {
 	s.syns = append(s.syns, Synapse{srcCellCol, srcCellIdx, perm})
 }
+
+/*
+ Return a segmentUpdate data structure containing a list of proposed
+changes to segment s. Let activeSynapses be the list of active synapses
+where the originating cells have their activeState output = true at time step
+t. (This list is empty if s is None since the segment doesn't exist.)
+newSynapses is an optional argument that defaults to false. If newSynapses
+is true, then newSynapseCount - len(activeSynapses) synapses are added to
+activeSynapses. These synapses are randomly chosen from the set of cells
+that have learnState = true at timeStep.
+*/
+
+func (se *Segment) getSegmentActiveSynapses(c int, i int, s *Segment, activeState *SparseBinaryMatrix, newSynapses bool) *SegmentUpdate {
+	var activeSynapses []SynapseUpdateState
+
+	if s != nil {
+		for idx, val := range s.syns {
+			if activeState.Get(val.SrcCellIdx, val.SrcCellCol) {
+				temp := SynapseUpdateState{}
+				temp.Index = idx
+				activeSynapses = append(activeSynapses, temp)
+			}
+		}
+	}
+
+	if newSynapses {
+		nSynapsesToAdd := tp.newSynapseCount - len(activeSynapses)
+		newSyns := tp.chooseCellsToLearnFrom(s, nSynapsesToAdd, activeState)
+	}
+
+	// It's still possible that activeSynapses is empty, and this will
+	// be handled in addToSegmentUpdates
+
+	return update
+
+}
