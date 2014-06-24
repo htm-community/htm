@@ -1380,3 +1380,91 @@ func (tp *TemporalPooler) learnPhase2(readOnly bool) {
 	}
 
 }
+
+/*
+ A utility method called from learnBacktrack. This will backtrack
+starting from the given startOffset in our prevLrnPatterns queue.
+
+It returns True if the backtrack was successful and we managed to get
+predictions all the way up to the current time step.
+
+If readOnly, then no segments are updated or modified, otherwise, all
+segment updates that belong to the given path are applied.
+
+This updates/modifies:
+- lrnActiveState['t']
+
+This trashes:
+- lrnPredictedState['t']
+- lrnPredictedState['t-1']
+- lrnActiveState['t-1']
+
+param startOffset Start offset within the prevLrnPatterns input history
+returns True if we managed to lock on to a sequence that started
+earlier.
+If False, we lost predictions somewhere along the way
+leading up to the current time.
+*/
+
+func (tp *TemporalPooler) learnBacktrackFrom(startOffset int, readOnly bool) bool {
+	// How much input history have we accumulated?
+	// The current input is always at the end of self._prevInfPatterns (at
+	// index -1), but it is also evaluated as a potential starting point by
+	// turning on it's start cells and seeing if it generates sufficient
+	// predictions going forward.
+	numPrevPatterns := len(tp.prevLrnPatterns)
+
+	// This is an easy to use label for the current time step
+	currentTimeStepsOffset := numPrevPatterns - 1
+
+	// Clear out any old segment updates. learnPhase2() adds to the segment
+	// updates if we're not readOnly
+	if !readOnly {
+		tp.segmentUpdates = nil
+	}
+
+	// Play through up to the current time step
+	inSequence := true
+	for offset := startOffset; offset < numPrevPatterns; offset++ {
+		// Copy predicted and active states into t-1
+		tp.DynamicState.lrnPredictedStateLast = tp.DynamicState.lrnPredictedState.Copy()
+		tp.DynamicState.lrnActiveStateLast = tp.DynamicState.lrnActiveState.Copy()
+
+		// Get the input pattern
+		inputColumns := tp.prevLrnPatterns[offset]
+
+		// Apply segment updates from the last set of predictions
+		if !readOnly {
+			tp.processSegmentUpdates(inputColumns)
+		}
+
+		// Phase 1:
+		// Compute activeState[t] given bottom-up and predictedState[t-1]
+		if offset == startOffset {
+			tp.DynamicState.lrnActiveState.Clear()
+			for c := range inputColumns {
+				tp.DynamicState.lrnActiveState.Set(c, 0, true)
+			}
+			inSequence = true
+		} else {
+			// Uses lrnActiveState['t-1'] and lrnPredictedState['t-1']
+			// computes lrnActiveState['t']
+			inSequence = tp.learnPhase1(inputColumns, readOnly)
+		}
+
+		// Break out immediately if we fell out of sequence or reached the current
+		// time step
+		if !inSequence || offset == currentTimeStepsOffset {
+			break
+		}
+
+		// Phase 2:
+		// Computes predictedState['t'] given activeState['t'] and also queues
+		// up active segments into self.segmentUpdates, unless this is readOnly
+		tp.learnPhase2(readOnly)
+
+		// Return whether or not this starting point was valid
+		return inSequence
+
+	}
+}
