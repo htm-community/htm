@@ -322,13 +322,25 @@ func (tp *TemporalPooler) getSegmentActiveSynapses(c int, i int, s *Segment, act
 	}
 
 	if newSynapses {
-		nSynapsesToAdd := tp.newSynapseCount - len(activeSynapses)
+		nSynapsesToAdd := tp.params.NewSynapseCount - len(activeSynapses)
 		newSyns := tp.chooseCellsToLearnFrom(s, nSynapsesToAdd, activeState)
+
+		for _, val := range newSyns {
+			temp := SynapseUpdateState{}
+			temp.Index = val.Row
+			temp.CellIndex = val.Col
+			temp.New = true
+			activeSynapses = append(activeSynapses, temp)
+		}
 	}
 
 	// It's still possible that activeSynapses is empty, and this will
 	// be handled in addToSegmentUpdates
-
-	return update
+	result := new(SegmentUpdate)
+	result.activeSynapses = activeSynapses
+	result.columnIdx = c
+	result.cellIdx = i
+	result.segment = s
+	return result
 
 }
