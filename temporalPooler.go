@@ -1144,3 +1144,90 @@ func (tp *TemporalPooler) chooseCellsToLearnFrom(s *Segment, n int, activeState 
 	}
 	return result
 }
+
+/*
+ Return the index of a cell in this column which is a good candidate
+for adding a new segment.
+
+When we have fixed size resources in effect, we insure that we pick a
+cell which does not already have the max number of allowed segments. If
+none exists, we choose the least used segment in the column to re-allocate.
+
+param colIdx which column to look at
+returns cell index
+*/
+
+func (tp *TemporalPooler) getCellForNewSegment(colIdx int) int {
+	// Not fixed size CLA, just choose a cell randomly
+	if tp.params.MaxSegmentsPerCell < 0 {
+		i := 0
+		if tp.params.CellsPerColumn > 1 {
+			// Don't ever choose the start cell (cell # 0) in each column
+			i := rand.Intn(tp.params.CellsPerColumn-1) + 1
+		}
+		return i
+	}
+
+	// Fixed size CLA, choose from among the cells that are below the maximum
+	// number of segments.
+	// NOTE: It is important NOT to always pick the cell with the fewest number
+	// of segments. The reason is that if we always do that, we are more likely
+	// to run into situations where we choose the same set of cell indices to
+	// represent an 'A' in both context 1 and context 2. This is because the
+	// cell indices we choose in each column of a pattern will advance in
+	// lockstep (i.e. we pick cell indices of 1, then cell indices of 2, etc.).
+	var candidateCellIdxs []int
+
+	minIdx := 0
+	maxIdx := 0
+	if tp.params.CellsPerColumn != 1 {
+		minIdx = 1 // Don't include startCell in the mix
+		maxIdx = tp.params.CellsPerColumn - 1
+	}
+
+	for i := minIdx; i <= maxIdx; i++ {
+		numSegs := len(tp.cells[colidx][i])
+		if numSegs < tp.params.MaxSegmentsPerCell {
+			candidateCellIdxs = append(candidateCellIdxs, i)
+		}
+	}
+
+	// If we found one, return with it. Note we need to use _random to maintain
+	// correspondence with CPP code.
+	if len(candidateCellIdxs) > 0 {
+		idxs := RandomSample(len(candidateCellIdxs))
+		result := make([]int, len(candidateCellIdxs))
+		for idx, val := range idxs {
+			result[idx] = candidateCellIdxs[val]
+		}
+		return result
+	}
+
+	// All cells in the column are full, find a segment to free up
+	var candidateSegment Segment
+	candidateSegmentDC := 1.0
+	candidateCellIdx := -1
+	candidateSegIdx := -1
+	// For each cell in this column
+	for i := minIdx; i <= maxIdx; i++ {
+		for idx, s := range tp.cells[colIdx][i] {
+			dc := s.dutyCycle(false, false)
+			if dc < candidateSegmentDC {
+				candidateCellIdx = i
+				candidateSegmentDC = dc
+				candidateSegment = s
+				candidateSegIdx = idx
+			}
+		}
+	}
+
+	// Free up the least used segment
+	tp.cleanUpdatesList(colIdx, candidateCellIdx, candidateSegment)
+
+	//delete segment from cells
+	copy(tp.cells[colIdx][candidateCellIdx][candidateSegIdx:], tp.cells[colIdx][candidateCellIdx][candidateSegIdx+1:])
+	tp.cells[colIdx][candidateCellIdx][len(tp.cells[colIdx][candidateCellIdx])-1] = nil // or the zero value of T
+	tp.cells[colIdx][candidateCellIdx] = tp.cells[colIdx][candidateCellIdx][:len(tp.cells[colIdx][candidateCellIdx])-1]
+
+	return candidateCellIdx
+}

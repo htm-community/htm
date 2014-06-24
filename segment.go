@@ -308,7 +308,7 @@ activeSynapses. These synapses are randomly chosen from the set of cells
 that have learnState = true at timeStep.
 */
 
-func (se *Segment) getSegmentActiveSynapses(c int, i int, s *Segment, activeState *SparseBinaryMatrix, newSynapses bool) *SegmentUpdate {
+func (tp *TemporalPooler) getSegmentActiveSynapses(c int, i int, s *Segment, activeState *SparseBinaryMatrix, newSynapses bool) *SegmentUpdate {
 	var activeSynapses []SynapseUpdateState
 
 	if s != nil {
