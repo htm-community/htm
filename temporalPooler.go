@@ -1602,3 +1602,105 @@ func (tp *TemporalPooler) learnBacktrack() int {
 	}
 	return numPrevPatterns - startOffset
 }
+
+/*
+ Update the learning state. Called from compute() on every iteration
+param activeColumns List of active column indices
+*/
+
+func (tp *TemporalPooler) updateLearningState(activeColumns []int) {
+	// Copy predicted and active states into t-1
+	tp.DynamicState.lrnPredictedStateLast = tp.DynamicState.lrnPredictedState.Copy()
+	tp.DynamicState.lrnActiveStateLast = tp.DynamicState.lrnActiveState.Copy()
+
+	// Update our learning input history
+	if tp.params.MaxLrnBacktrack > 0 {
+		if len(tp.prevLrnPatterns) > tp.params.MaxLrnBacktrack {
+			tp.prevLrnPatterns = append(tp.prevLrnPatterns[:0], tp.prevLrnPatterns[1:]...)
+		}
+		tp.prevLrnPatterns = append(tp.prevLrnPatterns, activeColumns)
+	}
+
+	// Process queued up segment updates, now that we have bottom-up, we
+	// can update the permanences on the cells that we predicted to turn on
+	// and did receive bottom-up
+	tp.processSegmentUpdates(activeColumns)
+
+	// Decrement the PAM counter if it is running and increment our learned
+	// sequence length
+	if tp.pamCounter > 0 {
+		tp.pamCounter--
+	}
+	tp.learnedSeqLength++
+
+	// Phase 1 - turn on the predicted cell in each column that received
+	// bottom-up. If there was no predicted cell, pick one to learn to.
+	if !tp.resetCalled {
+		// Uses lrnActiveState['t-1'] and lrnPredictedState['t-1']
+		// computes lrnActiveState['t']
+		inSequence := tp.learnPhase1(activeColumns, false)
+		// Reset our PAM counter if we are in sequence
+		if inSequence {
+			tp.pamCounter = tp.params.PamLength
+		}
+	}
+
+	// Start over on start cells if any of the following occur:
+	//    1.) A reset was just called
+	//    2.) We have been loo long out of sequence (the pamCounter has expired)
+	//    3.) We have reached maximum allowed sequence length.
+
+	//    Note that, unless we are following a reset, we also just learned or
+	//    re-enforced connections to the current set of active columns because
+	//    this input is still a valid prediction to learn.
+
+	//    It is especially helpful to learn the connections to this input when
+	//    you have a maxSeqLength constraint in place. Otherwise, you will have
+	//    no continuity at all between sub-sequences of length maxSeqLength.
+
+	if tp.resetCalled || tp.pamCounter == 0 ||
+		(tp.params.MaxSeqLength != 0 &&
+			tp.learnedSeqLength >= tp.params.MaxSeqLength) {
+
+		// Update average learned sequence length - this is a diagnostic statistic
+		seqLength := 0
+		if tp.pamCounter == 0 {
+			seqLength = tp.learnedSeqLength - tp.params.PamLength
+		} else {
+			seqLength = tp.learnedSeqLength
+		}
+		tp.updateAvgLearnedSeqLength(float64(seqLength))
+
+		// Backtrack to an earlier starting point, if we find one
+		backSteps := 0
+		if !tp.resetCalled {
+			backSteps = tp.learnBacktrack()
+		}
+
+		// Start over in the current time step if reset was called, or we couldn't
+		// backtrack.
+		if tp.resetCalled || backSteps == 0 {
+			tp.DynamicState.lrnActiveState.Clear()
+			for _, c := range activeColumns {
+				tp.DynamicState.lrnActiveState.Set(c, 0, true)
+			}
+
+			// Remove any old input history patterns
+			tp.prevLrnPatterns = nil
+		}
+
+		// Reset PAM counter
+		tp.pamCounter = tp.params.PamLength
+		tp.learnedSeqLength = backSteps
+
+		// Clear out any old segment updates from prior sequences
+		tp.segmentUpdates = nil
+
+	}
+
+	// Phase 2 - Compute new predicted state. When computing predictions for
+	// phase 2, we predict at most one cell per column (the one with the best
+	// matching segment).
+	tp.learnPhase2(false)
+
+}
