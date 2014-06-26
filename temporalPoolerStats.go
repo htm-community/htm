@@ -6,9 +6,9 @@ package htm
 
 import (
 	//"fmt"
-	//"github.com/cznic/mathutil"
+	"github.com/cznic/mathutil"
 	"github.com/zacg/floats"
-	//"github.com/zacg/go.matrix"
+	"github.com/zacg/go.matrix"
 	//"math"
 	//"math/rand"
 	//"sort"
@@ -32,6 +32,7 @@ type TpStats struct {
 	CurFalsePositiveScore float64
 	CurMissing            float64
 	CurExtra              float64
+	ConfHistogram         matrix.DenseMatrix
 }
 
 /*
@@ -41,19 +42,19 @@ TP. Returns a global count of the number of extra and missing bits, the
 confidence scores for each input pattern, and (if requested) the
 bits in each input pattern that were not present in the TP's prediction.
 
-@param patternNZs a list of input patterns that we want to check for. Each
+param patternNZs a list of input patterns that we want to check for. Each
 element is a list of the non-zeros in that pattern.
-@param output The output of the TP. If not specified, then use the
+param output The output of the TP. If not specified, then use the
 TP's current output. This can be specified if you are
 trying to check the prediction metric for an output from
 the past.
-@param colConfidence The column confidences. If not specified, then use the
-TP's current self.colConfidence. This can be specified if you
+param colConfidence The column confidences. If not specified, then use the
+TP's current colConfidence. This can be specified if you
 are trying to check the prediction metrics for an output
 from the past.
-@param details if True, also include details of missing bits per pattern.
+param details if True, also include details of missing bits per pattern.
 
-@returns list containing:
+returns list containing:
 
 [
 totalExtras,
@@ -62,16 +63,16 @@ totalMissing,
 [missing1, missing2, ...]
 ]
 
-@retval totalExtras a global count of the number of 'extras', i.e. bits that
+retval totalExtras a global count of the number of 'extras', i.e. bits that
 are on in the current output but not in the or of all the
 passed in patterns
-@retval totalMissing a global count of all the missing bits, i.e. the bits
+retval totalMissing a global count of all the missing bits, i.e. the bits
 that are on in the or of the patterns, but not in the
 current output
-@retval conf_i the confidence score for the i'th pattern inpatternsToCheck
+retval conf_i the confidence score for the i'th pattern inpatternsToCheck
 This consists of 3 items as a tuple:
 (predictionScore, posPredictionScore, negPredictionScore)
-@retval missing_i the bits in the i'th pattern that were missing
+retval missing_i the bits in the i'th pattern that were missing
 in the output. This list is only returned if details is
 True.
 */
@@ -197,6 +198,100 @@ func (tp *TemporalPooler) checkPrediction2(patternNZs [][]int, output *SparseBin
 		return totalExtras, totalMissing, confidences, missingPatternBits
 	} else {
 		return totalExtras, totalMissing, confidences, nil
+	}
+
+}
+
+/*
+	 Called at the end of learning and inference, this routine will update
+a number of stats in our _internalStats dictionary, including our computed
+prediction score.
+
+param stats internal stats dictionary
+param bottomUpNZ list of the active bottom-up inputs
+param predictedState The columns we predicted on the last time step (should
+match the current bottomUpNZ in the best case)
+param colConfidence Column confidences we determined on the last time step
+*/
+
+func (tp *TemporalPooler) updateStatsInferEnd(stats *TpStats, bottomUpNZ []int,
+	predictedState *SparseBinaryMatrix, colConfidence []float64) {
+	// Return if not collecting stats
+	if !tp.params.CollectStats {
+		return
+	}
+
+	stats.NInfersSinceReset++
+
+	// Compute the prediction score, how well the prediction from the last
+	// time step predicted the current bottom-up input
+	numExtra2, numMissing2, confidences2, _ := tp.checkPrediction2([][]int{bottomUpNZ}, predictedState, colConfidence, false)
+	predictionScore := confidences2[0].PredictionScore
+	positivePredictionScore := confidences2[0].PositivePredictionScore
+	negativePredictionScore := confidences2[0].NegativePredictionScore
+
+	// Store the stats that don't depend on burn-in
+	stats.CurPredictionScore2 = predictionScore
+	stats.CurFalseNegativeScore = negativePredictionScore
+	stats.CurFalsePositiveScore = positivePredictionScore
+
+	stats.CurMissing = float64(numMissing2)
+	stats.CurExtra = float64(numExtra2)
+
+	// If we are passed the burn-in period, update the accumulated stats
+	// Here's what various burn-in values mean:
+	// 0: try to predict the first element of each sequence and all subsequent
+	// 1: try to predict the second element of each sequence and all subsequent
+	// etc.
+	if stats.NInfersSinceReset <= tp.params.BurnIn {
+		return
+	}
+
+	// Burn-in related stats
+	stats.NPredictions++
+	numExpected := mathutil.Max(1, len(bottomUpNZ))
+
+	stats.TotalMissing += float64(numMissing2)
+	stats.TotalExtra += float64(numExtra2)
+	stats.PctExtraTotal += 100.0 * float64(numExtra2) / float64(numExpected)
+	stats.PctMissingTotal += 100.0 * float64(numMissing2) / float64(numExpected)
+	stats.PredictionScoreTotal2 += predictionScore
+	stats.FalseNegativeScoreTotal += 1.0 - positivePredictionScore
+	stats.FalsePositiveScoreTotal += negativePredictionScore
+
+	if tp.collectSequenceStats {
+		// Collect cell confidences for every cell that correctly predicted current
+		// bottom up input. Normalize confidence across each column
+		cc := tp.DynamicState.cellConfidence.Copy()
+
+		for r := 0; r < cc.Rows(); r++ {
+			for c := 0; c < cc.Cols(); c++ {
+				if !tp.DynamicState.infActiveState.Get(r, c) {
+					cc.Set(r, c, 0)
+				}
+			}
+		}
+		sconf := make([]int, cc.Rows())
+		for r := 0; r < cc.Rows(); r++ {
+			count := 0
+			for c := 0; c < cc.Cols(); c++ {
+				if cc.Get(r, c) > 0 {
+					count++
+				}
+			}
+			sconf[r] = count
+		}
+
+		for r := 0; r < cc.Rows(); r++ {
+			for c := 0; c < cc.Cols(); c++ {
+				temp := cc.Get(r, c)
+				cc.Set(r, c, temp/float64(sconf[r]))
+			}
+		}
+
+		// Update cell confidence histogram: add column-normalized confidence
+		// scores to the histogram
+		stats.ConfHistogram.Add(cc)
 	}
 
 }
