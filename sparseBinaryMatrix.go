@@ -195,8 +195,21 @@ func (sm *SparseBinaryMatrix) RowAndSum(row []bool) []int {
 	return result
 }
 
+//Returns row indexes with at least 1 true column
+func (sm *SparseBinaryMatrix) NonZeroRows() []int {
+	var result []int
+
+	for idx, val := range sm.Entries {
+		if !ContainsInt(val.Row, result) {
+			result = append(result, val.Row)
+		}
+	}
+
+	return result
+}
+
 //Returns # of rows with at least 1 true value
-func (sm *SparseBinaryMatrix) TotatTrueRows() int {
+func (sm *SparseBinaryMatrix) TotalTrueRows() int {
 	var hitRows []int
 	for _, val := range sm.Entries {
 		if !ContainsInt(val.Row, hitRows) {
