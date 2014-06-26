@@ -45,7 +45,7 @@ type TemporalPoolerParams struct {
 	//Seed                   int
 	Verbosity int
 	//checkSynapseConsistency=False, # for cpp only -- ignored
-	TrivialPredictionMethods string
+	TrivialPredictionMethods []PredictorMethod
 	PamLength                int
 	MaxInfBacktrack          int
 	MaxLrnBacktrack          int
@@ -113,19 +113,23 @@ func (ds *DynamicState) Copy() *DynamicState {
 }
 
 type TemporalPooler struct {
-	params              TemporalPoolerParams
-	numberOfCells       int
-	activeColumns       []int
-	cells               [][][]Segment
-	lrnIterationIdx     int
-	iterationIdx        int
-	segId               int
-	CurrentOutput       *SparseBinaryMatrix
-	pamCounter          int
-	avgInputDensity     float64
+	params          TemporalPoolerParams
+	numberOfCells   int
+	activeColumns   []int
+	cells           [][][]Segment
+	lrnIterationIdx int
+	iterationIdx    int
+	segId           int
+	CurrentOutput   *SparseBinaryMatrix
+	pamCounter      int
+	avgInputDensity float64
+	// Keeps track of the moving average of all learned sequence length.
 	avgLearnedSeqLength float64
 	resetCalled         bool
-	learnedSeqLength    int
+	// Keeps track of the length of the sequence currently being learned.
+	learnedSeqLength     int
+	trivialPredictor     *TrivialPredictor
+	collectSequenceStats bool
 
 	//ephemeral state
 	segmentUpdates map[TupleInt][]UpdateState
@@ -200,6 +204,21 @@ func NewTemportalPooler(tParams TemporalPoolerParams) *TemporalPooler {
 		// When pamCounter reaches 0, we start the learn state over again at start
 		// cells.
 		tp.pamCounter = tParams.PamLength
+
+		// Trivial prediction algorithms
+
+		if len(tParams.TrivialPredictionMethods) > 0 {
+			tp.trivialPredictor = MakeTrivialPredictor(tParams.NumberOfCols, tParams.TrivialPredictionMethods)
+		} else {
+			tp.trivialPredictor = nil
+		}
+
+		// If True, the TP will compute a signature for each sequence
+		tp.collectSequenceStats = false
+
+		// This gets set when we receive a reset and cleared on the first compute
+		// following a reset.
+		tp.resetCalled = false
 
 	}
 

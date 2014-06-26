@@ -41,31 +41,11 @@ type TrivialPredictorState struct {
 	ConfidenceLast     []float64
 }
 
-type TrivialPredictorStats struct {
-	NInfersSinceReset       int
-	NPredictions            int
-	PredictionScoreTotal    float64
-	PredictionScoreTotal2   float64
-	FalseNegativeScoreTotal float64
-	FalsePositiveScoreTotal float64
-	PctExtraTotal           float64
-	PctMissingTotal         float64
-	TotalMissing            float64
-	TotalExtra              float64
-
-	CurPredictionScore    float64
-	CurPredictionScore2   float64
-	CurFalseNegativeScore float64
-	CurFalsePositiveScore float64
-	CurMissing            float64
-	CurExtra              float64
-}
-
 type TrivialPredictor struct {
 	NumOfCols      int
 	Methods        []PredictorMethod
 	Verbosity      int
-	InternalStats  map[PredictorMethod]TrivialPredictorStats
+	InternalStats  map[PredictorMethod]TpStats
 	State          map[PredictorMethod]TrivialPredictorState
 	ColumnCount    []int
 	AverageDensity float64
@@ -84,7 +64,7 @@ func MakeTrivialPredictor(numberOfCols int, methods []PredictorMethod) *TrivialP
 		tps.PredictedStateLast = make([]bool, numberOfCols)
 		tp.State[method] = tps
 
-		tp.InternalStats[method] = TrivialPredictorStats{}
+		tp.InternalStats[method] = TpStats{}
 	}
 
 	// Number of times each column has been active during learning

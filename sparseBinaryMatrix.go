@@ -199,7 +199,7 @@ func (sm *SparseBinaryMatrix) RowAndSum(row []bool) []int {
 func (sm *SparseBinaryMatrix) NonZeroRows() []int {
 	var result []int
 
-	for idx, val := range sm.Entries {
+	for _, val := range sm.Entries {
 		if !ContainsInt(val.Row, result) {
 			result = append(result, val.Row)
 		}
