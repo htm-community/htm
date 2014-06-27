@@ -130,6 +130,7 @@ type TemporalPooler struct {
 	learnedSeqLength     int
 	trivialPredictor     *TrivialPredictor
 	collectSequenceStats bool
+	internalStats        *TpStats
 
 	//ephemeral state
 	segmentUpdates map[TupleInt][]UpdateState
@@ -197,6 +198,7 @@ func NewTemportalPooler(tParams TemporalPoolerParams) *TemporalPooler {
 		tp.lrnIterationIdx = 0
 		tp.iterationIdx = 0
 		tp.segId = 0
+		tp.avgInputDensity = -1
 
 		// pamCounter gets reset to pamLength whenever we detect that the learning
 		// state is making good predictions (at least half the columns predicted).
@@ -566,21 +568,21 @@ func (tp *TemporalPooler) inferPhase1(activeColumns []int, useStartCells bool) b
 the current set of inputs by assuming the sequence started up to N steps
 ago on start cells.
 
-@param activeColumns The list of active column indices
+param activeColumns The list of active column indices
 
-This will adjust @ref infActiveState['t'] if it does manage to lock on to a
+This will adjust ref infActiveState['t'] if it does manage to lock on to a
 sequence that started earlier. It will also compute infPredictedState['t']
-based on the possibly updated @ref infActiveState['t'], so there is no need to
+based on the possibly updated ref infActiveState['t'], so there is no need to
 call inferPhase2() after calling inferBacktrack().
 
 This looks at:
-- @ref infActiveState['t']
+- ref infActiveState['t']
 
 This updates/modifies:
-- @ref infActiveState['t']
-- @ref infPredictedState['t']
-- @ref colConfidence['t']
-- @ref cellConfidence['t']
+- ref infActiveState['t']
+- ref infPredictedState['t']
+- ref colConfidence['t']
+- ref cellConfidence['t']
 
 How it works:
 -------------------------------------------------------------------
@@ -736,7 +738,7 @@ func (tp *TemporalPooler) inferBacktrack(activeColumns []int) {
 				}
 			}
 
-			// Compute activeState[t] given bottom-up and predictedState @ t-1
+			// Compute activeState[t] given bottom-up and predictedState  t-1
 			tp.DynamicState.infPredictedStateLast = tp.DynamicState.infPredictedState
 
 			inSequence = tp.inferPhase1(tp.prevInfPatterns[offset], (offset == startOffset))
@@ -1721,5 +1723,178 @@ func (tp *TemporalPooler) updateLearningState(activeColumns []int) {
 	// phase 2, we predict at most one cell per column (the one with the best
 	// matching segment).
 	tp.learnPhase2(false)
+
+}
+
+/*
+ Handle one compute, possibly learning.
+
+param bottomUpInput The bottom-up input, typically from a spatial pooler
+param enableLearn If true, perform learning
+param computeInfOutput If None, default behavior is to disable the inference
+output when enableLearn is on.
+If true, compute the inference output
+If false, do not compute the inference output
+
+It is an error to have both enableLearn and computeInfOutput set to False
+
+By default, we don't compute the inference output when learning because it
+slows things down, but you can override this by passing in True for
+computeInfOutput
+*/
+
+func (tp *TemporalPooler) compute(bottomUpInput []bool, enableLearn bool, computeInfOutput bool) []bool {
+	if !(enableLearn || computeInfOutput) {
+		panic("Enable learn or computeInfOutput must be true")
+	}
+
+	// Get the list of columns that have bottom-up
+	activeColumns := OnIndices(bottomUpInput)
+
+	if enableLearn {
+		tp.lrnIterationIdx++
+	}
+	tp.iterationIdx++
+
+	if tp.params.Verbosity >= 3 {
+		fmt.Println("\n==== Iteration: %n ", tp.iterationIdx)
+		fmt.Println("Active cols:", activeColumns)
+	}
+
+	// Update segment duty cycles if we are crossing a "tier"
+	// We determine if it's time to update the segment duty cycles. Since the
+	// duty cycle calculation is a moving average based on a tiered alpha, it is
+	// important that we update all segments on each tier boundary
+
+	if enableLearn {
+		if ContainsInt(tp.lrnIterationIdx, SegmentDutyCycleTiers) {
+
+			for c := 0; c < tp.params.NumberOfCols; c++ {
+				for i := 0; i < tp.params.CellsPerColumn; i++ {
+					for _, segment := range tp.cells[c][i] {
+						segment.dutyCycle(false, false)
+					}
+				}
+			}
+
+		}
+
+	}
+
+	// Update the average input density
+	if tp.avgInputDensity == -1 {
+		tp.avgInputDensity = float64(len(activeColumns))
+	} else {
+		tp.avgInputDensity = (0.99*tp.avgInputDensity + 0.01*float64(len(activeColumns)))
+	}
+
+	// First, update the inference state
+	// As a speed optimization for now (until we need online learning), skip
+	// computing the inference output while learning
+	if computeInfOutput {
+		tp.updateInferenceState(activeColumns)
+	}
+
+	// Next, update the learning state
+	if enableLearn {
+		tp.updateLearningState(activeColumns)
+
+		// Apply global decay, and remove synapses and/or segments.
+		// Synapses are removed if their permanence value is <= 0.
+		// Segments are removed when they don't have synapses anymore.
+		// Removal of synapses can trigger removal of whole segments!
+		// todo: isolate the synapse/segment retraction logic so that
+		// it can be called in adaptSegments, in the case where we
+		// do global decay only episodically.
+
+		if tp.params.GlobalDecay > 0.0 && (tp.lrnIterationIdx%tp.params.MaxAge) == 0 {
+			for _, col := range tp.cells {
+				for _, cell := range col {
+
+					si := 0 //New end of segment slice
+					for _, segment := range cell {
+						age := tp.lrnIterationIdx - segment.lastActiveIteration
+						if age <= tp.params.MaxAge {
+							//keep segment but skip syn trimming
+							cell[si] = segment
+							si++
+							continue
+						}
+
+						w := 0
+						for _, synapse := range segment.syns {
+							// decrease permanence
+							synapse.Permanence = synapse.Permanence - float64(tp.params.GlobalDecay)
+							//remove synapse if permanence too low
+							if synapse.Permanence <= 0 {
+								continue
+							}
+							//otherwise keep synapse and increment synapse end of slice
+							segment.syns[w] = synapse
+							w++
+						}
+						segment.syns = segment.syns[:w]
+
+						//trim segment if no synapses remaining
+						if len(segment.syns) == 0 {
+							continue
+						}
+						//otherwise keep segment increment end  of slice counter
+						cell[si] = segment
+						si++
+					}
+
+				}
+			}
+
+		} // end globalDecay if
+
+		// Teach the trivial predictors
+		if tp.trivialPredictor != nil {
+			tp.trivialPredictor.learn(activeColumns)
+		}
+
+		// Update the prediction score stats
+		// Learning always includes inference
+		var predictedState *SparseBinaryMatrix
+		if tp.params.CollectStats {
+			if computeInfOutput {
+				predictedState = tp.DynamicState.infPredictedStateLast.Copy()
+			} else {
+				predictedState = tp.DynamicState.lrnPredictedStateLast.Copy()
+			}
+
+			tp.updateStatsInferEnd(tp.internalStats, activeColumns,
+				predictedState, tp.DynamicState.colConfidenceLast)
+
+			// Make trivial predictions and collect stats
+
+			if tp.trivialPredictor != nil {
+				for _, method := range tp.trivialPredictor.Methods {
+					if computeInfOutput {
+						tp.trivialPredictor.infer(activeColumns)
+					}
+
+					temp := NewSparseBinaryMatrixFromDense([][]bool{tp.trivialPredictor.State[method].PredictedStateLast})
+
+					tp.updateStatsInferEnd(tp.trivialPredictor.InternalStats[method],
+						activeColumns,
+						temp,
+						tp.trivialPredictor.State[method].ConfidenceLast)
+				}
+			}
+
+		}
+
+	}
+
+	// Finally return the TP output
+	result := tp.computeOutput()
+
+	// Print diagnostic information based on the current verbosity level
+	//self.printComputeEnd(output, learn=enableLearn)
+
+	tp.resetCalled = false
+	return result
 
 }

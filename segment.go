@@ -10,6 +10,13 @@ import (
 	"github.com/gonum/floats"
 )
 
+var SegmentDutyCycleTiers = []int{0, 100, 320, 1000,
+	3200, 10000, 32000, 100000, 320000}
+
+var SegmentDutyCycleAlphas = []float64{0, 0.0032, 0.0010, 0.00032,
+	0.00010, 0.000032, 0.00001, 0.0000032,
+	0.0000010}
+
 type Synapse struct {
 	SrcCellCol int
 	SrcCellIdx int
@@ -90,13 +97,6 @@ func NewSegment(tp *TemporalPooler, isSequenceSeg bool) *Segment {
 
 	seg.lastPosDutyCycle = 1.0 / float64(tp.lrnIterationIdx)
 	seg.lastPosDutyCycleIteration = tp.lrnIterationIdx
-
-	seg.dutyCycleTiers = []int{0, 100, 320, 1000,
-		3200, 10000, 32000, 100000, 320000}
-
-	seg.dutyCycleAlphas = []float64{0, 0.0032, 0.0010, 0.00032,
-		0.00010, 0.000032, 0.00001, 0.0000032,
-		0.0000010}
 
 	//TODO: initialize synapse collection
 

@@ -45,7 +45,7 @@ type TrivialPredictor struct {
 	NumOfCols      int
 	Methods        []PredictorMethod
 	Verbosity      int
-	InternalStats  map[PredictorMethod]TpStats
+	InternalStats  map[PredictorMethod]*TpStats
 	State          map[PredictorMethod]TrivialPredictorState
 	ColumnCount    []int
 	AverageDensity float64
@@ -64,7 +64,7 @@ func MakeTrivialPredictor(numberOfCols int, methods []PredictorMethod) *TrivialP
 		tps.PredictedStateLast = make([]bool, numberOfCols)
 		tp.State[method] = tps
 
-		tp.InternalStats[method] = TpStats{}
+		tp.InternalStats[method] = new(TpStats)
 	}
 
 	// Number of times each column has been active during learning
