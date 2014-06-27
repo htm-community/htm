@@ -376,3 +376,14 @@ func SumSliceFloat64(values []float64) float64 {
 	}
 	return result
 }
+
+//Returns "on" indices
+func OnIndices(s []bool) []int {
+	var result []int
+	for idx, val := range s {
+		if val {
+			result = append(result, idx)
+		}
+	}
+	return result
+}
