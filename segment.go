@@ -1,7 +1,7 @@
 package htm
 
 import (
-	//"fmt"
+	"fmt"
 	"github.com/cznic/mathutil"
 	//"github.com/skelterjohn/go.matrix"
 	"math"
@@ -343,4 +343,43 @@ func (tp *TemporalPooler) getSegmentActiveSynapses(c int, i int, s *Segment, act
 	result.segment = s
 	return result
 
+}
+
+/*
+Print segment information for verbose messaging and debugging.
+This uses the following format:
+
+ID:54413 True 0.64801 (24/36) 101 [9,1]0.75 [10,1]0.75 [11,1]0.75
+
+where:
+54413 - is the unique segment id
+True - is sequence segment
+0.64801 - moving average duty cycle
+(24/36) - (numPositiveActivations / numTotalActivations)
+101 - age, number of iterations since last activated
+[9,1]0.75 - synapse from column 9, cell #1, strength 0.75
+[10,1]0.75 - synapse from column 10, cell #1, strength 0.75
+[11,1]0.75 - synapse from column 11, cell #1, strength 0.75
+*/
+
+func (s *Segment) ToString() string {
+	//ID
+	result := fmt.Sprintf("ID:%v %v ", s.segId, s.isSequenceSeg)
+
+	//Duty Cycle
+	result += fmt.Sprintf("%v", s.dutyCycle(false, true))
+
+	//numPositive/totalActivations
+	result += fmt.Sprintf(" (%v/%v) ", s.positiveActivations, s.totalActivations)
+
+	//age
+	result += fmt.Sprintf("%v", s.tp.lrnIterationIdx-s.lastActiveIteration)
+
+	// Print each synapses on this segment as: srcCellCol/srcCellIdx/perm
+	// if the permanence is above connected, put [] around the synapse coords
+	for _, syn := range s.syns {
+		result += fmt.Sprintf(" [%v,%v]%v", syn.SrcCellIdx, syn.SrcCellCol, syn.Permanence)
+	}
+
+	return result
 }
