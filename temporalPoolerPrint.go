@@ -6,13 +6,13 @@ package htm
 
 import (
 	"fmt"
-	"github.com/cznic/mathutil"
-	//"github.com/skelterjohn/go.matrix"
+	//"github.com/cznic/mathutil"
+	"github.com/zacg/go.matrix"
 	//"math"
 	//"math/rand"
 	//"sort"
 	//"github.com/gonum/floats"
-	"github.com/zacg/ints"
+	//"github.com/zacg/ints"
 )
 
 type SegmentStats struct {
@@ -40,7 +40,7 @@ func (tp *TemporalPooler) calcSegmentStats(collectActiveData bool) SegmentStats 
 	var distPermValues map[int]int
 
 	numAgeBuckets := 20
-	ageBucketSize := int((self.lrnIterationIdx + 20) / 20)
+	ageBucketSize := int((tp.lrnIterationIdx + 20) / 20)
 
 	distAges := make(map[int]int, numAgeBuckets)
 	distAgesLabels := make([]string, numAgeBuckets)
@@ -48,13 +48,13 @@ func (tp *TemporalPooler) calcSegmentStats(collectActiveData bool) SegmentStats 
 		distAgesLabels[i] = fmt.Sprintf("%v-%v", i*ageBucketSize, (i+1)*ageBucketSize-1)
 	}
 
-	for ci, col := range tp.cells {
+	for _, col := range tp.cells {
 		for _, cell := range col {
 
 			nSegmentsThisCell := len(cell)
 			result.NumSegments += nSegmentsThisCell
 
-			if val, ok := distNSegsPerCell[nSegmentsThisCell]; ok {
+			if _, ok := distNSegsPerCell[nSegmentsThisCell]; ok {
 				distNSegsPerCell[nSegmentsThisCell]++
 			} else {
 				distNSegsPerCell[nSegmentsThisCell] = 1
@@ -62,9 +62,9 @@ func (tp *TemporalPooler) calcSegmentStats(collectActiveData bool) SegmentStats 
 
 			for _, seg := range cell {
 				nSynapsesThisSeg := len(seg.syns)
-				nSynapses += nSynapsesThisSeg
+				result.NumSynapses += nSynapsesThisSeg
 
-				if val, ok := distSegSizes[nSynapsesThisSeg]; ok {
+				if _, ok := distSegSizes[nSynapsesThisSeg]; ok {
 					distSegSizes[nSynapsesThisSeg]++
 				} else {
 					distSegSizes[nSynapsesThisSeg] = 1
@@ -73,7 +73,7 @@ func (tp *TemporalPooler) calcSegmentStats(collectActiveData bool) SegmentStats 
 				// Accumulate permanence value histogram
 				for _, syn := range seg.syns {
 					p := int(syn.Permanence * 10)
-					if val, ok := distPermValues[p]; ok {
+					if _, ok := distPermValues[p]; ok {
 						distPermValues[p]++
 					} else {
 						distPermValues[p] = 1
@@ -105,13 +105,84 @@ func (tp *TemporalPooler) calcSegmentStats(collectActiveData bool) SegmentStats 
 }
 
 /*
+ Print the list of [column, cellIdx] indices for each of the active
+cells in state.
+*/
+
+func (tp *TemporalPooler) printActiveIndices(state *SparseBinaryMatrix, andValues bool) {
+	if len(state.Entries) == 0 {
+		fmt.Println("None")
+		return
+	}
+
+	fmt.Println(state.Entries)
+
+}
+
+/*
+ */
+
+func (tp *TemporalPooler) printCell(c int, i int, onlyActiveSegments bool) {
+
+	cell := tp.cells[c][i]
+
+	if len(cell) > 0 {
+		fmt.Println("Column: %v Cell: %v - %v segment(s)", c, i, len(cell))
+		for idx, seg := range cell {
+			isActive := tp.isSegmentActive(seg, tp.DynamicState.infActiveState)
+			if !onlyActiveSegments || isActive {
+				str := " "
+				if isActive {
+					str = "*"
+				}
+				fmt.Print("%vSeg: %v", str, idx)
+				fmt.Print(seg.ToString())
+			}
+		}
+	}
+
+}
+
+/*
+
+*/
+
+func (tp *TemporalPooler) printCells(predictedOnly bool) {
+
+	if predictedOnly {
+		fmt.Println("--- PREDICTED CELLS ---")
+	} else {
+		fmt.Println("--- ALL CELLS ---")
+	}
+
+	fmt.Println("Activation threshold:", tp.params.ActivationThreshold)
+	fmt.Println("min threshold:", tp.params.MinThreshold)
+	fmt.Println("connected perm:", tp.params.ConnectedPerm)
+
+	for c, col := range tp.cells {
+		for i, _ := range col {
+			if !predictedOnly || tp.DynamicState.infPredictedState.Get(c, i) {
+				tp.printCell(c, i, predictedOnly)
+			}
+		}
+	}
+
+}
+
+/*
  Called at the end of inference to print out various diagnostic
 information based on the current verbosity level.
 */
 
-func (tp *TemporalPooler) printComputeEnd() {
+func (tp *TemporalPooler) printComputeEnd(output []bool, learn bool) {
 
 	if tp.params.Verbosity < 3 {
+		if tp.params.Verbosity >= 1 {
+			fmt.Println("TP: learn:", learn)
+			fmt.Println("TP: active outputs(%v):", CountTrue(output))
+			fmt.Print(NewSparseBinaryMatrixFromDense1D(output,
+				tp.params.NumberOfCols, tp.params.CellsPerColumn).ToString())
+		}
 		return
 	}
 
@@ -119,7 +190,7 @@ func (tp *TemporalPooler) printComputeEnd() {
 	fmt.Println("learn:", learn)
 	bursting := 0
 	counts := make([]int, tp.DynamicState.infActiveState.Height)
-	for idx, val := range tp.DynamicState.infActiveState.Entries {
+	for _, val := range tp.DynamicState.infActiveState.Entries {
 		counts[val.Row]++
 		if counts[val.Row] == tp.DynamicState.infActiveState.Width {
 			bursting++
@@ -129,17 +200,60 @@ func (tp *TemporalPooler) printComputeEnd() {
 	fmt.Println("curPredScore2:", tp.internalStats.CurPredictionScore2)
 	fmt.Println("curFalsePosScore", tp.internalStats.CurFalsePositiveScore)
 	fmt.Println("1-curFalseNegScore", 1-tp.internalStats.CurFalseNegativeScore)
-	fmt.Println("numSegments:", tp.addToSegmentUpdates(c, i, segUpdate))
 	fmt.Println("avgLearnedSeqLength", tp.avgLearnedSeqLength)
 
 	stats := tp.calcSegmentStats(true)
-	fmt.Println("numSegments", stats.numSegments)
+	fmt.Println("numSegments", stats.NumSegments)
 
-	fmt.Println()
-	fmt.Println()
-	fmt.Println()
-	fmt.Println()
-	fmt.Println()
 	fmt.Println("----- infActiveState (%v on) ------", tp.DynamicState.infActiveState.TotalNonZeroCount())
+	tp.printActiveIndices(tp.DynamicState.infActiveState, false)
+
+	if tp.params.Verbosity >= 6 {
+		//tp.printState(tp.infActiveState['t'])
+		fmt.Println(tp.DynamicState.infActiveState.ToString())
+	}
+
+	fmt.Println("----- infPredictedState (%v on)-----", tp.DynamicState.infPredictedState.TotalNonZeroCount())
+	tp.printActiveIndices(tp.DynamicState.infPredictedState, false)
+	if tp.params.Verbosity >= 6 {
+		fmt.Println(tp.DynamicState.infPredictedState.ToString())
+	}
+
+	fmt.Println("----- lrnActiveState (%v on) ------", tp.DynamicState.lrnActiveState.TotalNonZeroCount())
+	tp.printActiveIndices(tp.DynamicState.lrnActiveState, false)
+	if tp.params.Verbosity >= 6 {
+		fmt.Print(tp.DynamicState.lrnActiveState.ToString())
+	}
+
+	fmt.Println("----- lrnPredictedState (%v on)-----", tp.DynamicState.lrnPredictedState.TotalNonZeroCount())
+	tp.printActiveIndices(tp.DynamicState.lrnPredictedState, false)
+	if tp.params.Verbosity >= 6 {
+		fmt.Print(tp.DynamicState.lrnPredictedState.ToString())
+	}
+
+	fmt.Println("----- cellConfidence -----")
+	//tp.printActiveIndices(tp.DynamicState.cellConfidence, true)
+
+	if tp.params.Verbosity >= 6 {
+		//TODO: this
+		//tp.printConfidence(tp.DynamicState.cellConfidence)
+	}
+
+	fmt.Println("----- colConfidence -----")
+	//tp.printActiveIndices(tp.DynamicState.colConfidence, true)
+	fmt.Println("----- cellConfidence[t-1] for currently active cells -----")
+	cc := matrix.ZerosSparse(tp.DynamicState.cellConfidence.Rows(), tp.DynamicState.cellConfidence.Cols())
+	for _, val := range tp.DynamicState.infActiveState.Entries {
+		cc.Set(val.Row, val.Col, tp.DynamicState.cellConfidence.Get(val.Row, val.Col))
+	}
+	fmt.Print(cc.String())
+
+	if tp.params.Verbosity == 4 {
+		fmt.Println("Cells, predicted segments only:")
+		tp.printCells(true)
+	} else if tp.params.Verbosity >= 5 {
+		fmt.Println("Cells, all segments:")
+		tp.printCells(false)
+	}
 
 }
