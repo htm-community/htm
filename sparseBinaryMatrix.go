@@ -46,6 +46,26 @@ func NewSparseBinaryMatrixFromDense(values [][]bool) *SparseBinaryMatrix {
 	return m
 }
 
+//Create sparse binary matrix from specified dense matrix
+func NewSparseBinaryMatrixFromDense1D(values []bool, rows, cols int) *SparseBinaryMatrix {
+	if len(values) < 1 {
+		panic("No values specified.")
+	}
+	if len(values) != rows*cols {
+		panic("Invalid size")
+	}
+
+	m := new(SparseBinaryMatrix)
+	m.Height = rows
+	m.Width = cols
+
+	for r := 0; r < m.Height; r++ {
+		m.SetRowFromDense(r, values[r*cols:(r*cols)+cols])
+	}
+
+	return m
+}
+
 // Creates a sparse binary matrix from specified integer array
 // (any values greater than 0 are true)
 func NewSparseBinaryMatrixFromInts(values [][]int) *SparseBinaryMatrix {
