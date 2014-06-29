@@ -14,10 +14,9 @@ type SparseEntry struct {
 //Sparse binary matrix stores indexes of non-zero entries in matrix
 //to conserve space
 type SparseBinaryMatrix struct {
-	Width             int
-	Height            int
-	TotalNonZeroCount int
-	Entries           []SparseEntry
+	Width   int
+	Height  int
+	Entries []SparseEntry
 }
 
 //Create new sparse binary matrix of specified size
@@ -248,6 +247,11 @@ func (sm *SparseBinaryMatrix) TotalTrueCols() int {
 		}
 	}
 	return len(hitCols)
+}
+
+//Returns total true entries
+func (sm *SparseBinaryMatrix) TotalNonZeroCount() int {
+	return len(sm.Entries)
 }
 
 // Ors 2 matrices
