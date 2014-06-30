@@ -364,6 +364,19 @@ func RandomInts(length int, max int) []int {
 	return result
 }
 
+func Bool2Int(s []bool) []int {
+	result := make([]int, len(s))
+	for idx, val := range s {
+		if val {
+			result[idx] = 1
+		} else {
+			result[idx] = 0
+		}
+
+	}
+	return result
+}
+
 func timeTrack(start time.Time, name string) {
 	elapsed := time.Since(start)
 	fmt.Printf("%s took %s \n", name, elapsed)
