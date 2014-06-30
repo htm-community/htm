@@ -3,6 +3,8 @@ htm
 
 Hierarchical Temporal Memory Implementation in Golang
 
+[![GoDoc](https://godoc.org/github.com/zacg/htm?status.png)](https://godoc.org/github.com/zacg/htm)
+
 This is a direct port of the spatial and temporal poolers as they currently exist in Numentas Nupic Project. The Nupic project basically demonstrates a single stage of the cortical hierarchy. Eventually this same code can be extended to form a full HTM hierarchy.
 
 ##Changes
