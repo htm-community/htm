@@ -36,7 +36,7 @@ type TemporalPoolerParams struct {
 	PermanenceInc          float64
 	PermanenceDec          float64
 	PermanenceMax          float64
-	GlobalDecay            int
+	GlobalDecay            float64
 	ActivationThreshold    int
 	DoPooling              bool
 	SegUpdateValidDuration int
@@ -155,8 +155,41 @@ type TemporalPooler struct {
 	DynamicState *DynamicState
 }
 
+func NewTemporalPoolerParams() *TemporalPoolerParams {
+	tps := new(TemporalPoolerParams)
+
+	tps.NumberOfCols = 500
+	tps.CellsPerColumn = 10
+	tps.InitialPerm = 0.11
+	tps.ConnectedPerm = 0.50
+	tps.MinThreshold = 8
+	tps.NewSynapseCount = 15
+	tps.PermanenceInc = 0.10
+	tps.PermanenceDec = 0.10
+	tps.PermanenceMax = 1.0
+	tps.GlobalDecay = 0.10
+	tps.ActivationThreshold = 12
+	tps.DoPooling = false
+	tps.SegUpdateValidDuration = 5
+	tps.BurnIn = 2
+	tps.CollectStats = false
+	tps.Verbosity = 3
+	//tps.TrivialPredictionMethods =
+	tps.PamLength = 1
+	tps.MaxInfBacktrack = 10
+	tps.MaxLrnBacktrack = 5
+	tps.MaxAge = 100000
+	tps.MaxSeqLength = 32
+	tps.MaxSegmentsPerCell = -1
+	tps.MaxSynapsesPerSegment = -1
+	tps.outputType = Normal
+
+	return tps
+}
+
 func NewTemportalPooler(tParams TemporalPoolerParams) *TemporalPooler {
 	tp := new(TemporalPooler)
+	tp.params = tParams
 
 	//validate args
 	if tParams.PamLength <= 0 {
@@ -181,48 +214,62 @@ func NewTemportalPooler(tParams TemporalPoolerParams) *TemporalPooler {
 		if !(tParams.MaxSynapsesPerSegment >= tParams.NewSynapseCount) {
 			panic("maxSynapsesPerSegment must be >= newSynapseCount")
 		}
-
-		tp.numberOfCells = tParams.NumberOfCols * tParams.CellsPerColumn
-
-		// No point having larger expiration if we are not doing pooling
-		if !tParams.DoPooling {
-			tParams.SegUpdateValidDuration = 1
-		}
-
-		//Cells are indexed by column and index in the column
-		// Every self.cells[column][index] contains a list of segments
-		// Each segment is a structure of class Segment
-
-		//TODO: initialize cells
-
-		tp.lrnIterationIdx = 0
-		tp.iterationIdx = 0
-		tp.segId = 0
-		tp.avgInputDensity = -1
-
-		// pamCounter gets reset to pamLength whenever we detect that the learning
-		// state is making good predictions (at least half the columns predicted).
-		// Whenever we do not make a good prediction, we decrement pamCounter.
-		// When pamCounter reaches 0, we start the learn state over again at start
-		// cells.
-		tp.pamCounter = tParams.PamLength
-
-		// Trivial prediction algorithms
-
-		if len(tParams.TrivialPredictionMethods) > 0 {
-			tp.trivialPredictor = MakeTrivialPredictor(tParams.NumberOfCols, tParams.TrivialPredictionMethods)
-		} else {
-			tp.trivialPredictor = nil
-		}
-
-		// If True, the TP will compute a signature for each sequence
-		tp.collectSequenceStats = false
-
-		// This gets set when we receive a reset and cleared on the first compute
-		// following a reset.
-		tp.resetCalled = false
-
 	}
+
+	tp.numberOfCells = tParams.NumberOfCols * tParams.CellsPerColumn
+
+	// No point having larger expiration if we are not doing pooling
+	if !tParams.DoPooling {
+		tParams.SegUpdateValidDuration = 1
+	}
+
+	//Cells are indexed by column and index in the column
+	// Every self.cells[column][index] contains a list of segments
+	// Each segment is a structure of class Segment
+
+	//TODO: initialize cells
+	tp.cells = make([][][]Segment, tParams.NumberOfCols)
+	for c := 0; c < tParams.NumberOfCols; c++ {
+		tp.cells[c] = make([][]Segment, tParams.CellsPerColumn)
+
+		// for i := 0; i < tParams.CellsPerColumn; i++ {
+		// }
+	}
+
+	tp.lrnIterationIdx = 0
+	tp.iterationIdx = 0
+	tp.segId = 0
+	tp.avgInputDensity = -1
+
+	// pamCounter gets reset to pamLength whenever we detect that the learning
+	// state is making good predictions (at least half the columns predicted).
+	// Whenever we do not make a good prediction, we decrement pamCounter.
+	// When pamCounter reaches 0, we start the learn state over again at start
+	// cells.
+	tp.pamCounter = tParams.PamLength
+
+	// Trivial prediction algorithms
+
+	if len(tParams.TrivialPredictionMethods) > 0 {
+		tp.trivialPredictor = MakeTrivialPredictor(tParams.NumberOfCols, tParams.TrivialPredictionMethods)
+	} else {
+		tp.trivialPredictor = nil
+	}
+
+	// If True, the TP will compute a signature for each sequence
+	tp.collectSequenceStats = false
+
+	// This gets set when we receive a reset and cleared on the first compute
+	// following a reset.
+	tp.resetCalled = false
+
+	tp.DynamicState = new(DynamicState)
+	tp.DynamicState.infActiveState = NewSparseBinaryMatrix(tParams.NumberOfCols, tParams.CellsPerColumn)
+	tp.DynamicState.infPredictedState = NewSparseBinaryMatrix(tParams.NumberOfCols, tParams.CellsPerColumn)
+	tp.DynamicState.lrnActiveState = NewSparseBinaryMatrix(tParams.NumberOfCols, tParams.CellsPerColumn)
+	tp.DynamicState.lrnPredictedState = NewSparseBinaryMatrix(tParams.NumberOfCols, tParams.CellsPerColumn)
+	tp.DynamicState.cellConfidence = matrix.Zeros(tParams.NumberOfCols, tParams.CellsPerColumn)
+	tp.DynamicState.colConfidence = make([]float64, tParams.NumberOfCols)
 
 	return tp
 }
@@ -721,6 +768,11 @@ func (tp *TemporalPooler) inferBacktrack(activeColumns []int) {
 		// to start cells on the current input.
 		if startOffset == currentTimeStepsOffset && candConfidence != -1 {
 			break
+		}
+
+		if tp.params.Verbosity >= 3 {
+			fmt.Println("Trying to lock-on using startCell state from %v steps ago: %v",
+				(numPrevPatterns - 1 - startOffset), tp.prevInfPatterns[startOffset])
 		}
 
 		// Play through starting from starting point 'startOffset'
@@ -1244,7 +1296,7 @@ func (tp *TemporalPooler) getCellForNewSegment(colIdx int) int {
 
 	//delete segment from cells
 	copy(tp.cells[colIdx][candidateCellIdx][candidateSegIdx:], tp.cells[colIdx][candidateCellIdx][candidateSegIdx+1:])
-	tp.cells[colIdx][candidateCellIdx][len(tp.cells[colIdx][candidateCellIdx])-1] = Segment{} // or the zero value of T
+	tp.cells[colIdx][candidateCellIdx][len(tp.cells[colIdx][candidateCellIdx])-1] = Segment{}
 	tp.cells[colIdx][candidateCellIdx] = tp.cells[colIdx][candidateCellIdx][:len(tp.cells[colIdx][candidateCellIdx])-1]
 
 	return candidateCellIdx
