@@ -35,8 +35,6 @@ type Segment struct {
 	lastPosDutyCycle          float64
 	lastPosDutyCycleIteration int
 	syns                      []Synapse
-	dutyCycleTiers            []int
-	dutyCycleAlphas           []float64
 }
 
 func (s *Segment) Equals(seg *Segment) bool {
@@ -49,26 +47,6 @@ func (s *Segment) Equals(seg *Segment) bool {
 	for idx, val := range s.syns {
 		if seg.syns[idx].Permanence != val.Permanence ||
 			seg.syns[idx].SrcCellCol != val.SrcCellCol || seg.syns[idx].SrcCellIdx != val.SrcCellIdx {
-			return false
-		}
-	}
-
-	if len(s.dutyCycleTiers) != len(seg.dutyCycleTiers) {
-		return false
-	}
-
-	for idx, val := range s.dutyCycleTiers {
-		if seg.dutyCycleTiers[idx] != val {
-			return false
-		}
-	}
-
-	if len(s.dutyCycleAlphas) != len(seg.dutyCycleAlphas) {
-		return false
-	}
-
-	for idx, val := range s.dutyCycleAlphas {
-		if seg.dutyCycleAlphas[idx] != val {
 			return false
 		}
 	}
@@ -102,9 +80,6 @@ func NewSegment(tp *TemporalPooler, isSequenceSeg bool) *Segment {
 
 	return &seg
 }
-
-// func (s *Segment) Equal(other *Segment) bool {
-// }
 
 /*
 Compute/update and return the positive activations duty cycle of
@@ -146,7 +121,7 @@ ref dutyCycleTiers.
 func (s *Segment) dutyCycle(active, readOnly bool) float64 {
 
 	// For tier #0, compute it from total number of positive activations seen
-	if s.tp.lrnIterationIdx <= s.dutyCycleTiers[1] {
+	if s.tp.lrnIterationIdx <= SegmentDutyCycleTiers[1] {
 		dutyCycle := float64(s.positiveActivations) / float64(s.tp.lrnIterationIdx)
 		if !readOnly {
 			s.lastPosDutyCycleIteration = s.tp.lrnIterationIdx
@@ -165,9 +140,9 @@ func (s *Segment) dutyCycle(active, readOnly bool) float64 {
 
 	alpha := 0.0
 	//Figure out which alpha we're using
-	for i := len(s.dutyCycleTiers); i > 0; i-- {
-		if s.tp.lrnIterationIdx > s.dutyCycleTiers[i] {
-			alpha = s.dutyCycleAlphas[i]
+	for i := len(SegmentDutyCycleTiers); i > 0; i-- {
+		if s.tp.lrnIterationIdx > SegmentDutyCycleTiers[i] {
+			alpha = SegmentDutyCycleAlphas[i]
 			break
 		}
 	}
@@ -193,10 +168,9 @@ Free up some synapses in this segment. We always free up inactive
 synapses (lowest permanence freed up first) before we start to free up
 active ones.
 
-@param numToFree number of synapses to free up
-@param inactiveSynapseIndices list of the inactive synapse indices.
+param numToFree number of synapses to free up
+param inactiveSynapseIndices list of the inactive synapse indices.
 */
-
 func (s *Segment) freeNSynapses(numToFree int, inactiveSynapseIndices []int) {
 	//Make sure numToFree isn't larger than the total number of syns we have
 	if numToFree > len(s.syns) {
@@ -263,7 +237,6 @@ param delta How much to add to each permanence
 
 returns True if synapse reached 0
 */
-
 func (s *Segment) updateSynapses(synapses []int, delta float64) bool {
 	hitZero := false
 
@@ -292,7 +265,6 @@ func (s *Segment) updateSynapses(synapses []int, delta float64) bool {
 /*
 Adds a new synapse
 */
-
 func (s *Segment) AddSynapse(srcCellCol, srcCellIdx int, perm float64) {
 	s.syns = append(s.syns, Synapse{srcCellCol, srcCellIdx, perm})
 }
@@ -307,7 +279,6 @@ is true, then newSynapseCount - len(activeSynapses) synapses are added to
 activeSynapses. These synapses are randomly chosen from the set of cells
 that have learnState = true at timeStep.
 */
-
 func (tp *TemporalPooler) getSegmentActiveSynapses(c int, i int, s *Segment, activeState *SparseBinaryMatrix, newSynapses bool) *SegmentUpdate {
 	var activeSynapses []SynapseUpdateState
 
@@ -361,7 +332,6 @@ True - is sequence segment
 [10,1]0.75 - synapse from column 10, cell #1, strength 0.75
 [11,1]0.75 - synapse from column 11, cell #1, strength 0.75
 */
-
 func (s *Segment) ToString() string {
 	//ID
 	result := fmt.Sprintf("ID:%v %v ", s.segId, s.isSequenceSeg)
