@@ -31,7 +31,6 @@ permanence values in the current TP. If requested, also returns information
 regarding the number of currently active segments and synapses.
 
 */
-
 func (tp *TemporalPooler) calcSegmentStats(collectActiveData bool) SegmentStats {
 	result := SegmentStats{}
 
@@ -108,7 +107,6 @@ func (tp *TemporalPooler) calcSegmentStats(collectActiveData bool) SegmentStats 
  Print the list of [column, cellIdx] indices for each of the active
 cells in state.
 */
-
 func (tp *TemporalPooler) printActiveIndices(state *SparseBinaryMatrix, andValues bool) {
 	if len(state.Entries) == 0 {
 		fmt.Println("None")
@@ -120,8 +118,8 @@ func (tp *TemporalPooler) printActiveIndices(state *SparseBinaryMatrix, andValue
 }
 
 /*
- */
-
+	Prints a cels information
+*/
 func (tp *TemporalPooler) printCell(c int, i int, onlyActiveSegments bool) {
 
 	cell := tp.cells[c][i]
@@ -144,9 +142,8 @@ func (tp *TemporalPooler) printCell(c int, i int, onlyActiveSegments bool) {
 }
 
 /*
-
+ Print all cell information
 */
-
 func (tp *TemporalPooler) printCells(predictedOnly bool) {
 
 	if predictedOnly {
@@ -173,7 +170,6 @@ func (tp *TemporalPooler) printCells(predictedOnly bool) {
  Called at the end of inference to print out various diagnostic
 information based on the current verbosity level.
 */
-
 func (tp *TemporalPooler) printComputeEnd(output []bool, learn bool) {
 
 	if tp.params.Verbosity < 3 {
