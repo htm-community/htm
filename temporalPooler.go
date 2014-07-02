@@ -196,7 +196,7 @@ func NewTemporalPoolerParams() *TemporalPoolerParams {
 }
 
 //Initializes a new temporal pooler
-func NewTemportalPooler(tParams TemporalPoolerParams) *TemporalPooler {
+func NewTemporalPooler(tParams TemporalPoolerParams) *TemporalPooler {
 	tp := new(TemporalPooler)
 	tp.params = tParams
 
