@@ -5,7 +5,7 @@
 package htm
 
 import (
-	//"fmt"
+	"fmt"
 	"github.com/cznic/mathutil"
 	"github.com/zacg/floats"
 	"github.com/zacg/go.matrix"
@@ -135,6 +135,10 @@ func (tp *TemporalPooler) checkPrediction2(patternNZs [][]int, output *SparseBin
 	// cell. Note that confidence will only be non-zero for predicted columns.
 
 	if colConfidence == nil {
+		if tp.params.Verbosity >= 3 {
+			fmt.Println("col confidence nil, copying from tp state...")
+		}
+		colConfidence = make([]float64, len(tp.DynamicState.colConfidence))
 		copy(colConfidence, tp.DynamicState.colConfidence)
 	}
 
@@ -144,6 +148,8 @@ func (tp *TemporalPooler) checkPrediction2(patternNZs [][]int, output *SparseBin
 	for i := 0; i < numPatterns; i++ {
 		// Sum of the column confidences for this pattern
 		//positivePredictionSum = colConfidence[patternNZs[i]].sum()
+		fmt.Println("pattern", patternNZs[i])
+		fmt.Println("len", len(colConfidence))
 		positivePredictionSum := floats.Sum(floats.SubSet(colConfidence, patternNZs[i]))
 
 		// How many columns in this pattern
