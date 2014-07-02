@@ -1081,7 +1081,7 @@ func (tp *TemporalPooler) processSegmentUpdates(activeColumns []int) {
 	var removeKeys []TupleInt
 	var trimSegments []UpdateState
 
-	fmt.Println("seg updates", len(tp.segmentUpdates))
+	fmt.Println("seg updates:", len(tp.segmentUpdates))
 
 	for key, updateList := range tp.segmentUpdates {
 		// Get the column number and cell index of the owner cell
@@ -1100,13 +1100,19 @@ func (tp *TemporalPooler) processSegmentUpdates(activeColumns []int) {
 			}
 		}
 
-		fmt.Println("action", action)
+		fmt.Println("action:", action)
 
 		// Process each segment for this cell. Each segment entry contains
 		// [creationDate, SegmentState]
 		var updateListKeep []UpdateState
 		if action != Remove {
 			for _, updateState := range updateList {
+
+				if tp.params.Verbosity >= 4 {
+					fmt.Println("nLrnIterations=", tp.lrnIterationIdx)
+					fmt.Println(updateState)
+				}
+
 				// If this segment has expired. Ignore this update (and hence remove it
 				// from list)
 				if tp.lrnIterationIdx-updateState.CreationDate > tp.params.SegUpdateValidDuration {
@@ -1114,13 +1120,13 @@ func (tp *TemporalPooler) processSegmentUpdates(activeColumns []int) {
 				}
 
 				if action == Update {
-					fmt.Println("updating")
+					fmt.Println("updating segment...")
 					trimSegment := updateState.Update.adaptSegments(tp)
 					if trimSegment {
 						trimSegments = append(trimSegments, updateState)
 					}
 				} else {
-					fmt.Println("keeping")
+					fmt.Println("keeping segment...")
 					// Keep segments that haven't expired yet (the cell is still being
 					// predicted)
 					updateListKeep = append(updateListKeep, updateState)
@@ -1309,7 +1315,12 @@ func (tp *TemporalPooler) getCellForNewSegment(colIdx int) int {
 	// If we found one, return with it. Note we need to use _random to maintain
 	// correspondence with CPP code.
 	if len(candidateCellIdxs) > 0 {
-		return candidateCellIdxs[rand.Intn(len(candidateCellIdxs))]
+		cellIdx := rand.Intn(len(candidateCellIdxs))
+		if tp.params.Verbosity >= 5 {
+			fmt.Printf("Cell [%v,%v] chosen for new segment, # of segs is %v \n",
+				colIdx, candidateCellIdxs[cellIdx], len(tp.cells[colIdx][cellIdx]))
+		}
+		return candidateCellIdxs[cellIdx]
 	}
 
 	// All cells in the column are full, find a segment to free up
@@ -1331,6 +1342,12 @@ func (tp *TemporalPooler) getCellForNewSegment(colIdx int) int {
 	}
 
 	// Free up the least used segment
+	if tp.params.Verbosity >= 5 {
+		fmt.Printf("Deleting segment #%v for cell[%v,%v] to make room for new %v segment \n",
+			candidateSegment.segId, colIdx, candidateCellIdx)
+		//fmt.Print(candidateSegment.ToString())
+	}
+
 	tp.cleanUpdatesList(colIdx, candidateCellIdx, candidateSegment)
 
 	//delete segment from cells
@@ -1738,7 +1755,7 @@ func (tp *TemporalPooler) learnBacktrack() int {
 		if ContainsInt(i, badPatterns) || i <= startOffset {
 
 			if tp.params.Verbosity >= 3 {
-				fmt.Printf("Removing useless pattern 1 of: %v from history:", len(tp.prevLrnPatterns), tp.prevLrnPatterns[0])
+				fmt.Printf("Removing useless pattern 1 of: %v from history: %v \n", len(tp.prevLrnPatterns), tp.prevLrnPatterns[0])
 			}
 
 			tp.prevLrnPatterns = append(tp.prevLrnPatterns[:0], tp.prevLrnPatterns[1:]...)
@@ -1765,7 +1782,7 @@ func (tp *TemporalPooler) updateLearningState(activeColumns []int) {
 		}
 		tp.prevLrnPatterns = append(tp.prevLrnPatterns, activeColumns)
 		if tp.params.Verbosity >= 4 {
-			fmt.Printf("Previous learn patterns %v", tp.prevLrnPatterns)
+			fmt.Printf("Previous learn patterns %v \n", tp.prevLrnPatterns)
 		}
 	}
 

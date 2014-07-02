@@ -178,6 +178,11 @@ func (s *Segment) freeNSynapses(numToFree int, inactiveSynapseIndices []int) {
 		panic("Number to free cannot be larger than existing synapses.")
 	}
 
+	if s.tp.params.Verbosity >= 4 {
+		fmt.Println("In freeNSynapses with numToFree=", numToFree)
+		fmt.Println("inactiveSynapseIndices= ", inactiveSynapseIndices)
+	}
+
 	var candidates []int
 	// Remove the lowest perm inactive synapses first
 	if len(inactiveSynapseIndices) > 0 {
@@ -219,6 +224,12 @@ func (s *Segment) freeNSynapses(numToFree int, inactiveSynapseIndices []int) {
 		}
 	}
 
+	if s.tp.params.Verbosity >= 4 {
+		fmt.Printf("Deleting %v synapses from segment to make room for new ones: %v \n",
+			len(candidates), candidates)
+		fmt.Println("Before:", s.ToString())
+	}
+
 	// Delete candidate syns by copying undeleted to new slice
 	var newSyns []Synapse
 	for idx, val := range s.syns {
@@ -227,6 +238,10 @@ func (s *Segment) freeNSynapses(numToFree int, inactiveSynapseIndices []int) {
 		}
 	}
 	s.syns = newSyns
+
+	if s.tp.params.Verbosity >= 4 {
+		fmt.Println("After:", s.ToString())
+	}
 
 }
 

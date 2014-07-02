@@ -156,6 +156,11 @@ func (segUpdate *SegmentUpdate) adaptSegments(tp *TemporalPooler) bool {
 			newSegment.AddSynapse(val.Index, val.CellIndex, tp.params.InitialPerm)
 		}
 
+		if tp.params.Verbosity >= 3 {
+			fmt.Printf("New segment #%v for cell[%v,%v] \n", tp.segId-1, c, i)
+			//fmt.Print(newSegment.ToString())
+		}
+
 		tp.cells[c][i] = append(tp.cells[c][i], *newSegment)
 	}
 
