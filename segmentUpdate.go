@@ -1,7 +1,8 @@
 package htm
 
 import (
-//"fmt"
+	"fmt"
+
 //"github.com/cznic/mathutil"
 //"github.com/skelterjohn/go.matrix"
 //"math"
@@ -37,7 +38,6 @@ type UpdateState struct {
 later to determine whether the update is too old and should be forgotten.
 This is controlled by parameter segUpdateValidDuration.
 */
-
 func (su *TemporalPooler) addToSegmentUpdates(c, i int, segUpdate *SegmentUpdate) {
 	if segUpdate == nil || len(segUpdate.activeSynapses) == 0 {
 		return
@@ -69,7 +69,6 @@ param segUpdate SegmentUpdate instance
 returns True if some synapses were decremented to 0 and the segment is a
 candidate for trimming
 */
-
 func (segUpdate *SegmentUpdate) adaptSegments(tp *TemporalPooler) bool {
 	// This will be set to True if detect that any syapses were decremented to 0
 	trimSegment := false
@@ -94,6 +93,11 @@ func (segUpdate *SegmentUpdate) adaptSegments(tp *TemporalPooler) bool {
 	}
 
 	if segment != nil {
+
+		if tp.params.Verbosity >= 4 {
+			fmt.Printf("Reinforcing segment #%v for cell[%v,%v]", segment.segId, c, i)
+		}
+
 		//modify existing segment
 		// Mark it as recently useful
 		segment.lastActiveIteration = tp.lrnIterationIdx
