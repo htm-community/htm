@@ -37,6 +37,7 @@ type Segment struct {
 	syns                      []Synapse
 }
 
+//Determines segment equality
 func (s *Segment) Equals(seg *Segment) bool {
 	synsEqual := true
 
