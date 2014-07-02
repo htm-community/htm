@@ -283,6 +283,10 @@ func (sm *SparseBinaryMatrix) FillRow(row int, val bool) {
 
 //Copys a matrix
 func (sm *SparseBinaryMatrix) Copy() *SparseBinaryMatrix {
+	if sm == nil {
+		return nil
+	}
+
 	result := new(SparseBinaryMatrix)
 	result.Width = sm.Width
 	result.Height = sm.Height
