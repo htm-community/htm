@@ -393,10 +393,13 @@ func (tp *TemporalPooler) Predict(nSteps int) *matrix.DenseMatrix {
 It can tally up only connected synapses (permanence >= connectedPerm), or
 all the synapses of the segment, at either t or t-1.
 */
-func (tp *TemporalPooler) getSegmentActivityLevel(seg Segment, activeState *SparseBinaryMatrix, connectedSynapsesOnly bool) int {
+func (tp *TemporalPooler) getSegmentActivityLevel(seg Segment, activeState *SparseBinaryMatrix,
+	connectedSynapsesOnly bool) int {
 	activity := 0
+	//fmt.Println("syn count", len(seg.syns))
 	if connectedSynapsesOnly {
 		for _, val := range seg.syns {
+			//fmt.Printf("***syn %v %v \n", val.Permanence, tp.params.ConnectedPerm)
 			if val.Permanence >= tp.params.ConnectedPerm {
 				if activeState.Get(val.SrcCellIdx, val.SrcCellCol) {
 					activity++
@@ -476,6 +479,7 @@ func (tp *TemporalPooler) inferPhase2() bool {
 			for _, seg := range tp.cells[c][i] {
 				// Check if it has the min number of active synapses
 				numActiveSyns := tp.getSegmentActivityLevel(seg, tp.DynamicState.infActiveState, false)
+				//fmt.Println("active syns", numActiveSyns)
 				if numActiveSyns < tp.params.ActivationThreshold {
 					continue
 				}
@@ -733,11 +737,11 @@ func (tp *TemporalPooler) inferBacktrack(activeColumns []int) {
 
 	// Save our current active state in case we fail to find a place to restart
 	// todo: save infActiveState['t-1'], infPredictedState['t-1']?
-	tp.DynamicState.infActiveStateBackup = tp.DynamicState.infActiveStateLast.Copy()
+	tp.DynamicState.infActiveStateBackup = tp.DynamicState.infActiveState.Copy()
 
 	// Save our t-1 predicted state because we will write over it as as evaluate
 	// each potential starting point.
-	tp.DynamicState.infPredictedStateBackup = tp.DynamicState.infPredictedStateLast
+	tp.DynamicState.infPredictedStateBackup = tp.DynamicState.infPredictedStateLast.Copy()
 
 	// We will record which previous input patterns did not generate predictions
 	// up to the current time step and remove all the ones at the head of the
@@ -796,7 +800,7 @@ func (tp *TemporalPooler) inferBacktrack(activeColumns []int) {
 			}
 
 			// Compute activeState[t] given bottom-up and predictedState  t-1
-			tp.DynamicState.infPredictedStateLast = tp.DynamicState.infPredictedState
+			tp.DynamicState.infPredictedStateLast = tp.DynamicState.infPredictedState.Copy()
 
 			inSequence = tp.inferPhase1(tp.prevInfPatterns[offset], (offset == startOffset))
 			if !inSequence {
@@ -836,6 +840,7 @@ func (tp *TemporalPooler) inferBacktrack(activeColumns []int) {
 		if candStartOffset == currentTimeStepsOffset { // no more to try
 			break
 		}
+		fmt.Println("Setting candidates")
 		tp.DynamicState.infActiveStateCandidate = tp.DynamicState.infActiveState.Copy()
 		tp.DynamicState.infPredictedStateCandidate = tp.DynamicState.infPredictedState.Copy()
 		tp.DynamicState.cellConfidenceCandidate = tp.DynamicState.cellConfidence.Copy()
@@ -861,12 +866,16 @@ func (tp *TemporalPooler) inferBacktrack(activeColumns []int) {
 				(numPrevPatterns - 1 - candStartOffset), tp.prevInfPatterns[candStartOffset])
 		}
 
+		fmt.Printf("candstart=%v currentTimeStepoff=%v \n", candStartOffset, currentTimeStepsOffset)
+
 		// Install the candidate state, if it wasn't the last one we evaluated.
 		if candStartOffset != currentTimeStepsOffset {
-			tp.DynamicState.infActiveState = tp.DynamicState.infActiveStateCandidate
-			tp.DynamicState.infPredictedState = tp.DynamicState.infPredictedStateCandidate
-			tp.DynamicState.cellConfidence = tp.DynamicState.cellConfidenceCandidate
-			tp.DynamicState.colConfidence = tp.DynamicState.colConfidenceCandidate
+			fmt.Println("Installing candidate state...")
+			tp.DynamicState.infActiveState = tp.DynamicState.infActiveStateCandidate.Copy()
+			tp.DynamicState.infPredictedState = tp.DynamicState.infPredictedStateCandidate.Copy()
+			tp.DynamicState.cellConfidence = tp.DynamicState.cellConfidenceCandidate.Copy()
+			copy(tp.DynamicState.colConfidence, tp.DynamicState.colConfidenceCandidate)
+			//tp.DynamicState.colConfidence = tp.DynamicState.colConfidenceCandidate
 		}
 
 	}
@@ -877,7 +886,7 @@ func (tp *TemporalPooler) inferBacktrack(activeColumns []int) {
 		if ContainsInt(i, badPatterns) || (candStartOffset != -1 && i <= candStartOffset) {
 
 			if tp.params.Verbosity >= 3 {
-				fmt.Printf("Removing useless pattern from history: %v , %v \n", len(tp.prevInfPatterns), tp.prevInfPatterns[0])
+				fmt.Printf("Removing useless pattern 1 of %v from history: %v \n", len(tp.prevInfPatterns), tp.prevInfPatterns[0])
 			}
 
 			//pop prev pattern
@@ -912,6 +921,7 @@ func (tp *TemporalPooler) updateInferenceState(activeColumns []int) {
 			//pop prev pattern
 			tp.prevInfPatterns = tp.prevInfPatterns[:len(tp.prevInfPatterns)-1]
 		}
+
 		tp.prevInfPatterns = append(tp.prevInfPatterns, activeColumns)
 	}
 
@@ -1210,10 +1220,13 @@ func (tp *TemporalPooler) getBestMatchingCell(c int, activeState *SparseBinaryMa
  we cache the set of candidates for that case. It's also called once with
  timeStep = t, and we cache that set of candidates.
 */
-func (tp *TemporalPooler) chooseCellsToLearnFrom(s *Segment, n int, activeState *SparseBinaryMatrix) []SparseEntry {
+func (tp *TemporalPooler) chooseCellsToLearnFrom(s *Segment, n int,
+	activeState *SparseBinaryMatrix) []SparseEntry {
 	if n <= 0 {
 		return nil
 	}
+
+	//fmt.Printf("entering chooseCells n:%v ae:%v snil:%v \n", n, len(activeState.Entries), s == nil)
 
 	// Candidates can be empty at this point, in which case we return
 	// an empty segment list. adaptSegments will do nothing when getting
@@ -1240,7 +1253,7 @@ func (tp *TemporalPooler) chooseCellsToLearnFrom(s *Segment, n int, activeState 
 			}
 		}
 	} else {
-		candidates := make([]SparseEntry, len(activeState.Entries))
+		candidates = make([]SparseEntry, len(activeState.Entries))
 		copy(candidates, activeState.Entries)
 	}
 
@@ -1258,12 +1271,14 @@ func (tp *TemporalPooler) chooseCellsToLearnFrom(s *Segment, n int, activeState 
 
 	// If we need more than one candidate pick a random selection
 	size := mathutil.Min(n, len(candidates))
-	idxs := RandomInts(size, size)
-	result := make([]SparseEntry, len(idxs))
-	for idx, val := range idxs {
-		result[idx] = candidates[val]
+
+	//Shuffle candidates
+	for i := range candidates {
+		j := rand.Intn(i + 1)
+		candidates[i], candidates[j] = candidates[j], candidates[i]
 	}
-	return result
+
+	return candidates[:size]
 }
 
 /*
@@ -1862,7 +1877,7 @@ func (tp *TemporalPooler) updateLearningState(activeColumns []int) {
 
 		// Start over in the current time step if reset was called, or we couldn't
 		// backtrack.
-		if tp.resetCalled || backSteps == 0 {
+		if tp.resetCalled || backSteps < 1 {
 			tp.DynamicState.lrnActiveState.Clear()
 			for _, c := range activeColumns {
 				tp.DynamicState.lrnActiveState.Set(c, 0, true)
@@ -1918,7 +1933,7 @@ func (tp *TemporalPooler) Compute(bottomUpInput []bool, enableLearn bool, comput
 	tp.iterationIdx++
 
 	if tp.params.Verbosity >= 3 {
-		fmt.Println("\n==== Iteration: %n ", tp.iterationIdx)
+		fmt.Printf("\n==== Iteration: %v \n ", tp.iterationIdx)
 		fmt.Println("Active cols:", activeColumns)
 	}
 
@@ -2053,7 +2068,7 @@ func (tp *TemporalPooler) Compute(bottomUpInput []bool, enableLearn bool, comput
 	result := tp.computeOutput()
 
 	// Print diagnostic information based on the current verbosity level
-	//self.printComputeEnd(output, learn=enableLearn)
+	//tp.printComputeEnd(result, enableLearn)
 
 	tp.resetCalled = false
 	return result
