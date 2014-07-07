@@ -347,23 +347,6 @@ func RandomSample(length int) []float64 {
 	return result
 }
 
-//Returns a slice of random integers
-func RandomInts(length int, max int) []int {
-	if max < length {
-		panic("Max cannot be less than length")
-	}
-	result := make([]int, length)
-	for i, _ := range result {
-		n := rand.Intn(max)
-		//no dupes
-		for ContainsInt(n, result) {
-			n = rand.Intn(max)
-		}
-		result[i] = n
-	}
-	return result
-}
-
 func Bool2Int(s []bool) []int {
 	result := make([]int, len(s))
 	for idx, val := range s {
