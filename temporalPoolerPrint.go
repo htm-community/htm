@@ -91,11 +91,11 @@ func (tp *TemporalPooler) calcSegmentStats(collectActiveData bool) SegmentStats 
 
 				// Get active synapse statistics if requested
 				if collectActiveData {
-					if tp.isSegmentActive(seg, tp.DynamicState.infActiveState) {
+					if tp.isSegmentActive(seg, tp.DynamicState.InfActiveState) {
 						result.NumSegments++
 					}
 					for _, syn := range seg.syns {
-						if tp.DynamicState.infActiveState.Get(syn.SrcCellIdx, syn.SrcCellCol) {
+						if tp.DynamicState.InfActiveState.Get(syn.SrcCellIdx, syn.SrcCellCol) {
 							result.NumActiveSynapses++
 						}
 					}
@@ -132,7 +132,7 @@ func (tp *TemporalPooler) printCell(c int, i int, onlyActiveSegments bool) {
 	if len(cell) > 0 {
 		fmt.Printf("Column: %v Cell: %v - %v segment(s)", c, i, len(cell))
 		for idx, seg := range cell {
-			isActive := tp.isSegmentActive(seg, tp.DynamicState.infActiveState)
+			isActive := tp.isSegmentActive(seg, tp.DynamicState.InfActiveState)
 			if !onlyActiveSegments || isActive {
 				str := " "
 				if isActive {
@@ -163,7 +163,7 @@ func (tp *TemporalPooler) printCells(predictedOnly bool) {
 
 	for c, col := range tp.cells {
 		for i, _ := range col {
-			if !predictedOnly || tp.DynamicState.infPredictedState.Get(c, i) {
+			if !predictedOnly || tp.DynamicState.InfPredictedState.Get(c, i) {
 				tp.printCell(c, i, predictedOnly)
 			}
 		}
@@ -190,10 +190,10 @@ func (tp *TemporalPooler) printComputeEnd(output []bool, learn bool) {
 	fmt.Println("----- computeEnd summary: ")
 	fmt.Println("learn:", learn)
 	bursting := 0
-	counts := make([]int, tp.DynamicState.infActiveState.Height)
-	for _, val := range tp.DynamicState.infActiveState.Entries {
+	counts := make([]int, tp.DynamicState.InfActiveState.Height)
+	for _, val := range tp.DynamicState.InfActiveState.Entries {
 		counts[val.Row]++
-		if counts[val.Row] == tp.DynamicState.infActiveState.Width {
+		if counts[val.Row] == tp.DynamicState.InfActiveState.Width {
 			bursting++
 		}
 	}
@@ -206,55 +206,55 @@ func (tp *TemporalPooler) printComputeEnd(output []bool, learn bool) {
 	stats := tp.calcSegmentStats(true)
 	fmt.Println("numSegments", stats.NumSegments)
 
-	fmt.Printf("----- infActiveState (%v on) ------\n", tp.DynamicState.infActiveState.TotalNonZeroCount())
-	tp.printActiveIndices(tp.DynamicState.infActiveState, false)
+	fmt.Printf("----- InfActiveState (%v on) ------\n", tp.DynamicState.InfActiveState.TotalNonZeroCount())
+	tp.printActiveIndices(tp.DynamicState.InfActiveState, false)
 
 	if tp.params.Verbosity >= 6 {
-		//tp.printState(tp.infActiveState['t'])
-		//fmt.Println(tp.DynamicState.infActiveState.ToString())
+		//tp.printState(tp.InfActiveState['t'])
+		//fmt.Println(tp.DynamicState.InfActiveState.ToString())
 	}
 
-	fmt.Printf("----- infPredictedState (%v on)-----\n", tp.DynamicState.infPredictedState.TotalNonZeroCount())
-	tp.printActiveIndices(tp.DynamicState.infPredictedState, false)
+	fmt.Printf("----- InfPredictedState (%v on)-----\n", tp.DynamicState.InfPredictedState.TotalNonZeroCount())
+	tp.printActiveIndices(tp.DynamicState.InfPredictedState, false)
 	if tp.params.Verbosity >= 6 {
-		//fmt.Println(tp.DynamicState.infPredictedState.ToString())
+		//fmt.Println(tp.DynamicState.InfPredictedState.ToString())
 	}
 
-	fmt.Printf("----- lrnActiveState (%v on) ------\n", tp.DynamicState.lrnActiveState.TotalNonZeroCount())
-	tp.printActiveIndices(tp.DynamicState.lrnActiveState, false)
+	fmt.Printf("----- LrnActiveState (%v on) ------\n", tp.DynamicState.LrnActiveState.TotalNonZeroCount())
+	tp.printActiveIndices(tp.DynamicState.LrnActiveState, false)
 	if tp.params.Verbosity >= 6 {
-		//fmt.Println(tp.DynamicState.lrnActiveState.ToString())
+		//fmt.Println(tp.DynamicState.LrnActiveState.ToString())
 	}
 
-	fmt.Printf("----- lrnPredictedState (%v on)-----\n", tp.DynamicState.lrnPredictedState.TotalNonZeroCount())
-	tp.printActiveIndices(tp.DynamicState.lrnPredictedState, false)
+	fmt.Printf("----- LrnPredictedState (%v on)-----\n", tp.DynamicState.LrnPredictedState.TotalNonZeroCount())
+	tp.printActiveIndices(tp.DynamicState.LrnPredictedState, false)
 	if tp.params.Verbosity >= 6 {
-		//fmt.Println(tp.DynamicState.lrnPredictedState.ToString())
+		//fmt.Println(tp.DynamicState.LrnPredictedState.ToString())
 	}
 
-	fmt.Println("----- cellConfidence -----")
-	//tp.printActiveIndices(tp.DynamicState.cellConfidence, true)
+	fmt.Println("----- CellConfidence -----")
+	//tp.printActiveIndices(tp.DynamicState.CellConfidence, true)
 
 	if tp.params.Verbosity >= 6 {
 		//TODO: this
-		//tp.printConfidence(tp.DynamicState.cellConfidence)
-		for r := 0; r < tp.DynamicState.cellConfidence.Rows(); r++ {
-			for c := 0; c < tp.DynamicState.cellConfidenceLast.Cols(); c++ {
-				if tp.DynamicState.cellConfidence.Get(r, c) != 0 {
-					fmt.Printf("[%v,%v,%v]", r, c, tp.DynamicState.cellConfidence.Get(r, c))
+		//tp.printConfidence(tp.DynamicState.CellConfidence)
+		for r := 0; r < tp.DynamicState.CellConfidence.Rows(); r++ {
+			for c := 0; c < tp.DynamicState.CellConfidenceLast.Cols(); c++ {
+				if tp.DynamicState.CellConfidence.Get(r, c) != 0 {
+					fmt.Printf("[%v,%v,%v]", r, c, tp.DynamicState.CellConfidence.Get(r, c))
 				}
 			}
 		}
 
 	}
 
-	fmt.Println("----- colConfidence -----")
-	//tp.printActiveIndices(tp.DynamicState.colConfidence, true)
-	fmt.Println("----- cellConfidence[t-1] for currently active cells -----")
-	//cc := matrix.ZerosSparse(tp.DynamicState.cellConfidence.Rows(), tp.DynamicState.cellConfidence.Cols())
-	for _, val := range tp.DynamicState.infActiveState.Entries {
-		//cc.Set(val.Row, val.Col, tp.DynamicState.cellConfidence.Get(val.Row, val.Col))
-		fmt.Printf("[%v,%v,%v]", val.Row, val.Col, tp.DynamicState.cellConfidence.Get(val.Row, val.Col))
+	fmt.Println("----- ColConfidence -----")
+	//tp.printActiveIndices(tp.DynamicState.ColConfidence, true)
+	fmt.Println("----- CellConfidence[t-1] for currently active cells -----")
+	//cc := matrix.ZerosSparse(tp.DynamicState.CellConfidence.Rows(), tp.DynamicState.CellConfidence.Cols())
+	for _, val := range tp.DynamicState.InfActiveState.Entries {
+		//cc.Set(val.Row, val.Col, tp.DynamicState.CellConfidence.Get(val.Row, val.Col))
+		fmt.Printf("[%v,%v,%v]", val.Row, val.Col, tp.DynamicState.CellConfidence.Get(val.Row, val.Col))
 
 	}
 	//fmt.Println(cc.String())

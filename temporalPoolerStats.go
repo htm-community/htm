@@ -162,8 +162,8 @@ func (tp *TemporalPooler) checkPrediction2(patternNZs [][]int, output *SparseBin
 		if tp.params.Verbosity >= 5 {
 			fmt.Println("Col confidence nil, copying from tp state...")
 		}
-		colConfidence = make([]float64, len(tp.DynamicState.colConfidence))
-		copy(colConfidence, tp.DynamicState.colConfidence)
+		colConfidence = make([]float64, len(tp.DynamicState.ColConfidence))
+		copy(colConfidence, tp.DynamicState.ColConfidence)
 	}
 
 	// Assign confidences to each pattern
@@ -290,11 +290,11 @@ func (tp *TemporalPooler) updateStatsInferEnd(stats *TpStats, bottomUpNZ []int,
 	if tp.collectSequenceStats {
 		// Collect cell confidences for every cell that correctly predicted current
 		// bottom up input. Normalize confidence across each column
-		cc := tp.DynamicState.cellConfidence.Copy()
+		cc := tp.DynamicState.CellConfidence.Copy()
 
 		for r := 0; r < cc.Rows(); r++ {
 			for c := 0; c < cc.Cols(); c++ {
-				if !tp.DynamicState.infActiveState.Get(r, c) {
+				if !tp.DynamicState.InfActiveState.Get(r, c) {
 					cc.Set(r, c, 0)
 				}
 			}

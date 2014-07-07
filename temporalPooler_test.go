@@ -65,7 +65,7 @@ func TestLearnPredict(t *testing.T) {
 	//Predict sequences
 	for i := 0; i < 4; i++ {
 		tp.Compute(inputs[i], false, true)
-		p := tp.DynamicState.infPredictedState.Entries
+		p := tp.DynamicState.InfPredictedState.Entries
 		fmt.Println(p)
 		assert.Equal(t, 10, len(p))
 		for _, val := range p {
