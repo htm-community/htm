@@ -9,71 +9,71 @@ import (
 	//"sort"
 	//"github.com/gonum/floats"
 	//"github.com/zacg/ints"
+	"github.com/zacg/testify/assert"
 	"testing"
 )
 
-func TestTp(t *testing.T) {
-	//2048, 32, 0.21, 0.5, 11, 20, 0.1, 0.1, 1.0, 0.0, 14, False, 5, 2,
-	//         False, 1960, 0, False, '', 3, 10, 5, 0, 32, 128, 32, 'normal'
+func boolRange(start int, end int, length int) []bool {
+	result := make([]bool, length)
+	for i := start; i <= end; i++ {
+		result[i] = true
+	}
+
+	return result
+}
+
+func TestLearnPredict(t *testing.T) {
 	tps := NewTemporalPoolerParams()
 	tps.Verbosity = 10
-	tps.NumberOfCols = 100
-	tps.CellsPerColumn = 10
-	//tps.ActivationThreshold = 2
-	//tps.MinThreshold = 2
+	tps.NumberOfCols = 50
+	tps.CellsPerColumn = 2
+	tps.ActivationThreshold = 8
+	tps.MinThreshold = 10
+	tps.InitialPerm = 0.5
+	tps.ConnectedPerm = 0.5
+	tps.NewSynapseCount = 10
+	tps.PermanenceDec = 0.0
+	tps.PermanenceInc = 0.1
+	tps.GlobalDecay = 0
+	tps.BurnIn = 1
+	tps.PamLength = 10
+	//tps.DoPooling = true
+
 	tps.CollectStats = true
 	tp := NewTemporalPooler(*tps)
 
-	odd := GenerateRandSequence(100, 50)
-	even := GenerateRandSequence(100, 50)
+	inputs := make([][]bool, 5)
 
+	// inputs[0] = GenerateRandSequence(80, 50)
+	// inputs[1] = GenerateRandSequence(80, 50)
+	// inputs[2] = GenerateRandSequence(80, 50)
+	inputs[0] = boolRange(0, 9, 50)
+	inputs[1] = boolRange(10, 19, 50)
+	inputs[2] = boolRange(20, 29, 50)
+	inputs[3] = boolRange(30, 39, 50)
+	inputs[4] = boolRange(40, 49, 50)
+
+	//Learn 5 sequences above
 	for i := 0; i < 10; i++ {
-		//input := make([]bool, 100)
-		var input []bool
-		// for j := 0; j < 25; j++ {
-		// 	ind := rand.Intn(500)
-		// 	input[ind] = true
-		// }
-
-		if i%2 == 0 {
-			input = even
-		} else {
-			input = odd
+		for p := 0; p < 5; p++ {
+			tp.Compute(inputs[p], true, false)
 		}
 
-		// input[0] = true
-		// input[1] = true
-		// input[2] = true
-		// input[3] = true
-		// input[4] = true
-		// input[5] = true
-		// input[6] = true
-		// input[7] = true
-		// input[8] = true
-		// input[9] = true
-		// input[10] = true
-		// input[11] = true
-		// input[12] = true
-		// input[13] = true
-		// input[14] = true
-		// input[15] = true
-		// input[16] = true
-		// input[17] = true
-		// input[18] = true
-		// input[19] = true
-		// input[20] = true
-		out := tp.Compute(input, true, true)
-		fmt.Println("output", OnIndices(out))
+		tp.Reset()
 	}
 
-	p := tp.Predict(3)
-	//s := p.SparseMatrix()
-
-	for r := 0; r < p.Rows(); r++ {
-		for c := 0; c < p.Cols(); c++ {
-			if p.Get(r, c) != 0 {
-				fmt.Println("predicted [%v,%v]", r, c)
+	//Predict sequences
+	for i := 0; i < 4; i++ {
+		tp.Compute(inputs[i], false, true)
+		p := tp.DynamicState.infPredictedState.Entries
+		fmt.Println(p)
+		assert.Equal(t, 10, len(p))
+		for _, val := range p {
+			next := i + 1
+			if next > 4 {
+				next = 4
 			}
+			assert.True(t, inputs[next][val.Row])
 		}
 	}
 
