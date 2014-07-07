@@ -3,6 +3,7 @@ package htm
 import (
 	//"math"
 	"bytes"
+	"github.com/zacg/htm/utils"
 )
 
 //Entries are positions of non-zero values
@@ -219,7 +220,7 @@ func (sm *SparseBinaryMatrix) NonZeroRows() []int {
 	var result []int
 
 	for _, val := range sm.Entries {
-		if !ContainsInt(val.Row, result) {
+		if !utils.ContainsInt(val.Row, result) {
 			result = append(result, val.Row)
 		}
 	}
@@ -231,7 +232,7 @@ func (sm *SparseBinaryMatrix) NonZeroRows() []int {
 func (sm *SparseBinaryMatrix) TotalTrueRows() int {
 	var hitRows []int
 	for _, val := range sm.Entries {
-		if !ContainsInt(val.Row, hitRows) {
+		if !utils.ContainsInt(val.Row, hitRows) {
 			hitRows = append(hitRows, val.Row)
 		}
 	}
@@ -242,7 +243,7 @@ func (sm *SparseBinaryMatrix) TotalTrueRows() int {
 func (sm *SparseBinaryMatrix) TotalTrueCols() int {
 	var hitCols []int
 	for _, val := range sm.Entries {
-		if !ContainsInt(val.Col, hitCols) {
+		if !utils.ContainsInt(val.Col, hitCols) {
 			hitCols = append(hitCols, val.Col)
 		}
 	}

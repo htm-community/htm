@@ -3,6 +3,7 @@ package htm
 import (
 	"fmt"
 	"github.com/cznic/mathutil"
+	"github.com/zacg/htm/utils"
 	//"github.com/skelterjohn/go.matrix"
 	//"math"
 	//"math/rand"
@@ -91,9 +92,9 @@ func (tp *TrivialPredictor) infer(activeColumns []int) {
 		copy(tp.State[method].PredictedStateLast, tp.State[method].PredictedState)
 		copy(tp.State[method].ConfidenceLast, tp.State[method].Confidence)
 
-		FillSliceBool(tp.State[method].ActiveState, false)
-		FillSliceBool(tp.State[method].PredictedState, false)
-		FillSliceFloat64(tp.State[method].Confidence, 0.0)
+		utils.FillSliceBool(tp.State[method].ActiveState, false)
+		utils.FillSliceBool(tp.State[method].PredictedState, false)
+		utils.FillSliceFloat64(tp.State[method].Confidence, 0.0)
 
 		for _, val := range activeColumns {
 			tp.State[method].ActiveState[val] = true
@@ -183,12 +184,12 @@ func (tp *TrivialPredictor) reset() {
 
 	for _, method := range tp.Methods {
 
-		FillSliceBool(tp.State[method].ActiveState, false)
-		FillSliceBool(tp.State[method].ActiveStateLast, false)
-		FillSliceBool(tp.State[method].PredictedState, false)
-		FillSliceBool(tp.State[method].PredictedStateLast, false)
-		FillSliceFloat64(tp.State[method].Confidence, 0.0)
-		FillSliceFloat64(tp.State[method].ConfidenceLast, 0.0)
+		utils.FillSliceBool(tp.State[method].ActiveState, false)
+		utils.FillSliceBool(tp.State[method].ActiveStateLast, false)
+		utils.FillSliceBool(tp.State[method].PredictedState, false)
+		utils.FillSliceBool(tp.State[method].PredictedStateLast, false)
+		utils.FillSliceFloat64(tp.State[method].Confidence, 0.0)
+		utils.FillSliceFloat64(tp.State[method].ConfidenceLast, 0.0)
 
 		stats := tp.InternalStats[method]
 		stats.NInfersSinceReset = 0

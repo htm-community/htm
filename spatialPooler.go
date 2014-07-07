@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/cznic/mathutil"
 	"github.com/skelterjohn/go.matrix"
+	"github.com/zacg/htm/utils"
 	"math"
 	"math/rand"
 	"sort"
@@ -113,8 +114,8 @@ func NewSpParams() SpParams {
 func NewSpatialPooler(spParams SpParams) *SpatialPooler {
 	sp := SpatialPooler{}
 	//Validate inputs
-	sp.numColumns = ProdInt(spParams.ColumnDimensions)
-	sp.numInputs = ProdInt(spParams.InputDimensions)
+	sp.numColumns = utils.ProdInt(spParams.ColumnDimensions)
+	sp.numInputs = utils.ProdInt(spParams.InputDimensions)
 
 	if sp.numColumns < 1 {
 		panic("Must have at least 1 column")
@@ -307,7 +308,7 @@ func (sp *SpatialPooler) mapPotential(index int, wrapAround bool) []bool {
 			}
 		}
 		//no dupes
-		if !ContainsInt(temp, indices) {
+		if !utils.ContainsInt(temp, indices) {
 			indices = append(indices, temp)
 		}
 	}
@@ -321,12 +322,12 @@ func (sp *SpatialPooler) mapPotential(index int, wrapAround bool) []bool {
 		indices[i], indices[j] = indices[j], indices[i]
 	}
 
-	sampleLen := int(RoundPrec(float64(len(indices))*sp.PotentialPct, 0))
+	sampleLen := int(utils.RoundPrec(float64(len(indices))*sp.PotentialPct, 0))
 	sample := indices[:sampleLen]
 	//project indices onto input mask
 	mask := make([]bool, sp.numInputs)
 	for i, _ := range mask {
-		mask[i] = ContainsInt(i, sample)
+		mask[i] = utils.ContainsInt(i, sample)
 	}
 
 	return mask
@@ -397,7 +398,7 @@ func (sp *SpatialPooler) initPermanence(potential []bool, connectedPct float64) 
 			continue
 		}
 		var temp float64
-		if randFloatRange(0.0, 1.0) < connectedPct {
+		if utils.RandFloatRange(0.0, 1.0) < connectedPct {
 			temp = sp.initPermConnected()
 		} else {
 			temp = sp.initPermNonConnected()
@@ -522,9 +523,9 @@ func (sp *SpatialPooler) updatePermanencesForColumn(perm []float64, index int, r
 
 /*
  This is the primary public method of the SpatialPooler class. This
-function takes a input vector and outputs the indices of the active columns.
-If 'learn' is set to True, this method also updates the permanences of the
-columns.
+ function takes a input vector and outputs the indices of the active columns.
+ If 'learn' is set to True, this method also updates the permanences of the
+ columns.
 
 Parameters:
 ----------------------------
@@ -586,7 +587,7 @@ func (sp *SpatialPooler) Compute(inputVector []bool, learn bool, activeArray []b
 
 	if len(activeColumns) > 0 {
 		for i, _ := range activeArray {
-			activeArray[i] = ContainsInt(i, activeColumns)
+			activeArray[i] = utils.ContainsInt(i, activeColumns)
 		}
 	}
 
@@ -675,11 +676,11 @@ func (sp *SpatialPooler) getNeighborsND(columnIndex int, dimensions []int, radiu
 	}
 
 	bounds := append(dimensions[1:], 1)
-	bounds = RevCumProdInt(bounds)
+	bounds = utils.RevCumProdInt(bounds)
 
 	columnCoords := make([]int, len(bounds))
 	for j := 0; j < len(bounds); j++ {
-		columnCoords[j] = Mod(columnIndex/bounds[j], dimensions[j])
+		columnCoords[j] = utils.Mod(columnIndex/bounds[j], dimensions[j])
 	}
 
 	rangeND := make([][]int, len(dimensions))
@@ -687,7 +688,7 @@ func (sp *SpatialPooler) getNeighborsND(columnIndex int, dimensions []int, radiu
 		if wrapAround {
 			cRange := make([]int, (radius*2)+1)
 			for j := 0; j < (2*radius)+1; j++ {
-				cRange[j] = Mod((columnCoords[i]-radius)+j, dimensions[i])
+				cRange[j] = utils.Mod((columnCoords[i]-radius)+j, dimensions[i])
 			}
 			rangeND[i] = cRange
 		} else {
@@ -702,11 +703,11 @@ func (sp *SpatialPooler) getNeighborsND(columnIndex int, dimensions []int, radiu
 		}
 	}
 
-	cp := CartProductInt(rangeND)
+	cp := utils.CartProductInt(rangeND)
 	var neighbors []int
 	for i := 0; i < len(cp); i++ {
-		val := DotInt(bounds, cp[i])
-		if val != columnIndex && !ContainsInt(val, neighbors) {
+		val := utils.DotInt(bounds, cp[i])
+		if val != columnIndex && !utils.ContainsInt(val, neighbors) {
 			neighbors = append(neighbors, val)
 		}
 	}
@@ -732,7 +733,7 @@ density: The fraction of columns to survive inhibition.
 func (sp *SpatialPooler) inhibitColumnsGlobal(overlaps []float64, density float64) []int {
 	//calculate num active per inhibition area
 	numActive := int(density * float64(sp.numColumns))
-	ov := make([]TupleInt, len(overlaps))
+	ov := make([]utils.TupleInt, len(overlaps))
 	//TODO: if overlaps is assumed to be distinct this can be
 	//  	simplified
 	//a = value, b = original index
@@ -781,7 +782,7 @@ density: The fraction of columns to survive inhibition. This
 
 func (sp *SpatialPooler) inhibitColumnsLocal(overlaps []float64, density float64) []int {
 	var activeColumns []int
-	addToWinners := MaxSliceFloat64(overlaps) / 1000.0
+	addToWinners := utils.MaxSliceFloat64(overlaps) / 1000.0
 
 	for i := 0; i < sp.numColumns; i++ {
 		mask := sp.getNeighborsND(i, sp.ColumnDimensions, sp.inhibitionRadius, false)
@@ -848,7 +849,7 @@ func (sp *SpatialPooler) inhibitColumns(overlaps []float64, inhibitColumnsGlobal
 	}
 
 	if sp.GlobalInhibition ||
-		sp.inhibitionRadius > MaxSliceInt(sp.ColumnDimensions) {
+		sp.inhibitionRadius > utils.MaxSliceInt(sp.ColumnDimensions) {
 		return inhibitColumnsGlobal(overlaps, density)
 	} else {
 		return inhibitColumnsLocal(overlaps, density)
@@ -880,7 +881,7 @@ func (sp *SpatialPooler) adaptSynapses(inputVector []bool, activeColumns []int) 
 	}
 
 	permChanges := make([]float64, sp.numInputs)
-	FillSliceFloat64(permChanges, -1*sp.SynPermInactiveDec)
+	utils.FillSliceFloat64(permChanges, -1*sp.SynPermInactiveDec)
 	for _, val := range inputIndices {
 		permChanges[val] = sp.SynPermActiveInc
 	}
@@ -889,7 +890,7 @@ func (sp *SpatialPooler) adaptSynapses(inputVector []bool, activeColumns []int) 
 		perm := make([]float64, sp.numInputs)
 		mask := sp.potentialPools.GetRowIndices(ac)
 		for j := 0; j < sp.numInputs; j++ {
-			if ContainsInt(j, mask) {
+			if utils.ContainsInt(j, mask) {
 				perm[j] = permChanges[j] + sp.permanences.Get(ac, j)
 			} else {
 				perm[j] = sp.permanences.Get(ac, j)
@@ -1043,7 +1044,7 @@ func (sp *SpatialPooler) avgConnectedSpanForColumnND(index int) float64 {
 	dimensions := sp.InputDimensions
 
 	bounds := append(dimensions[1:], 1)
-	bounds = RevCumProdInt(bounds)
+	bounds = utils.RevCumProdInt(bounds)
 
 	connected := sp.connectedSynapses.GetRowIndices(index)
 	if len(connected) == 0 {
@@ -1142,7 +1143,7 @@ func (sp *SpatialPooler) updateInhibitionRadius(avgConnectedSpanForColumnND avgC
 	avgColumnsPerInput avgColumnsPerInputFunc) {
 
 	if sp.GlobalInhibition {
-		cmax := MaxSliceInt(sp.ColumnDimensions)
+		cmax := utils.MaxSliceInt(sp.ColumnDimensions)
 		sp.inhibitionRadius = cmax
 		return
 	}
@@ -1158,7 +1159,7 @@ func (sp *SpatialPooler) updateInhibitionRadius(avgConnectedSpanForColumnND avgC
 	radius := (diameter - 1) / 2.0
 	radius = math.Max(1.0, radius)
 
-	sp.inhibitionRadius = int(RoundPrec(radius, 0))
+	sp.inhibitionRadius = int(utils.RoundPrec(radius, 0))
 }
 
 /*
@@ -1183,10 +1184,10 @@ updateMinDutyCyclesLocal, but this function exploits the globalilty of the
 compuation to perform it in a straightforward, and more efficient manner.
 */
 func (sp *SpatialPooler) updateMinDutyCyclesGlobal() {
-	minOverlap := sp.MinPctOverlapDutyCycles * MaxSliceFloat64(sp.overlapDutyCycles)
-	FillSliceFloat64(sp.minOverlapDutyCycles, minOverlap)
-	minActive := sp.MinPctActiveDutyCycles * MaxSliceFloat64(sp.activeDutyCycles)
-	FillSliceFloat64(sp.minActiveDutyCycles, minActive)
+	minOverlap := sp.MinPctOverlapDutyCycles * utils.MaxSliceFloat64(sp.overlapDutyCycles)
+	utils.FillSliceFloat64(sp.minOverlapDutyCycles, minOverlap)
+	minActive := sp.MinPctActiveDutyCycles * utils.MaxSliceFloat64(sp.activeDutyCycles)
+	utils.FillSliceFloat64(sp.minActiveDutyCycles, minActive)
 }
 
 type getNeighborsNDFunc func(int, []int, int, bool) []int
@@ -1204,10 +1205,10 @@ func (sp *SpatialPooler) updateMinDutyCyclesLocal(getNeighborsND getNeighborsNDF
 		maskNeighbors := getNeighborsND(i, sp.ColumnDimensions, sp.inhibitionRadius, false)
 		maskNeighbors = append(maskNeighbors, i)
 
-		maxOverlap := MaxSliceFloat64(SubsetSliceFloat64(sp.overlapDutyCycles, maskNeighbors))
+		maxOverlap := utils.MaxSliceFloat64(utils.SubsetSliceFloat64(sp.overlapDutyCycles, maskNeighbors))
 		sp.minOverlapDutyCycles[i] = maxOverlap * sp.MinPctOverlapDutyCycles
 
-		maxActive := MaxSliceFloat64(SubsetSliceFloat64(sp.activeDutyCycles, maskNeighbors))
+		maxActive := utils.MaxSliceFloat64(utils.SubsetSliceFloat64(sp.activeDutyCycles, maskNeighbors))
 		sp.minActiveDutyCycles[i] = maxActive * sp.MinPctActiveDutyCycles
 	}
 

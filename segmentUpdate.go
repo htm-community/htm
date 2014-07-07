@@ -2,6 +2,7 @@ package htm
 
 import (
 	"fmt"
+	"github.com/zacg/htm/utils"
 
 //"github.com/cznic/mathutil"
 //"github.com/skelterjohn/go.matrix"
@@ -44,13 +45,13 @@ func (tp *TemporalPooler) addToSegmentUpdates(c, i int, segUpdate *SegmentUpdate
 	}
 
 	// key = (column index, cell index in column)
-	key := TupleInt{}
+	key := utils.TupleInt{}
 	key.A = c
 	key.B = i
 
 	newUpdate := UpdateState{tp.lrnIterationIdx, segUpdate}
 	if tp.segmentUpdates == nil {
-		tp.segmentUpdates = make(map[TupleInt][]UpdateState, 1000)
+		tp.segmentUpdates = make(map[utils.TupleInt][]UpdateState, 1000)
 	}
 	if _, ok := tp.segmentUpdates[key]; ok {
 		tp.segmentUpdates[key] = append(tp.segmentUpdates[key], newUpdate)
@@ -121,7 +122,7 @@ func (segUpdate *SegmentUpdate) adaptSegments(tp *TemporalPooler) bool {
 
 		var inactiveSynIndices []int
 		for i := 0; i < lastSynIndex+1; i++ {
-			if !ContainsInt(i, synToUpdate) {
+			if !utils.ContainsInt(i, synToUpdate) {
 				inactiveSynIndices = append(inactiveSynIndices, i)
 			}
 		}

@@ -9,6 +9,7 @@ import (
 	"github.com/cznic/mathutil"
 	"github.com/zacg/floats"
 	"github.com/zacg/go.matrix"
+	"github.com/zacg/htm/utils"
 	//"math"
 	//"math/rand"
 	//"sort"
@@ -116,7 +117,7 @@ func (tp *TemporalPooler) checkPrediction2(patternNZs [][]int, output *SparseBin
 	var orAll []int
 	for _, row := range patternNZs {
 		for _, col := range row {
-			if !ContainsInt(col, orAll) {
+			if !utils.ContainsInt(col, orAll) {
 				orAll = append(orAll, col)
 			}
 		}
@@ -139,13 +140,13 @@ func (tp *TemporalPooler) checkPrediction2(patternNZs [][]int, output *SparseBin
 	totalMissing := 0
 
 	for _, val := range outputIdxs {
-		if !ContainsInt(val, orAll) {
+		if !utils.ContainsInt(val, orAll) {
 			totalExtras++
 		}
 	}
 
 	for _, val := range orAll {
-		if !ContainsInt(val, outputIdxs) {
+		if !utils.ContainsInt(val, outputIdxs) {
 			totalMissing++
 		}
 	}
@@ -215,8 +216,8 @@ func (tp *TemporalPooler) checkPrediction2(patternNZs [][]int, output *SparseBin
 		var missingPatternBits []int
 		for _, pattern := range patternNZs {
 			for _, val := range pattern {
-				if !ContainsInt(val, outputIdxs) &&
-					!ContainsInt(val, missingPatternBits) {
+				if !utils.ContainsInt(val, outputIdxs) &&
+					!utils.ContainsInt(val, missingPatternBits) {
 					missingPatternBits = append(missingPatternBits, val)
 				}
 			}

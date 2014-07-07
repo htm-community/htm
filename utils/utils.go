@@ -1,4 +1,4 @@
-package htm
+package utils
 
 import (
 	//"fmt"
@@ -164,7 +164,7 @@ func ContainsFloat64(q float64, vals []float64) bool {
 // 	return count
 // }
 
-func randFloatRange(min, max float64) float64 {
+func RandFloatRange(min, max float64) float64 {
 	return rand.Float64()*(max-min) + min
 }
 

@@ -5,6 +5,7 @@ import (
 	"github.com/cznic/mathutil"
 	"github.com/zacg/floats"
 	"github.com/zacg/go.matrix"
+	"github.com/zacg/htm/utils"
 	//"math"
 	"math/rand"
 	//"sort"
@@ -141,7 +142,7 @@ type TemporalPooler struct {
 
 	//ephemeral state
 
-	segmentUpdates map[TupleInt][]UpdateState
+	segmentUpdates map[utils.TupleInt][]UpdateState
 	/*
 	 	 NOTE: We don't use the same backtrack buffer for inference and learning
 	     because learning has a different metric for determining if an input from
@@ -469,7 +470,7 @@ func (tp *TemporalPooler) inferPhase2() bool {
 	// Init to zeros to start
 	tp.DynamicState.infPredictedState.Clear()
 	tp.DynamicState.cellConfidence.Fill(0)
-	FillSliceFloat64(tp.DynamicState.colConfidence, 0)
+	utils.FillSliceFloat64(tp.DynamicState.colConfidence, 0)
 
 	// Phase 2 - Compute new predicted state and update cell and column
 	// confidences
@@ -504,7 +505,7 @@ func (tp *TemporalPooler) inferPhase2() bool {
 	}
 
 	// Normalize column and cell confidences
-	sumConfidences := SumSliceFloat64(tp.DynamicState.colConfidence)
+	sumConfidences := utils.SumSliceFloat64(tp.DynamicState.colConfidence)
 
 	if sumConfidences > 0 {
 		floats.DivConst(sumConfidences, tp.DynamicState.colConfidence)
@@ -881,12 +882,10 @@ func (tp *TemporalPooler) inferBacktrack(activeColumns []int) {
 	// Remove any useless patterns at the head of the previous input pattern
 	// queue.
 	for i := 0; i < numPrevPatterns; i++ {
-		if ContainsInt(i, badPatterns) || (candStartOffset != -1 && i <= candStartOffset) {
-
+		if utils.ContainsInt(i, badPatterns) || (candStartOffset != -1 && i <= candStartOffset) {
 			if tp.params.Verbosity >= 3 {
 				fmt.Printf("Removing useless pattern: 1 of: %v from history: %v \n", len(tp.prevInfPatterns), tp.prevInfPatterns[0])
 			}
-
 			//pop prev pattern
 			tp.prevInfPatterns = tp.prevInfPatterns[:len(tp.prevInfPatterns)-1]
 		} else {
@@ -959,7 +958,7 @@ Remove a segment update (called when seg update expires or is processed)
 */
 func (tp *TemporalPooler) removeSegmentUpdate(updateState UpdateState) {
 	// Key is stored in segUpdate itself...
-	key := TupleInt{updateState.Update.columnIdx, updateState.Update.cellIdx}
+	key := utils.TupleInt{updateState.Update.columnIdx, updateState.Update.cellIdx}
 	delete(tp.segmentUpdates, key)
 }
 
@@ -1086,7 +1085,7 @@ else remove it.
 func (tp *TemporalPooler) processSegmentUpdates(activeColumns []int) {
 	// The segmentUpdates dict has keys which are the column,cellIdx of the
 	// owner cell. The values are lists of segment updates for that cell
-	var removeKeys []TupleInt
+	var removeKeys []utils.TupleInt
 	var trimSegments []UpdateState
 
 	for key, updateList := range tp.segmentUpdates {
@@ -1094,7 +1093,7 @@ func (tp *TemporalPooler) processSegmentUpdates(activeColumns []int) {
 		var action ProcessAction
 
 		// If the cell received bottom-up, update its segments
-		if ContainsInt(key.A, activeColumns) {
+		if utils.ContainsInt(key.A, activeColumns) {
 			action = Update
 		} else {
 			// If not, either keep it around if it's still predicted, or remove it
@@ -1767,7 +1766,7 @@ func (tp *TemporalPooler) learnBacktrack() int {
 	// Remove any useless patterns at the head of the input pattern history
 	// queue.
 	for i := 0; i < numPrevPatterns; i++ {
-		if ContainsInt(i, badPatterns) || i <= startOffset {
+		if utils.ContainsInt(i, badPatterns) || i <= startOffset {
 			if tp.params.Verbosity >= 3 {
 				fmt.Printf("Removing useless pattern 1 of: %v from history: %v \n", len(tp.prevLrnPatterns), tp.prevLrnPatterns[0])
 			}
@@ -1923,7 +1922,7 @@ func (tp *TemporalPooler) Compute(bottomUpInput []bool, enableLearn bool, comput
 	}
 
 	// Get the list of columns that have bottom-up
-	activeColumns := OnIndices(bottomUpInput)
+	activeColumns := utils.OnIndices(bottomUpInput)
 
 	if enableLearn {
 		tp.lrnIterationIdx++
@@ -1940,7 +1939,7 @@ func (tp *TemporalPooler) Compute(bottomUpInput []bool, enableLearn bool, comput
 	// duty cycle calculation is a moving average based on a tiered alpha, it is
 	// important that we update all segments on each tier boundary
 	if enableLearn {
-		if ContainsInt(tp.lrnIterationIdx, SegmentDutyCycleTiers) {
+		if utils.ContainsInt(tp.lrnIterationIdx, SegmentDutyCycleTiers) {
 			for c := 0; c < tp.params.NumberOfCols; c++ {
 				for i := 0; i < tp.params.CellsPerColumn; i++ {
 					for _, segment := range tp.cells[c][i] {

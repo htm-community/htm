@@ -13,6 +13,7 @@ import (
 	//"sort"
 	//"github.com/gonum/floats"
 	//"github.com/zacg/ints"
+	"github.com/zacg/htm/utils"
 )
 
 type SegmentStats struct {
@@ -179,7 +180,7 @@ func (tp *TemporalPooler) printComputeEnd(output []bool, learn bool) {
 	if tp.params.Verbosity < 3 {
 		if tp.params.Verbosity >= 1 {
 			fmt.Println("TP: learn:", learn)
-			fmt.Printf("TP: active outputs(%v):\n", CountTrue(output))
+			fmt.Printf("TP: active outputs(%v):\n", utils.CountTrue(output))
 			fmt.Print(NewSparseBinaryMatrixFromDense1D(output,
 				tp.params.NumberOfCols, tp.params.CellsPerColumn).ToString())
 		}

@@ -8,6 +8,7 @@ import (
 	//"math/rand"
 	//"sort"
 	"github.com/gonum/floats"
+	"github.com/zacg/htm/utils"
 )
 
 var SegmentDutyCycleTiers = []int{0, 100, 320, 1000,
@@ -206,7 +207,7 @@ func (s *Segment) freeNSynapses(numToFree int, inactiveSynapseIndices []int) {
 	var activeSynIndices []int
 	if len(candidates) < numToFree {
 		for i := 0; i < len(s.syns); i++ {
-			if !ContainsInt(i, inactiveSynapseIndices) {
+			if !utils.ContainsInt(i, inactiveSynapseIndices) {
 				activeSynIndices = append(activeSynIndices, i)
 			}
 		}
@@ -234,7 +235,7 @@ func (s *Segment) freeNSynapses(numToFree int, inactiveSynapseIndices []int) {
 	// Delete candidate syns by copying undeleted to new slice
 	var newSyns []Synapse
 	for idx, val := range s.syns {
-		if !ContainsInt(idx, candidates) {
+		if !utils.ContainsInt(idx, candidates) {
 			newSyns = append(newSyns, val)
 		}
 	}
