@@ -401,14 +401,14 @@ func (tp *TemporalPooler) getSegmentActivityLevel(seg Segment, activeState *Spar
 		for _, val := range seg.syns {
 			//fmt.Printf("***syn %v %v \n", val.Permanence, tp.params.ConnectedPerm)
 			if val.Permanence >= tp.params.ConnectedPerm {
-				if activeState.Get(val.SrcCellIdx, val.SrcCellCol) {
+				if activeState.Get(val.SrcCellCol, val.SrcCellIdx) {
 					activity++
 				}
 			}
 		}
 	} else {
 		for _, val := range seg.syns {
-			if activeState.Get(val.SrcCellIdx, val.SrcCellCol) {
+			if activeState.Get(val.SrcCellCol, val.SrcCellIdx) {
 				activity++
 			}
 		}
@@ -430,7 +430,7 @@ func (tp *TemporalPooler) isSegmentActive(seg Segment, activeState *SparseBinary
 	activity := 0
 	for _, val := range seg.syns {
 		if val.Permanence >= tp.params.ConnectedPerm {
-			if activeState.Get(val.SrcCellIdx, val.SrcCellCol) {
+			if activeState.Get(val.SrcCellCol, val.SrcCellIdx) {
 				activity++
 				if activity >= tp.params.ActivationThreshold {
 					return true
@@ -493,6 +493,8 @@ func (tp *TemporalPooler) inferPhase2() bool {
 				tp.DynamicState.cellConfidence.Set(c, i, tp.DynamicState.cellConfidence.Get(c, i)+dc)
 				tp.DynamicState.colConfidence[c] += dc
 
+				// If we reach threshold on the connected synapses, predict it
+				// If not active, skip over it
 				if tp.isSegmentActive(seg, tp.DynamicState.infActiveState) {
 					tp.DynamicState.infPredictedState.Set(c, i, true)
 				}
@@ -510,8 +512,7 @@ func (tp *TemporalPooler) inferPhase2() bool {
 	}
 
 	// Are we predicting the required minimum number of columns?
-	numPredictedCols := float64(tp.DynamicState.infPredictedState.TotalTrueCols())
-
+	numPredictedCols := float64(tp.DynamicState.infPredictedState.TotalNonZeroCount())
 	return numPredictedCols >= (0.5 * tp.avgInputDensity)
 
 }
@@ -769,7 +770,7 @@ func (tp *TemporalPooler) inferBacktrack(activeColumns []int) {
 	// does not impact our confidences going forward at all.
 	inSequence := false
 	candConfidence := -1.0
-	candStartOffset := 0
+	candStartOffset := -1
 
 	//for startOffset in range(0, numPrevPatterns):
 	for startOffset := 0; startOffset < numPrevPatterns; startOffset++ {
@@ -808,7 +809,7 @@ func (tp *TemporalPooler) inferBacktrack(activeColumns []int) {
 			}
 
 			if tp.params.Verbosity >= 3 {
-				fmt.Println("backtrack: computing predictions from", tp.prevInfPatterns[offset])
+				fmt.Println("Backtrack: computing predictions from", tp.prevInfPatterns[offset])
 			}
 
 			// Compute predictedState at t given activeState at t
@@ -834,17 +835,16 @@ func (tp *TemporalPooler) inferBacktrack(activeColumns []int) {
 
 		if tp.params.Verbosity >= 3 &&
 			startOffset != currentTimeStepsOffset {
-			fmt.Printf("# Prediction confidence of current input after starting %v steps ago: %v \n", (numPrevPatterns - 1 - startOffset), totalConfidence)
+			fmt.Printf("Prediction confidence of current input after starting %v steps ago: %v \n", (numPrevPatterns - 1 - startOffset), totalConfidence)
 		}
 
 		if candStartOffset == currentTimeStepsOffset { // no more to try
 			break
 		}
-		fmt.Println("Setting candidates")
+
 		tp.DynamicState.infActiveStateCandidate = tp.DynamicState.infActiveState.Copy()
 		tp.DynamicState.infPredictedStateCandidate = tp.DynamicState.infPredictedState.Copy()
 		tp.DynamicState.cellConfidenceCandidate = tp.DynamicState.cellConfidence.Copy()
-
 		tp.DynamicState.colConfidenceCandidate = make([]float64, len(tp.DynamicState.colConfidence))
 		copy(tp.DynamicState.colConfidenceCandidate, tp.DynamicState.colConfidence)
 		break
@@ -870,12 +870,10 @@ func (tp *TemporalPooler) inferBacktrack(activeColumns []int) {
 
 		// Install the candidate state, if it wasn't the last one we evaluated.
 		if candStartOffset != currentTimeStepsOffset {
-			fmt.Println("Installing candidate state...")
 			tp.DynamicState.infActiveState = tp.DynamicState.infActiveStateCandidate.Copy()
 			tp.DynamicState.infPredictedState = tp.DynamicState.infPredictedStateCandidate.Copy()
 			tp.DynamicState.cellConfidence = tp.DynamicState.cellConfidenceCandidate.Copy()
 			copy(tp.DynamicState.colConfidence, tp.DynamicState.colConfidenceCandidate)
-			//tp.DynamicState.colConfidence = tp.DynamicState.colConfidenceCandidate
 		}
 
 	}
@@ -886,7 +884,7 @@ func (tp *TemporalPooler) inferBacktrack(activeColumns []int) {
 		if ContainsInt(i, badPatterns) || (candStartOffset != -1 && i <= candStartOffset) {
 
 			if tp.params.Verbosity >= 3 {
-				fmt.Printf("Removing useless pattern 1 of %v from history: %v \n", len(tp.prevInfPatterns), tp.prevInfPatterns[0])
+				fmt.Printf("Removing useless pattern: 1 of: %v from history: %v \n", len(tp.prevInfPatterns), tp.prevInfPatterns[0])
 			}
 
 			//pop prev pattern
@@ -928,7 +926,7 @@ func (tp *TemporalPooler) updateInferenceState(activeColumns []int) {
 	// Compute the active state given the predictions from last time step and
 	// the current bottom-up
 	inSequence := tp.inferPhase1(activeColumns, tp.resetCalled)
-
+	fmt.Println("Phase1 inseg=", inSequence)
 	// If this input was considered unpredicted, let's go back in time and
 	// replay the recent inputs from start cells and see if we can lock onto
 	// this current set of inputs that way.
@@ -1091,8 +1089,6 @@ func (tp *TemporalPooler) processSegmentUpdates(activeColumns []int) {
 	var removeKeys []TupleInt
 	var trimSegments []UpdateState
 
-	fmt.Println("seg updates:", len(tp.segmentUpdates))
-
 	for key, updateList := range tp.segmentUpdates {
 		// Get the column number and cell index of the owner cell
 		var action ProcessAction
@@ -1109,8 +1105,6 @@ func (tp *TemporalPooler) processSegmentUpdates(activeColumns []int) {
 				action = Remove
 			}
 		}
-
-		fmt.Println("action:", action)
 
 		// Process each segment for this cell. Each segment entry contains
 		// [creationDate, SegmentState]
@@ -1130,17 +1124,20 @@ func (tp *TemporalPooler) processSegmentUpdates(activeColumns []int) {
 				}
 
 				if action == Update {
-					fmt.Println("updating segment...")
+					if tp.params.Verbosity >= 5 {
+						fmt.Println("Updating segment...")
+					}
 					trimSegment := updateState.Update.adaptSegments(tp)
 					if trimSegment {
 						trimSegments = append(trimSegments, updateState)
 					}
 				} else {
-					fmt.Println("keeping segment...")
+					if tp.params.Verbosity >= 5 {
+						fmt.Println("keeping segment...")
+					}
 					// Keep segments that haven't expired yet (the cell is still being
 					// predicted)
 					updateListKeep = append(updateListKeep, updateState)
-
 				}
 
 			}
@@ -1429,8 +1426,8 @@ func (tp *TemporalPooler) learnPhase1(activeColumns []int, readOnly bool) bool {
 	// one predicted cell per column
 	numUnpredictedColumns := 0
 
-	for c := range activeColumns {
-		predictingCells := tp.DynamicState.lrnPredictedState.GetRowIndices(c)
+	for _, c := range activeColumns {
+		predictingCells := tp.DynamicState.lrnPredictedStateLast.GetRowIndices(c)
 		numPredictedCells := len(predictingCells)
 		if numPredictedCells > 1 {
 			panic("number of predicted cells too high")
@@ -1520,6 +1517,10 @@ func (tp *TemporalPooler) learnPhase2(readOnly bool) {
 	// phase 2, we predict at most one cell per column (the one with the best
 	// matching segment).
 
+	if tp.params.Verbosity >= 5 {
+		fmt.Println("LearningPhase2...")
+	}
+
 	for c := 0; c < tp.params.NumberOfCols; c++ {
 		// Is there a cell predicted to turn on in this column?
 		i, s, numActive := tp.getBestMatchingCell(c, tp.DynamicState.lrnActiveState, tp.params.ActivationThreshold)
@@ -1596,7 +1597,6 @@ func (tp *TemporalPooler) learnBacktrackFrom(startOffset int, readOnly bool) boo
 	}
 
 	// Status message
-
 	if tp.params.Verbosity >= 3 {
 		if readOnly {
 			fmt.Printf("Trying to lock-on using startCell state from %v steps ago: %v \n",
@@ -1768,11 +1768,9 @@ func (tp *TemporalPooler) learnBacktrack() int {
 	// queue.
 	for i := 0; i < numPrevPatterns; i++ {
 		if ContainsInt(i, badPatterns) || i <= startOffset {
-
 			if tp.params.Verbosity >= 3 {
 				fmt.Printf("Removing useless pattern 1 of: %v from history: %v \n", len(tp.prevLrnPatterns), tp.prevLrnPatterns[0])
 			}
-
 			tp.prevLrnPatterns = append(tp.prevLrnPatterns[:0], tp.prevLrnPatterns[1:]...)
 		} else {
 			break
@@ -1865,7 +1863,7 @@ func (tp *TemporalPooler) updateLearningState(activeColumns []int) {
 			seqLength = tp.learnedSeqLength
 		}
 		if tp.params.Verbosity >= 3 {
-			fmt.Printf("learned sequence length was: %v \n", tp.learnedSeqLength)
+			fmt.Printf("Learned sequence length was: %v \n", tp.learnedSeqLength)
 		}
 		tp.updateAvgLearnedSeqLength(float64(seqLength))
 
@@ -1941,10 +1939,8 @@ func (tp *TemporalPooler) Compute(bottomUpInput []bool, enableLearn bool, comput
 	// We determine if it's time to update the segment duty cycles. Since the
 	// duty cycle calculation is a moving average based on a tiered alpha, it is
 	// important that we update all segments on each tier boundary
-
 	if enableLearn {
 		if ContainsInt(tp.lrnIterationIdx, SegmentDutyCycleTiers) {
-
 			for c := 0; c < tp.params.NumberOfCols; c++ {
 				for i := 0; i < tp.params.CellsPerColumn; i++ {
 					for _, segment := range tp.cells[c][i] {
@@ -1952,9 +1948,7 @@ func (tp *TemporalPooler) Compute(bottomUpInput []bool, enableLearn bool, comput
 					}
 				}
 			}
-
 		}
-
 	}
 
 	// Update the average input density
@@ -2072,5 +2066,84 @@ func (tp *TemporalPooler) Compute(bottomUpInput []bool, enableLearn bool, comput
 
 	tp.resetCalled = false
 	return result
+
+}
+
+/*
+	 Reset the state of all cells.
+
+	This is normally used between sequences while training. All internal states
+	are reset to 0.
+*/
+func (tp *TemporalPooler) Reset() {
+
+	if tp.params.Verbosity >= 3 {
+		fmt.Println("==== RESET =====")
+	}
+
+	tp.DynamicState.lrnActiveStateLast.Clear()
+	tp.DynamicState.lrnActiveState.Clear()
+	tp.DynamicState.lrnPredictedState.Clear()
+	tp.DynamicState.lrnPredictedStateLast.Clear()
+
+	if tp.DynamicState.infActiveStateLast != nil {
+		tp.DynamicState.infActiveStateLast.Clear()
+	}
+	tp.DynamicState.infActiveState.Clear()
+
+	tp.DynamicState.infPredictedState.Clear()
+	if tp.DynamicState.infPredictedStateLast != nil {
+		tp.DynamicState.infPredictedStateLast.Clear()
+	}
+
+	if tp.DynamicState.cellConfidenceLast != nil {
+		tp.DynamicState.cellConfidenceLast.Fill(0)
+	}
+	tp.DynamicState.cellConfidence.Fill(0)
+
+	// Flush the segment update queue
+	tp.segmentUpdates = nil
+
+	tp.internalStats.NInfersSinceReset = 0
+
+	//To be removed
+	tp.internalStats.CurPredictionScore = 0
+
+	//New prediction score
+	tp.internalStats.CurPredictionScore2 = 0
+	tp.internalStats.CurFalseNegativeScore = 0
+	tp.internalStats.CurFalsePositiveScore = 0
+
+	tp.internalStats.CurMissing = 0
+	tp.internalStats.CurExtra = 0
+
+	if tp.trivialPredictor != nil {
+		tp.trivialPredictor.reset()
+	}
+
+	// When a reset occurs, set prevSequenceSignature to the signature of the
+	// just-completed sequence and start accumulating histogram for the next
+	// sequence.
+
+	//self._internalStats['prevSequenceSignature'] = None
+
+	// if tp.collectSequenceStats {
+	// 	tp.internalStats.ConfHistogram.Sum() > 0 {
+
+	// 	}
+	// }
+
+	//    if self.collectSequenceStats:
+	//      if self._internalStats['confHistogram'].sum() > 0:
+	//        sig = self._internalStats['confHistogram'].copy()
+	//        sig.reshape(self.numberOfCols * self.cellsPerColumn)
+	//        self._internalStats['prevSequenceSignature'] = sig
+	//      self._internalStats['confHistogram'].fill(0)
+
+	tp.resetCalled = true
+
+	// Clear out input history
+	tp.prevInfPatterns = nil
+	tp.prevLrnPatterns = nil
 
 }
