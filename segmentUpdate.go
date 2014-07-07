@@ -38,19 +38,24 @@ type UpdateState struct {
 later to determine whether the update is too old and should be forgotten.
 This is controlled by parameter segUpdateValidDuration.
 */
-func (su *TemporalPooler) addToSegmentUpdates(c, i int, segUpdate *SegmentUpdate) {
+func (tp *TemporalPooler) addToSegmentUpdates(c, i int, segUpdate *SegmentUpdate) {
 	if segUpdate == nil || len(segUpdate.activeSynapses) == 0 {
 		return
 	}
 
 	// key = (column index, cell index in column)
-	key := TupleInt{c, i}
+	key := TupleInt{}
+	key.A = c
+	key.B = i
 
-	newUpdate := UpdateState{su.lrnIterationIdx, segUpdate}
-	if _, ok := su.segmentUpdates[key]; ok {
-		su.segmentUpdates[key] = append(su.segmentUpdates[key], newUpdate)
+	newUpdate := UpdateState{tp.lrnIterationIdx, segUpdate}
+	if tp.segmentUpdates == nil {
+		tp.segmentUpdates = make(map[TupleInt][]UpdateState, 1000)
+	}
+	if _, ok := tp.segmentUpdates[key]; ok {
+		tp.segmentUpdates[key] = append(tp.segmentUpdates[key], newUpdate)
 	} else {
-		su.segmentUpdates[key] = []UpdateState{newUpdate}
+		tp.segmentUpdates[key] = []UpdateState{newUpdate}
 	}
 
 }
@@ -74,7 +79,10 @@ func (segUpdate *SegmentUpdate) adaptSegments(tp *TemporalPooler) bool {
 	trimSegment := false
 
 	// segUpdate.segment is None when creating a new segment
-	c, i, segment := segUpdate.columnIdx, segUpdate.cellIdx, segUpdate.segment
+	//c, i, segment := segUpdate.columnIdx, segUpdate.cellIdx, segUpdate.segment
+	c := segUpdate.columnIdx
+	i := segUpdate.cellIdx
+	segment := segUpdate.segment
 
 	// update.activeSynapses can be empty.
 	// If not, it can contain either or both integers and tuples.
@@ -92,10 +100,12 @@ func (segUpdate *SegmentUpdate) adaptSegments(tp *TemporalPooler) bool {
 		}
 	}
 
+	//fmt.Printf("Entering adapt seg %v %v \n", segment, len(activeSynapses))
+
 	if segment != nil {
 
 		if tp.params.Verbosity >= 4 {
-			fmt.Printf("Reinforcing segment #%v for cell[%v,%v]", segment.segId, c, i)
+			fmt.Printf("Reinforcing segment #%v for cell[%v,%v] \n", segment.segId, c, i)
 		}
 
 		//modify existing segment
@@ -103,7 +113,7 @@ func (segUpdate *SegmentUpdate) adaptSegments(tp *TemporalPooler) bool {
 		segment.lastActiveIteration = tp.lrnIterationIdx
 
 		// Update frequency and positiveActivations
-		segment.positiveActivations++ // positiveActivations += 1
+		segment.positiveActivations++
 		segment.dutyCycle(true, false)
 
 		// First, decrement synapses that are not active
@@ -148,17 +158,15 @@ func (segUpdate *SegmentUpdate) adaptSegments(tp *TemporalPooler) bool {
 
 	} else {
 		//create new segment
-		newSegment := new(Segment)
-		newSegment.tp = tp
-		newSegment.isSequenceSeg = segUpdate.sequenceSegment
+		newSegment := NewSegment(tp, segUpdate.sequenceSegment)
 
 		for _, val := range activeSynapses {
 			newSegment.AddSynapse(val.Index, val.CellIndex, tp.params.InitialPerm)
 		}
 
 		if tp.params.Verbosity >= 3 {
-			fmt.Printf("New segment #%v for cell[%v,%v] \n", tp.segId-1, c, i)
-			//fmt.Print(newSegment.ToString())
+			fmt.Printf("New segment #%v for cell[%v,%v] \n", tp.segId, c, i)
+			fmt.Print(newSegment.ToString())
 		}
 
 		tp.cells[c][i] = append(tp.cells[c][i], *newSegment)
