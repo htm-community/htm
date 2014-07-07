@@ -34,7 +34,6 @@ func TestPermanenceInit(t *testing.T) {
 	sp.numInputs = 10
 	sp.SynPermConnected = 0.1
 	sp.SynPermActiveInc = 0.1
-	//sp.raisePermanenceToThreshold = Mock()
 
 	sp.PotentialRadius = 2
 	connectedPct := 1.0
@@ -147,7 +146,7 @@ func TestRaisePermanenceThreshold(t *testing.T) {
 		sp.raisePermanenceToThreshold(perm, maskPP)
 		for j := 0; j < sp.numInputs; j++ {
 			//if truePermanences[i][j] != perm[j] {
-			if !AlmostEqual(truePermanences[i][j], perm[j]) {
+			if !AlmostEqualFloat(truePermanences[i][j], perm[j]) {
 				t.Errorf("truePermances: %v != perm: %v", truePermanences[i][j], perm[j])
 			}
 		}
@@ -1062,7 +1061,7 @@ func TestAdaptSynapses(t *testing.T) {
 		for j := 0; j < sp.numInputs; j++ {
 			expected := truePermanences[i][j]
 			actual := sp.permanences.Get(i, j)
-			assert.AlmostEqual(t, expected, actual)
+			assert.AlmostEqualFloat(t, expected, actual)
 		}
 	}
 
@@ -1101,7 +1100,7 @@ func TestAdaptSynapses(t *testing.T) {
 		for j := 0; j < sp.numInputs; j++ {
 			expected := truePermanences[i][j]
 			actual := sp.permanences.Get(i, j)
-			assert.AlmostEqual(t, expected, actual)
+			assert.AlmostEqualFloat(t, expected, actual)
 		}
 	}
 
@@ -1153,8 +1152,8 @@ func TestUpdateMinDutyCyclesGlobal(t *testing.T) {
 	assert.Equal(t, 5, len(sp.minActiveDutyCycles))
 	assert.Equal(t, 5, len(sp.minOverlapDutyCycles))
 	for i := 0; i < sp.numColumns; i++ {
-		assert.AlmostEqual(t, trueMinActiveDutyCycles[i], sp.minActiveDutyCycles[i])
-		assert.AlmostEqual(t, trueMinOverlapDutyCycles[i], sp.minOverlapDutyCycles[i])
+		assert.AlmostEqualFloat(t, trueMinActiveDutyCycles[i], sp.minActiveDutyCycles[i])
+		assert.AlmostEqualFloat(t, trueMinOverlapDutyCycles[i], sp.minOverlapDutyCycles[i])
 	}
 
 	sp.MinPctOverlapDutyCycles = 0.015
@@ -1165,7 +1164,7 @@ func TestUpdateMinDutyCyclesGlobal(t *testing.T) {
 	sp.updateMinDutyCyclesGlobal()
 	trueMinOverlapDutyCycles = MakeSliceFloat64(sp.numColumns, 0.015*2.4)
 	for i := 0; i < sp.numColumns; i++ {
-		assert.AlmostEqual(t, trueMinOverlapDutyCycles[i], sp.minOverlapDutyCycles[i])
+		assert.AlmostEqualFloat(t, trueMinOverlapDutyCycles[i], sp.minOverlapDutyCycles[i])
 	}
 
 	sp.MinPctOverlapDutyCycles = 0.015
@@ -1180,8 +1179,8 @@ func TestUpdateMinDutyCyclesGlobal(t *testing.T) {
 	assert.Equal(t, 5, len(sp.minActiveDutyCycles))
 	assert.Equal(t, 5, len(sp.minOverlapDutyCycles))
 	for i := 0; i < sp.numColumns; i++ {
-		assert.AlmostEqual(t, trueMinActiveDutyCycles[i], sp.minActiveDutyCycles[i])
-		assert.AlmostEqual(t, trueMinOverlapDutyCycles[i], sp.minOverlapDutyCycles[i])
+		assert.AlmostEqualFloat(t, trueMinActiveDutyCycles[i], sp.minActiveDutyCycles[i])
+		assert.AlmostEqualFloat(t, trueMinOverlapDutyCycles[i], sp.minOverlapDutyCycles[i])
 	}
 
 }
@@ -1221,7 +1220,7 @@ func TestUpdateMinDutyCyclesLocal(t *testing.T) {
 
 	//assert.Equal(t, trueMinOverlapDutyCycles, sp.minOverlapDutyCycles)
 	for i, _ := range trueMinOverlapDutyCycles {
-		assert.AlmostEqual(t, trueMinOverlapDutyCycles[i], sp.minOverlapDutyCycles[i])
+		assert.AlmostEqualFloat(t, trueMinOverlapDutyCycles[i], sp.minOverlapDutyCycles[i])
 	}
 	assert.Equal(t, trueMinActiveDutyCycles, sp.minActiveDutyCycles)
 
@@ -1314,7 +1313,7 @@ func TestBumpUpWeakColumns(t *testing.T) {
 
 	for i := 0; i < sp.numColumns; i++ {
 		for j := 0; j < sp.numInputs; j++ {
-			assert.AlmostEqual(t, truePermanences[i][j], sp.permanences.Get(i, j), strconv.Itoa(i)+" "+strconv.Itoa(j))
+			assert.AlmostEqualFloat(t, truePermanences[i][j], sp.permanences.Get(i, j), strconv.Itoa(i)+" "+strconv.Itoa(j))
 		}
 	}
 
@@ -1550,7 +1549,7 @@ func GetRowFromSM(mat *matrix.SparseMatrix, row int) []float64 {
 	return result
 }
 
-func AlmostEqual(a, b float64) bool {
+func AlmostEqualFloat(a, b float64) bool {
 	ar := RoundPrec(a, 2)
 	br := RoundPrec(b, 2)
 	return ar == br
