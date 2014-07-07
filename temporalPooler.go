@@ -925,7 +925,7 @@ func (tp *TemporalPooler) updateInferenceState(activeColumns []int) {
 	// Compute the active state given the predictions from last time step and
 	// the current bottom-up
 	inSequence := tp.inferPhase1(activeColumns, tp.resetCalled)
-	fmt.Println("Phase1 inseg=", inSequence)
+
 	// If this input was considered unpredicted, let's go back in time and
 	// replay the recent inputs from start cells and see if we can lock onto
 	// this current set of inputs that way.
