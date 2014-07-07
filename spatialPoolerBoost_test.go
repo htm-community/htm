@@ -4,6 +4,7 @@ import (
 	//"fmt"
 	//"github.com/skelterjohn/go.matrix"
 	//"github.com/stretchr/testify/assert"
+	"github.com/zacg/htm/utils"
 	"github.com/zacg/testify/assert"
 	//"math/big"
 	//"github.com/stretchr/testify/mock"
@@ -122,7 +123,7 @@ func phase1(t *testing.T, bt *boostTest) {
 	y := make([]bool, bt.sp.numColumns)
 	// Do one training batch through the input patterns
 	for idx, input := range bt.x {
-		FillSliceBool(y, false)
+		utils.FillSliceBool(y, false)
 		bt.sp.Compute(input, true, y, bt.sp.inhibitColumns)
 		for j, winner := range y {
 			if winner {
@@ -133,10 +134,10 @@ func phase1(t *testing.T, bt *boostTest) {
 	}
 
 	//The boost factor for all columns should be at 1.
-	assert.Equal(t, bt.sp.numColumns, CountFloat64(bt.sp.boostFactors, 1), "Boost factors are not all 1")
+	assert.Equal(t, bt.sp.numColumns, utils.CountFloat64(bt.sp.boostFactors, 1), "Boost factors are not all 1")
 
 	//At least half of the columns should have never been active.
-	winners := CountInt(bt.winningIteration, 0)
+	winners := utils.CountInt(bt.winningIteration, 0)
 	assert.True(t, winners >= bt.sp.numColumns/2, "More than half of the columns have been active")
 
 	//All the never-active columns should have duty cycle of 0
@@ -170,7 +171,7 @@ func phase2(t *testing.T, bt *boostTest) {
 	// Do 9 training batch through the input patterns
 	for i := 0; i < 9; i++ {
 		for idx, input := range bt.x {
-			FillSliceBool(y, false)
+			utils.FillSliceBool(y, false)
 			bt.sp.Compute(input, true, y, bt.sp.inhibitColumns)
 			for j, winner := range y {
 				if winner {
@@ -182,10 +183,10 @@ func phase2(t *testing.T, bt *boostTest) {
 	}
 
 	// The boost factor for all columns should be at 1.
-	assert.Equal(t, bt.sp.numColumns, CountFloat64(bt.sp.boostFactors, 1), "Boost factors are not all 1")
+	assert.Equal(t, bt.sp.numColumns, utils.CountFloat64(bt.sp.boostFactors, 1), "Boost factors are not all 1")
 
 	// Roughly half of the columns should have never been active.
-	winners := CountInt(bt.winningIteration, 0)
+	winners := utils.CountInt(bt.winningIteration, 0)
 	assert.True(t, winners >= int(0.4*float64(bt.sp.numColumns)), "More than 60% of the columns have been active")
 
 	// All the never-active columns should have duty cycle of 0
@@ -221,7 +222,7 @@ func phase3(t *testing.T, bt *boostTest) {
 
 	for i := 0; i < 2; i++ {
 		for idx, input := range bt.x {
-			FillSliceBool(y, false)
+			utils.FillSliceBool(y, false)
 			bt.sp.Compute(input, true, y, bt.sp.inhibitColumns)
 			for j, winner := range y {
 				if winner {
@@ -264,11 +265,11 @@ func phase4(t *testing.T, bt *boostTest) {
 	// Do one more iteration through the input patterns with learning OFF
 	y := make([]bool, bt.sp.numColumns)
 	for _, input := range bt.x {
-		FillSliceBool(y, false)
+		utils.FillSliceBool(y, false)
 		bt.sp.Compute(input, false, y, bt.sp.inhibitColumns)
 
 		// The boost factor for all columns that just won should be at 1.
-		assert.Equal(t, SumSliceFloat64(boostAtBeg), SumSliceFloat64(bt.sp.boostFactors), "Boost factors changed when learning is off")
+		assert.Equal(t, utils.SumSliceFloat64(boostAtBeg), utils.SumSliceFloat64(bt.sp.boostFactors), "Boost factors changed when learning is off")
 	}
 
 }
@@ -295,11 +296,11 @@ func BoostTest(t *testing.T) {
 		bt.x[i] = make([]bool, bt.sp.numInputs)
 	}
 
-	FillSliceRangeBool(bt.x[0], true, 0, 20)
-	FillSliceRangeBool(bt.x[1], true, 10, 30)
-	FillSliceRangeBool(bt.x[2], true, 30, 50)
-	FillSliceRangeBool(bt.x[3], true, 50, 70)
-	FillSliceRangeBool(bt.x[4], true, 70, 90)
+	utils.FillSliceRangeBool(bt.x[0], true, 0, 20)
+	utils.FillSliceRangeBool(bt.x[1], true, 10, 30)
+	utils.FillSliceRangeBool(bt.x[2], true, 30, 50)
+	utils.FillSliceRangeBool(bt.x[3], true, 50, 70)
+	utils.FillSliceRangeBool(bt.x[4], true, 70, 90)
 	// For each column, this will contain the last iteration number where that
 	// column was a winner
 	bt.winningIteration = make([]int, bt.sp.numColumns)

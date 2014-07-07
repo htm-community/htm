@@ -3,6 +3,7 @@ package htm
 import (
 	//"fmt"
 	"github.com/skelterjohn/go.matrix"
+	"github.com/zacg/htm/utils"
 	//"github.com/stretchr/testify/assert"
 	"github.com/zacg/testify/assert"
 	//"math/big"
@@ -228,7 +229,7 @@ func TestAvgConnectedSpanForColumn2D(t *testing.T) {
 func TestAvgConnectedSpanForColumnND(t *testing.T) {
 	sp := SpatialPooler{}
 	sp.InputDimensions = []int{4, 4, 2, 5}
-	sp.numInputs = ProdInt(sp.InputDimensions)
+	sp.numInputs = utils.ProdInt(sp.InputDimensions)
 	sp.numColumns = 5
 	sp.ColumnDimensions = []int{0, 1, 2, 3, 4}
 
@@ -484,7 +485,7 @@ func TestInhibitColumns(t *testing.T) {
 		sp.tieBreaker[i] = 0.01 * rand.Float64()
 	}
 
-	overlaps := RandomSample(sp.numColumns)
+	overlaps := utils.RandomSample(sp.numColumns)
 
 	sp.NumActiveColumnsPerInhArea = 5
 	sp.LocalAreaDensity = 0.1
@@ -497,27 +498,27 @@ func TestInhibitColumns(t *testing.T) {
 	//----- 2
 	sp.ColumnDimensions = []int{50, 10}
 	sp.numColumns = 500
-	sp.tieBreaker = MakeSliceFloat64(500, 0)
+	sp.tieBreaker = utils.MakeSliceFloat64(500, 0)
 	sp.NumActiveColumnsPerInhArea = -1
 	sp.LocalAreaDensity = 0.1
 	sp.GlobalInhibition = false
 	sp.inhibitionRadius = 7
 	// 0.1 * (2*9+1)**2 = 22.5
 	trueDensity = sp.LocalAreaDensity
-	overlaps = RandomSample(sp.numColumns)
+	overlaps = utils.RandomSample(sp.numColumns)
 	sp.inhibitColumns(overlaps, globalFunc, localFunc)
 	assert.Equal(t, trueDensity, lastLocalDensity)
 
 	// Test translation of numColumnsPerInhArea into local area density
 	sp.ColumnDimensions = []int{10, 10}
 	sp.numColumns = 1000
-	sp.tieBreaker = MakeSliceFloat64(1000, 0)
+	sp.tieBreaker = utils.MakeSliceFloat64(1000, 0)
 	sp.NumActiveColumnsPerInhArea = 3
 	sp.LocalAreaDensity = -1
 	sp.GlobalInhibition = false
 	sp.inhibitionRadius = 4
 	trueDensity = 3.0 / 81.0
-	overlaps = RandomSample(sp.numColumns)
+	overlaps = utils.RandomSample(sp.numColumns)
 
 	// 3.0 / (((2*4) + 1) ** 2)
 	sp.inhibitColumns(overlaps, globalFunc, localFunc)
@@ -526,13 +527,13 @@ func TestInhibitColumns(t *testing.T) {
 	// Test clipping of local area density to 0.5
 	sp.ColumnDimensions = []int{10, 10}
 	sp.numColumns = 1000
-	sp.tieBreaker = MakeSliceFloat64(1000, 0)
+	sp.tieBreaker = utils.MakeSliceFloat64(1000, 0)
 	sp.NumActiveColumnsPerInhArea = 7
 	sp.LocalAreaDensity = -1
 	sp.GlobalInhibition = false
 	sp.inhibitionRadius = 1
 	trueDensity = 0.5
-	overlaps = RandomSample(sp.numColumns)
+	overlaps = utils.RandomSample(sp.numColumns)
 
 	sp.inhibitColumns(overlaps, globalFunc, localFunc)
 	assert.Equal(t, trueDensity, lastLocalDensity)
@@ -589,7 +590,7 @@ func TestGetNeighborsND(t *testing.T) {
 				zprime := (z + i) % dimensions[0]
 				yprime := (y + j) % dimensions[1]
 				xprime := (x + k) % dimensions[2]
-				if layout[zprime][yprime][xprime] != columnIndex && !ContainsInt(layout[zprime][yprime][xprime], expected) {
+				if layout[zprime][yprime][xprime] != columnIndex && !utils.ContainsInt(layout[zprime][yprime][xprime], expected) {
 					expected = append(expected, layout[zprime][yprime][xprime])
 				}
 
@@ -621,11 +622,11 @@ func TestGetNeighborsND(t *testing.T) {
 	for i := radius * -1; i <= radius; i++ {
 		for j := radius * -1; j <= radius; j++ {
 			for k := radius * -1; k <= radius; k++ {
-				zprime := Mod((z + i), (dimensions[0]))
-				yprime := Mod((y + j), (dimensions[1]))
-				xprime := Mod((x + k), (dimensions[2]))
+				zprime := utils.Mod((z + i), (dimensions[0]))
+				yprime := utils.Mod((y + j), (dimensions[1]))
+				xprime := utils.Mod((x + k), (dimensions[2]))
 
-				if layoutb[zprime][yprime][xprime] != columnIndex && !ContainsInt(layoutb[zprime][yprime][xprime], expected) {
+				if layoutb[zprime][yprime][xprime] != columnIndex && !utils.ContainsInt(layoutb[zprime][yprime][xprime], expected) {
 					expected = append(expected, layoutb[zprime][yprime][xprime])
 				}
 
@@ -661,12 +662,12 @@ func TestGetNeighborsND(t *testing.T) {
 		for j := radius * -1; j <= radius; j++ {
 			for k := radius * -1; k <= radius; k++ {
 				for m := radius * -1; m <= radius; m++ {
-					zprime := Mod((z + i), (dimensions[0]))
-					yprime := Mod((y + j), (dimensions[1]))
-					xprime := Mod((x + k), (dimensions[2]))
-					wprime := Mod((w + m), (dimensions[3]))
+					zprime := utils.Mod((z + i), (dimensions[0]))
+					yprime := utils.Mod((y + j), (dimensions[1]))
+					xprime := utils.Mod((x + k), (dimensions[2]))
+					wprime := utils.Mod((w + m), (dimensions[3]))
 
-					if layoutc[zprime][yprime][xprime][wprime] != columnIndex && !ContainsInt(layoutc[zprime][yprime][xprime][wprime], expected) {
+					if layoutc[zprime][yprime][xprime][wprime] != columnIndex && !utils.ContainsInt(layoutc[zprime][yprime][xprime][wprime], expected) {
 						expected = append(expected, layoutc[zprime][yprime][xprime][wprime])
 					}
 
@@ -686,7 +687,7 @@ func TestGetNeighborsND(t *testing.T) {
 	t.Log("mask", mask)
 
 	for idx, val := range layoutd {
-		if ContainsInt(idx, mask) {
+		if utils.ContainsInt(idx, mask) {
 			assert.Equal(t, true, val)
 		} else {
 			assert.Equal(t, false, val)
@@ -702,7 +703,7 @@ func TestGetNeighborsND(t *testing.T) {
 	t.Log("mask", mask)
 
 	for idx, val := range layoute {
-		if ContainsInt(idx, mask) {
+		if utils.ContainsInt(idx, mask) {
 			assert.Equal(t, true, val)
 		} else {
 			assert.Equal(t, false, val)
@@ -719,7 +720,7 @@ func TestGetNeighborsND(t *testing.T) {
 	t.Log("mask", mask)
 
 	for idx, val := range layoutf {
-		if ContainsInt(idx, mask) {
+		if utils.ContainsInt(idx, mask) {
 			assert.Equal(t, true, val)
 		} else {
 			assert.Equal(t, false, val)
@@ -736,7 +737,7 @@ func TestGetNeighborsND(t *testing.T) {
 	t.Log("mask", mask)
 
 	for idx, val := range layoutg {
-		if ContainsInt(idx, mask) {
+		if utils.ContainsInt(idx, mask) {
 			assert.Equal(t, true, val)
 		} else {
 			assert.Equal(t, false, val)
@@ -762,7 +763,7 @@ func TestGetNeighborsND(t *testing.T) {
 	t.Log("mask", mask)
 	t.Log("1d", layouth.Flatten())
 	for idx, val := range layouth.Flatten() {
-		if ContainsInt(idx, mask) {
+		if utils.ContainsInt(idx, mask) {
 			assert.Equal(t, true, val)
 		} else {
 			assert.Equal(t, false, val)
@@ -786,7 +787,7 @@ func TestGetNeighborsND(t *testing.T) {
 	t.Log("mask", mask)
 	t.Log("1d", layouth.Flatten())
 	for idx, val := range layoutj.Flatten() {
-		if ContainsInt(idx, mask) {
+		if utils.ContainsInt(idx, mask) {
 			assert.Equal(t, true, val)
 		} else {
 			assert.Equal(t, false, val)
@@ -811,7 +812,7 @@ func TestGetNeighborsND(t *testing.T) {
 	t.Log("mask", mask)
 	t.Log("1d", layoutk.Flatten())
 	for idx, val := range layoutk.Flatten() {
-		if ContainsInt(idx, mask) {
+		if utils.ContainsInt(idx, mask) {
 			assert.Equal(t, true, val)
 		} else {
 			assert.Equal(t, false, val)
@@ -836,7 +837,7 @@ func TestGetNeighborsND(t *testing.T) {
 	t.Log("mask", mask)
 	t.Log("1d", layoutl.Flatten())
 	for idx, val := range layoutl.Flatten() {
-		if ContainsInt(idx, mask) {
+		if utils.ContainsInt(idx, mask) {
 			assert.Equal(t, true, val)
 		} else {
 			assert.Equal(t, false, val)
@@ -920,7 +921,7 @@ func TestUpdateBoostFactors(t *testing.T) {
 	sp.numColumns = 6
 	sp.minActiveDutyCycles = []float64{0.1, 0.2, 0.02, 0.03, 0.7, 0.12}
 	sp.activeDutyCycles = make([]float64, sp.numColumns)
-	trueBoostFactors = MakeSliceFloat64(6, sp.MaxBoost)
+	trueBoostFactors = utils.MakeSliceFloat64(6, sp.MaxBoost)
 	sp.updateBoostFactors()
 	for i, _ := range sp.boostFactors {
 		diff := math.Abs(trueBoostFactors[i] - sp.boostFactors[i])
@@ -938,7 +939,7 @@ func TestUpdateDutyCycleHelper(t *testing.T) {
 	expected := []float64{999, 999, 999, 999, 999}
 	assert.Equal(t, expected, actual)
 
-	FillSliceInt(newvals, 1000)
+	utils.FillSliceInt(newvals, 1000)
 	actual = updateDutyCyclesHelper(dc, newvals, period)
 	assert.Equal(t, dc, actual)
 
@@ -948,7 +949,7 @@ func TestUpdateDutyCycleHelper(t *testing.T) {
 	assert.Equal(t, expected, actual)
 
 	dc = []float64{1000, 800, 600, 400, 2000}
-	FillSliceInt(newvals, 0)
+	utils.FillSliceInt(newvals, 0)
 	period = 2
 	actual = updateDutyCyclesHelper(dc, newvals, period)
 	expected = []float64{500, 400, 300, 200, 1000}
@@ -994,7 +995,7 @@ func TestUpdatePermanencesForColumn(t *testing.T) {
 	   - - - Clip Clip
 	*/
 
-	trueConnectedSynapses := Make2DBool([][]int{{0, 1, 1, 0, 0},
+	trueConnectedSynapses := utils.Make2DBool([][]int{{0, 1, 1, 0, 0},
 		{1, 0, 0, 1, 0},
 		{0, 0, 1, 1, 0},
 		{1, 0, 1, 0, 0},
@@ -1146,8 +1147,8 @@ func TestUpdateMinDutyCyclesGlobal(t *testing.T) {
 	sp.minOverlapDutyCycles = make([]float64, sp.numColumns)
 	sp.minActiveDutyCycles = make([]float64, sp.numColumns)
 	sp.updateMinDutyCyclesGlobal()
-	trueMinActiveDutyCycles := MakeSliceFloat64(sp.numColumns, 0.02*0.6)
-	trueMinOverlapDutyCycles := MakeSliceFloat64(sp.numColumns, 0.01*6)
+	trueMinActiveDutyCycles := utils.MakeSliceFloat64(sp.numColumns, 0.02*0.6)
+	trueMinOverlapDutyCycles := utils.MakeSliceFloat64(sp.numColumns, 0.01*6)
 
 	assert.Equal(t, 5, len(sp.minActiveDutyCycles))
 	assert.Equal(t, 5, len(sp.minOverlapDutyCycles))
@@ -1162,7 +1163,7 @@ func TestUpdateMinDutyCyclesGlobal(t *testing.T) {
 	sp.overlapDutyCycles = []float64{0.86, 2.4, 0.03, 1.6, 1.5}
 	sp.activeDutyCycles = []float64{0.16, 0.007, 0.15, 0.54, 0.13}
 	sp.updateMinDutyCyclesGlobal()
-	trueMinOverlapDutyCycles = MakeSliceFloat64(sp.numColumns, 0.015*2.4)
+	trueMinOverlapDutyCycles = utils.MakeSliceFloat64(sp.numColumns, 0.015*2.4)
 	for i := 0; i < sp.numColumns; i++ {
 		assert.AlmostEqualFloat(t, trueMinOverlapDutyCycles[i], sp.minOverlapDutyCycles[i])
 	}
@@ -1170,11 +1171,11 @@ func TestUpdateMinDutyCyclesGlobal(t *testing.T) {
 	sp.MinPctOverlapDutyCycles = 0.015
 	sp.MinPctActiveDutyCycles = 0.03
 	sp.numColumns = 5
-	sp.overlapDutyCycles = MakeSliceFloat64(sp.numColumns, 0)
-	sp.activeDutyCycles = MakeSliceFloat64(sp.numColumns, 0)
+	sp.overlapDutyCycles = utils.MakeSliceFloat64(sp.numColumns, 0)
+	sp.activeDutyCycles = utils.MakeSliceFloat64(sp.numColumns, 0)
 	sp.updateMinDutyCyclesGlobal()
-	trueMinActiveDutyCycles = MakeSliceFloat64(sp.numColumns, 0)
-	trueMinOverlapDutyCycles = MakeSliceFloat64(sp.numColumns, 0)
+	trueMinActiveDutyCycles = utils.MakeSliceFloat64(sp.numColumns, 0)
+	trueMinOverlapDutyCycles = utils.MakeSliceFloat64(sp.numColumns, 0)
 
 	assert.Equal(t, 5, len(sp.minActiveDutyCycles))
 	assert.Equal(t, 5, len(sp.minOverlapDutyCycles))
@@ -1213,9 +1214,9 @@ func TestUpdateMinDutyCyclesLocal(t *testing.T) {
 	sp.activeDutyCycles = []float64{0.4, 0.5, 0.2, 0.18, 0.1}
 	trueMinActiveDutyCycles := []float64{0.02 * 0.5, 0.02 * 0.5, 0.02 * 0.2, 0.02 * 0.4, 0.02 * 0.5}
 
-	sp.minOverlapDutyCycles = MakeSliceFloat64(sp.numColumns, 0)
+	sp.minOverlapDutyCycles = utils.MakeSliceFloat64(sp.numColumns, 0)
 
-	sp.minActiveDutyCycles = MakeSliceFloat64(sp.numColumns, 0)
+	sp.minActiveDutyCycles = utils.MakeSliceFloat64(sp.numColumns, 0)
 	sp.updateMinDutyCyclesLocal(getNeighborsMock)
 
 	//assert.Equal(t, trueMinOverlapDutyCycles, sp.minOverlapDutyCycles)
@@ -1246,8 +1247,8 @@ func TestUpdateMinDutyCyclesLocal(t *testing.T) {
 	trueMinActiveDutyCycles = []float64{0.03 * 0.33, 0.03 * 0.33, 0.03 * 0.76, 0.03 * 0.76,
 		0.03 * 0.76, 0.03 * 0.33, 0.03 * 0.76, 0.03 * 0.76}
 
-	sp.minOverlapDutyCycles = MakeSliceFloat64(sp.numColumns, 0)
-	sp.minActiveDutyCycles = MakeSliceFloat64(sp.numColumns, 0)
+	sp.minOverlapDutyCycles = utils.MakeSliceFloat64(sp.numColumns, 0)
+	sp.minActiveDutyCycles = utils.MakeSliceFloat64(sp.numColumns, 0)
 	callCount = 0
 	sp.updateMinDutyCyclesLocal(getNeighborsMock)
 	assert.Equal(t, trueMinOverlapDutyCycles, sp.minOverlapDutyCycles)
@@ -1264,7 +1265,7 @@ func TestBumpUpWeakColumns(t *testing.T) {
 	sp.SynPermBelowStimulusInc = 0.01
 	sp.SynPermTrimThreshold = 0.05
 	sp.overlapDutyCycles = []float64{0, 0.009, 0.1, 0.001, 0.002}
-	sp.minOverlapDutyCycles = MakeSliceFloat64(5, 0.01)
+	sp.minOverlapDutyCycles = utils.MakeSliceFloat64(5, 0.01)
 	sp.SynPermInactiveDec = 0.01
 	sp.SynPermActiveInc = 0.1
 	sp.connectedSynapses = NewSparseBinaryMatrix(sp.numColumns, sp.numInputs)
@@ -1366,9 +1367,9 @@ func TestMapPotential1D(t *testing.T) {
 	expectedMask = []bool{true, true, true, false, false, false, false, false, true, true}
 	mask = sp.mapPotential(0, true)
 
-	assert.Equal(t, 3, CountTrue(mask))
+	assert.Equal(t, 3, utils.CountTrue(mask))
 
-	unionMask := OrBool(expectedMask, mask)
+	unionMask := utils.OrBool(expectedMask, mask)
 	assert.Equal(t, expectedMask, unionMask)
 
 }
@@ -1408,7 +1409,7 @@ func TestCompute1(t *testing.T) {
 		return []int{0, 1, 2, 3, 4}
 	}
 
-	inputVector := Make1DBool([]int{1, 0, 1, 0, 1, 0, 0, 1, 1})
+	inputVector := utils.Make1DBool([]int{1, 0, 1, 0, 1, 0, 0, 1, 1})
 	activeArray := make([]bool, 5)
 
 	for i := 0; i < 20; i++ {
@@ -1417,7 +1418,7 @@ func TestCompute1(t *testing.T) {
 
 	for i := 0; i < 20; i++ {
 		perm := Float64SliceToInt(GetRowFromSM(sp.permanences, i))
-		assert.Equal(t, inputVector, Make1DBool(perm))
+		assert.Equal(t, inputVector, utils.Make1DBool(perm))
 	}
 
 }
@@ -1450,7 +1451,7 @@ func TestCompute2(t *testing.T) {
 		return []int{0, 1, 2, 3, 4}
 	}
 
-	inputVector := Make1DBool([]int{1, 1, 1, 1, 1, 1, 1, 1, 1, 1})
+	inputVector := utils.Make1DBool([]int{1, 1, 1, 1, 1, 1, 1, 1, 1, 1})
 	activeArray := make([]bool, 5)
 
 	for i := 0; i < 20; i++ {
@@ -1460,7 +1461,7 @@ func TestCompute2(t *testing.T) {
 	for i := 0; i < sp.numColumns; i++ {
 		perm := Float64SliceToInt(GetRowFromSM(sp.permanences, i))
 		potential := sp.potentialPools.GetDenseRow(i)
-		assert.Equal(t, potential, Make1DBool(perm))
+		assert.Equal(t, potential, utils.Make1DBool(perm))
 	}
 
 }
@@ -1550,8 +1551,8 @@ func GetRowFromSM(mat *matrix.SparseMatrix, row int) []float64 {
 }
 
 func AlmostEqualFloat(a, b float64) bool {
-	ar := RoundPrec(a, 2)
-	br := RoundPrec(b, 2)
+	ar := utils.RoundPrec(a, 2)
+	br := utils.RoundPrec(b, 2)
 	return ar == br
 }
 

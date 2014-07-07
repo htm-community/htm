@@ -4,6 +4,7 @@ import (
 	//"fmt"
 	//"github.com/skelterjohn/go.matrix"
 	//"github.com/stretchr/testify/assert"
+	"github.com/zacg/htm/utils"
 	"github.com/zacg/testify/assert"
 	//"math/big"
 	//"github.com/stretchr/testify/mock"
@@ -36,25 +37,25 @@ func basicComputeLoop(t *testing.T, spParams SpParams) {
 	// With learning off and no prior training we should get no winners
 	y := make([]bool, sp.numColumns)
 	for _, input := range inputMatrix {
-		FillSliceBool(y, false)
+		utils.FillSliceBool(y, false)
 		sp.Compute(input, false, y, sp.inhibitColumns)
-		assert.Equal(t, 0, CountTrue(y))
+		assert.Equal(t, 0, utils.CountTrue(y))
 	}
 
 	// With learning on we should get the requested number of winners
 	for _, input := range inputMatrix {
-		FillSliceBool(y, false)
+		utils.FillSliceBool(y, false)
 		sp.Compute(input, true, y, sp.inhibitColumns)
-		assert.Equal(t, sp.NumActiveColumnsPerInhArea, CountTrue(y))
+		assert.Equal(t, sp.NumActiveColumnsPerInhArea, utils.CountTrue(y))
 
 	}
 
 	// With learning off and some prior training we should get the requested
 	// number of winners
 	for _, input := range inputMatrix {
-		FillSliceBool(y, false)
+		utils.FillSliceBool(y, false)
 		sp.Compute(input, false, y, sp.inhibitColumns)
-		assert.Equal(t, sp.NumActiveColumnsPerInhArea, CountTrue(y))
+		assert.Equal(t, sp.NumActiveColumnsPerInhArea, utils.CountTrue(y))
 	}
 
 }
