@@ -47,7 +47,8 @@ func (s *Segment) Equals(seg *Segment) bool {
 
 	for idx, val := range s.syns {
 		if seg.syns[idx].Permanence != val.Permanence ||
-			seg.syns[idx].SrcCellCol != val.SrcCellCol || seg.syns[idx].SrcCellIdx != val.SrcCellIdx {
+			seg.syns[idx].SrcCellCol != val.SrcCellCol ||
+			seg.syns[idx].SrcCellIdx != val.SrcCellIdx {
 			return false
 		}
 	}
@@ -141,7 +142,7 @@ func (s *Segment) dutyCycle(active, readOnly bool) float64 {
 
 	alpha := 0.0
 	//Figure out which alpha we're using
-	for i := len(SegmentDutyCycleTiers); i > 0; i-- {
+	for i := len(SegmentDutyCycleTiers) - 1; i > 0; i-- {
 		if s.tp.lrnIterationIdx > SegmentDutyCycleTiers[i] {
 			alpha = SegmentDutyCycleAlphas[i]
 			break
@@ -178,8 +179,8 @@ func (s *Segment) freeNSynapses(numToFree int, inactiveSynapseIndices []int) {
 		panic("Number to free cannot be larger than existing synapses.")
 	}
 
-	if s.tp.params.Verbosity >= 4 {
-		fmt.Println("In freeNSynapses with numToFree=", numToFree)
+	if s.tp.params.Verbosity >= 5 {
+		fmt.Println("freeNSynapses with numToFree=", numToFree)
 		fmt.Println("inactiveSynapseIndices= ", inactiveSynapseIndices)
 	}
 
@@ -295,12 +296,17 @@ is true, then newSynapseCount - len(activeSynapses) synapses are added to
 activeSynapses. These synapses are randomly chosen from the set of cells
 that have learnState = true at timeStep.
 */
-func (tp *TemporalPooler) getSegmentActiveSynapses(c int, i int, s *Segment, activeState *SparseBinaryMatrix, newSynapses bool) *SegmentUpdate {
+func (tp *TemporalPooler) getSegmentActiveSynapses(c int, i int, s *Segment,
+	activeState *SparseBinaryMatrix, newSynapses bool) *SegmentUpdate {
 	var activeSynapses []SynapseUpdateState
+
+	if tp.params.Verbosity >= 5 {
+		fmt.Printf("Entering getSegActiveSyns syns:%v segnil:%v newsyns:%v \n", 0, s == nil, newSynapses)
+	}
 
 	if s != nil {
 		for idx, val := range s.syns {
-			if activeState.Get(val.SrcCellIdx, val.SrcCellCol) {
+			if activeState.Get(val.SrcCellCol, val.SrcCellIdx) {
 				temp := SynapseUpdateState{}
 				temp.Index = idx
 				activeSynapses = append(activeSynapses, temp)
@@ -311,7 +317,7 @@ func (tp *TemporalPooler) getSegmentActiveSynapses(c int, i int, s *Segment, act
 	if newSynapses {
 		nSynapsesToAdd := tp.params.NewSynapseCount - len(activeSynapses)
 		newSyns := tp.chooseCellsToLearnFrom(s, nSynapsesToAdd, activeState)
-
+		//fmt.Printf("newSyncount: %v \n", len(newSyns))
 		for _, val := range newSyns {
 			temp := SynapseUpdateState{}
 			temp.Index = val.Row
@@ -364,8 +370,10 @@ func (s *Segment) ToString() string {
 	// Print each synapses on this segment as: srcCellCol/srcCellIdx/perm
 	// if the permanence is above connected, put [] around the synapse coords
 	for _, syn := range s.syns {
-		result += fmt.Sprintf(" [%v,%v]%v", syn.SrcCellIdx, syn.SrcCellCol, syn.Permanence)
+		result += fmt.Sprintf(" [%v,%v]%v", syn.SrcCellCol, syn.SrcCellIdx, syn.Permanence)
 	}
+
+	result += "\n"
 
 	return result
 }
