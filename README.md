@@ -22,3 +22,8 @@ The Nupic project basically demonstrates a single stage of the cortical hierarch
  * Finish temporal unit tests
  * Implement a better sparse binary matrix structure with versions optimized for col or row heavy access.
  * Refactor to be more idiomatic Go. It is basically a line for line port of the python implementation, it could be refactored to make better use of Go's type system.
+
+
+##Examples
+
+{% gist d1640e7346e9747562e7 %}
