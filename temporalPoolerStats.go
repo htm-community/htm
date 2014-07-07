@@ -35,6 +35,36 @@ type TpStats struct {
 	ConfHistogram         matrix.DenseMatrix
 }
 
+func (s *TpStats) ToString() string {
+	result := "Stats: \n"
+
+	result += fmt.Sprintf("nInferSinceReset %v \n", s.NInfersSinceReset)
+	result += fmt.Sprintf("nPredictions %v \n", s.NPredictions)
+	result += fmt.Sprintf("PredictionScoreTotal %v \n", s.PredictionScoreTotal)
+	result += fmt.Sprintf("PredictionScoreTotal2 %v \n", s.PredictionScoreTotal2)
+	result += fmt.Sprintf("FalseNegativeScoreTotal %v \n", s.FalseNegativeScoreTotal)
+	result += fmt.Sprintf("FalsePositiveScoreTotal %v \n", s.FalsePositiveScoreTotal)
+	result += fmt.Sprintf("PctExtraTotal %v \n", s.PctExtraTotal)
+	result += fmt.Sprintf("PctMissingTotal %v \n", s.PctMissingTotal)
+	result += fmt.Sprintf("TotalMissing %v \n", s.TotalMissing)
+	result += fmt.Sprintf("TotalExtra %v \n", s.TotalExtra)
+	result += fmt.Sprintf("CurPredictionScore %v \n", s.CurPredictionScore)
+	result += fmt.Sprintf("CurPredictionScore2 %v \n", s.CurPredictionScore2)
+	result += fmt.Sprintf("CurFalseNegativeScore %v \n", s.CurFalseNegativeScore)
+	result += fmt.Sprintf("CurFalsePositiveScore %v \n", s.CurFalsePositiveScore)
+	result += fmt.Sprintf("CurMissing %v \n", s.CurMissing)
+	result += fmt.Sprintf("CurExtra %v \n", s.CurExtra)
+	result += fmt.Sprintf("ConfHistogram %v \n", s.ConfHistogram.String())
+
+	return result
+}
+
+type confidence struct {
+	PredictionScore         float64
+	PositivePredictionScore float64
+	NegativePredictionScore float64
+}
+
 /*
  This function produces goodness-of-match scores for a set of input patterns,
 by checking for their presence in the current and predicted output of the
@@ -76,13 +106,6 @@ retval missing_i the bits in the i'th pattern that were missing
 in the output. This list is only returned if details is
 True.
 */
-
-type confidence struct {
-	PredictionScore         float64
-	PositivePredictionScore float64
-	NegativePredictionScore float64
-}
-
 func (tp *TemporalPooler) checkPrediction2(patternNZs [][]int, output *SparseBinaryMatrix,
 	colConfidence []float64, details bool) (int, int, []confidence, []int) {
 
@@ -135,8 +158,8 @@ func (tp *TemporalPooler) checkPrediction2(patternNZs [][]int, output *SparseBin
 	// cell. Note that confidence will only be non-zero for predicted columns.
 
 	if colConfidence == nil {
-		if tp.params.Verbosity >= 3 {
-			fmt.Println("col confidence nil, copying from tp state...")
+		if tp.params.Verbosity >= 5 {
+			fmt.Println("Col confidence nil, copying from tp state...")
 		}
 		colConfidence = make([]float64, len(tp.DynamicState.colConfidence))
 		copy(colConfidence, tp.DynamicState.colConfidence)
@@ -148,8 +171,6 @@ func (tp *TemporalPooler) checkPrediction2(patternNZs [][]int, output *SparseBin
 	for i := 0; i < numPatterns; i++ {
 		// Sum of the column confidences for this pattern
 		//positivePredictionSum = colConfidence[patternNZs[i]].sum()
-		fmt.Println("pattern", patternNZs[i])
-		fmt.Println("len", len(colConfidence))
 		positivePredictionSum := floats.Sum(floats.SubSet(colConfidence, patternNZs[i]))
 
 		// How many columns in this pattern
