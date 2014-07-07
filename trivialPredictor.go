@@ -104,7 +104,7 @@ func (tp *TrivialPredictor) infer(activeColumns []int) {
 		switch method {
 		case Random:
 			// Randomly predict N columns
-			predictedCols = RandomInts(numColsToPredict, tp.NumOfCols)
+			//predictedCols = RandomInts(numColsToPredict, tp.NumOfCols)
 			break
 		case Zeroth:
 			// Always predict the top N most frequent columns
