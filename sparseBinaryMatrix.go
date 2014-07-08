@@ -6,7 +6,7 @@ import (
 	"github.com/zacg/htm/utils"
 )
 
-//Entries are positions of non-zero values
+//entries are positions of non-zero values
 type SparseEntry struct {
 	Row int
 	Col int
@@ -17,7 +17,7 @@ type SparseEntry struct {
 type SparseBinaryMatrix struct {
 	Width   int
 	Height  int
-	Entries []SparseEntry
+	entries []SparseEntry
 }
 
 //Create new sparse binary matrix of specified size
@@ -26,7 +26,7 @@ func NewSparseBinaryMatrix(height, width int) *SparseBinaryMatrix {
 	m.Height = height
 	m.Width = width
 	//Intialize with 70% sparsity
-	//m.Entries = make([]SparseEntry, int(math.Ceil(width*height*0.3)))
+	//m.entries = make([]SparseEntry, int(math.Ceil(width*height*0.3)))
 	return m
 }
 
@@ -94,10 +94,15 @@ func NewSparseBinaryMatrixFromInts(values [][]int) *SparseBinaryMatrix {
 // func (sm *SparseBinaryMatrix) Resize(width int, height int) {
 // }
 
+//Returns all true/on indices
+func (sm *SparseBinaryMatrix) Entries() []SparseEntry {
+	return sm.entries
+}
+
 //Returns flattend dense represenation
 func (sm *SparseBinaryMatrix) Flatten() []bool {
 	result := make([]bool, sm.Height*sm.Width)
-	for _, val := range sm.Entries {
+	for _, val := range sm.entries {
 		result[(val.Row*sm.Width)+val.Col] = true
 	}
 	return result
@@ -105,7 +110,7 @@ func (sm *SparseBinaryMatrix) Flatten() []bool {
 
 //Get value at col,row position
 func (sm *SparseBinaryMatrix) Get(row int, col int) bool {
-	for _, val := range sm.Entries {
+	for _, val := range sm.entries {
 		if val.Row == row && val.Col == col {
 			return true
 		}
@@ -114,13 +119,12 @@ func (sm *SparseBinaryMatrix) Get(row int, col int) bool {
 }
 
 func (sm *SparseBinaryMatrix) delete(row int, col int) {
-	for idx, val := range sm.Entries {
+	for idx, val := range sm.entries {
 		if val.Row == row && val.Col == col {
-			sm.Entries = append(sm.Entries[:idx], sm.Entries[idx+1:]...)
+			sm.entries = append(sm.entries[:idx], sm.entries[idx+1:]...)
 			break
 		}
 	}
-
 }
 
 //Set value at row,col position
@@ -137,7 +141,7 @@ func (sm *SparseBinaryMatrix) Set(row int, col int, value bool) {
 	newEntry := SparseEntry{}
 	newEntry.Col = col
 	newEntry.Row = row
-	sm.Entries = append(sm.Entries, newEntry)
+	sm.entries = append(sm.entries, newEntry)
 
 }
 
@@ -172,9 +176,9 @@ func (sm *SparseBinaryMatrix) GetDenseRow(row int) []bool {
 	sm.validateRow(row)
 	result := make([]bool, sm.Width)
 
-	for i := 0; i < len(sm.Entries); i++ {
-		if sm.Entries[i].Row == row {
-			result[sm.Entries[i].Col] = true
+	for i := 0; i < len(sm.entries); i++ {
+		if sm.entries[i].Row == row {
+			result[sm.entries[i].Col] = true
 		}
 	}
 
@@ -184,9 +188,9 @@ func (sm *SparseBinaryMatrix) GetDenseRow(row int) []bool {
 //Returns a rows "on" indices
 func (sm *SparseBinaryMatrix) GetRowIndices(row int) []int {
 	result := []int{}
-	for i := 0; i < len(sm.Entries); i++ {
-		if sm.Entries[i].Row == row {
-			result = append(result, sm.Entries[i].Col)
+	for i := 0; i < len(sm.entries); i++ {
+		if sm.entries[i].Row == row {
+			result = append(result, sm.entries[i].Col)
 		}
 	}
 	return result
@@ -206,7 +210,7 @@ func (sm *SparseBinaryMatrix) RowAndSum(row []bool) []int {
 	sm.validateCol(len(row))
 	result := make([]int, sm.Height)
 
-	for _, val := range sm.Entries {
+	for _, val := range sm.entries {
 		if row[val.Col] {
 			result[val.Row]++
 		}
@@ -219,7 +223,7 @@ func (sm *SparseBinaryMatrix) RowAndSum(row []bool) []int {
 func (sm *SparseBinaryMatrix) NonZeroRows() []int {
 	var result []int
 
-	for _, val := range sm.Entries {
+	for _, val := range sm.entries {
 		if !utils.ContainsInt(val.Row, result) {
 			result = append(result, val.Row)
 		}
@@ -231,7 +235,7 @@ func (sm *SparseBinaryMatrix) NonZeroRows() []int {
 //Returns # of rows with at least 1 true value
 func (sm *SparseBinaryMatrix) TotalTrueRows() int {
 	var hitRows []int
-	for _, val := range sm.Entries {
+	for _, val := range sm.entries {
 		if !utils.ContainsInt(val.Row, hitRows) {
 			hitRows = append(hitRows, val.Row)
 		}
@@ -242,7 +246,7 @@ func (sm *SparseBinaryMatrix) TotalTrueRows() int {
 //Returns # of cols with at least 1 true value
 func (sm *SparseBinaryMatrix) TotalTrueCols() int {
 	var hitCols []int
-	for _, val := range sm.Entries {
+	for _, val := range sm.entries {
 		if !utils.ContainsInt(val.Col, hitCols) {
 			hitCols = append(hitCols, val.Col)
 		}
@@ -252,18 +256,18 @@ func (sm *SparseBinaryMatrix) TotalTrueCols() int {
 
 //Returns total true entries
 func (sm *SparseBinaryMatrix) TotalNonZeroCount() int {
-	return len(sm.Entries)
+	return len(sm.entries)
 }
 
 // Ors 2 matrices
 func (sm *SparseBinaryMatrix) Or(sm2 *SparseBinaryMatrix) *SparseBinaryMatrix {
 	result := NewSparseBinaryMatrix(sm.Height, sm.Width)
 
-	for _, val := range sm.Entries {
+	for _, val := range sm.entries {
 		result.Set(val.Row, val.Col, true)
 	}
 
-	for _, val := range sm2.Entries {
+	for _, val := range sm2.entries {
 		result.Set(val.Row, val.Col, true)
 	}
 
@@ -272,7 +276,7 @@ func (sm *SparseBinaryMatrix) Or(sm2 *SparseBinaryMatrix) *SparseBinaryMatrix {
 
 //Clears  all entries
 func (sm *SparseBinaryMatrix) Clear() {
-	sm.Entries = nil
+	sm.entries = nil
 }
 
 //Fills specified row with specified value
@@ -291,9 +295,9 @@ func (sm *SparseBinaryMatrix) Copy() *SparseBinaryMatrix {
 	result := new(SparseBinaryMatrix)
 	result.Width = sm.Width
 	result.Height = sm.Height
-	result.Entries = make([]SparseEntry, len(sm.Entries))
-	for idx, val := range sm.Entries {
-		result.Entries[idx] = val
+	result.entries = make([]SparseEntry, len(sm.entries))
+	for idx, val := range sm.entries {
+		result.entries[idx] = val
 	}
 
 	return result

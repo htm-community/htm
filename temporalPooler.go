@@ -1227,7 +1227,7 @@ func (tp *TemporalPooler) chooseCellsToLearnFrom(s *Segment, n int,
 	// Candidates can be empty at this point, in which case we return
 	// an empty segment list. adaptSegments will do nothing when getting
 	// that list.
-	if len(activeState.Entries) == 0 {
+	if activeState.TotalNonZeroCount() == 0 {
 		return nil
 	}
 
@@ -1235,7 +1235,7 @@ func (tp *TemporalPooler) chooseCellsToLearnFrom(s *Segment, n int,
 
 	if s != nil {
 		// We exclude any synapse that is already in this segment.
-		for _, cand := range activeState.Entries {
+		for _, cand := range activeState.Entries() {
 			found := false
 			for _, syn := range s.syns {
 				if syn.SrcCellCol == cand.Col &&
@@ -1249,8 +1249,8 @@ func (tp *TemporalPooler) chooseCellsToLearnFrom(s *Segment, n int,
 			}
 		}
 	} else {
-		candidates = make([]SparseEntry, len(activeState.Entries))
-		copy(candidates, activeState.Entries)
+		candidates = make([]SparseEntry, activeState.TotalNonZeroCount())
+		copy(candidates, activeState.Entries())
 	}
 
 	// If we have no more candidates than requested, return all of them,

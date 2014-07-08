@@ -113,7 +113,7 @@ func (tp *TemporalPooler) calcSegmentStats(collectActiveData bool) SegmentStats 
 cells in state.
 */
 func (tp *TemporalPooler) printActiveIndices(state *SparseBinaryMatrix, andValues bool) {
-	if len(state.Entries) == 0 {
+	if state.TotalNonZeroCount() == 0 {
 		fmt.Println("None")
 		return
 	}
@@ -191,7 +191,7 @@ func (tp *TemporalPooler) printComputeEnd(output []bool, learn bool) {
 	fmt.Println("learn:", learn)
 	bursting := 0
 	counts := make([]int, tp.DynamicState.InfActiveState.Height)
-	for _, val := range tp.DynamicState.InfActiveState.Entries {
+	for _, val := range tp.DynamicState.InfActiveState.Entries() {
 		counts[val.Row]++
 		if counts[val.Row] == tp.DynamicState.InfActiveState.Width {
 			bursting++
@@ -252,7 +252,7 @@ func (tp *TemporalPooler) printComputeEnd(output []bool, learn bool) {
 	//tp.printActiveIndices(tp.DynamicState.ColConfidence, true)
 	fmt.Println("----- CellConfidence[t-1] for currently active cells -----")
 	//cc := matrix.ZerosSparse(tp.DynamicState.CellConfidence.Rows(), tp.DynamicState.CellConfidence.Cols())
-	for _, val := range tp.DynamicState.InfActiveState.Entries {
+	for _, val := range tp.DynamicState.InfActiveState.Entries() {
 		//cc.Set(val.Row, val.Col, tp.DynamicState.CellConfidence.Get(val.Row, val.Col))
 		fmt.Printf("[%v,%v,%v]", val.Row, val.Col, tp.DynamicState.CellConfidence.Get(val.Row, val.Col))
 
