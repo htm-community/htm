@@ -492,7 +492,7 @@ func TestInhibitColumns(t *testing.T) {
 	sp.GlobalInhibition = true
 	sp.inhibitionRadius = 5
 	trueDensity := sp.LocalAreaDensity
-	sp.inhibitColumns(overlaps, globalFunc, localFunc)
+	sp.InhibitColumns(overlaps, globalFunc, localFunc)
 	assert.Equal(t, trueDensity, lastGlobalDensity)
 
 	//----- 2
@@ -506,7 +506,7 @@ func TestInhibitColumns(t *testing.T) {
 	// 0.1 * (2*9+1)**2 = 22.5
 	trueDensity = sp.LocalAreaDensity
 	overlaps = utils.RandomSample(sp.numColumns)
-	sp.inhibitColumns(overlaps, globalFunc, localFunc)
+	sp.InhibitColumns(overlaps, globalFunc, localFunc)
 	assert.Equal(t, trueDensity, lastLocalDensity)
 
 	// Test translation of numColumnsPerInhArea into local area density
@@ -521,7 +521,7 @@ func TestInhibitColumns(t *testing.T) {
 	overlaps = utils.RandomSample(sp.numColumns)
 
 	// 3.0 / (((2*4) + 1) ** 2)
-	sp.inhibitColumns(overlaps, globalFunc, localFunc)
+	sp.InhibitColumns(overlaps, globalFunc, localFunc)
 	assert.Equal(t, trueDensity, lastLocalDensity)
 
 	// Test clipping of local area density to 0.5
@@ -535,7 +535,7 @@ func TestInhibitColumns(t *testing.T) {
 	trueDensity = 0.5
 	overlaps = utils.RandomSample(sp.numColumns)
 
-	sp.inhibitColumns(overlaps, globalFunc, localFunc)
+	sp.InhibitColumns(overlaps, globalFunc, localFunc)
 	assert.Equal(t, trueDensity, lastLocalDensity)
 
 }

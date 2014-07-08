@@ -124,7 +124,7 @@ func phase1(t *testing.T, bt *boostTest) {
 	// Do one training batch through the input patterns
 	for idx, input := range bt.x {
 		utils.FillSliceBool(y, false)
-		bt.sp.Compute(input, true, y, bt.sp.inhibitColumns)
+		bt.sp.Compute(input, true, y, bt.sp.InhibitColumns)
 		for j, winner := range y {
 			if winner {
 				bt.winningIteration[j] = bt.sp.IterationLearnNum
@@ -172,7 +172,7 @@ func phase2(t *testing.T, bt *boostTest) {
 	for i := 0; i < 9; i++ {
 		for idx, input := range bt.x {
 			utils.FillSliceBool(y, false)
-			bt.sp.Compute(input, true, y, bt.sp.inhibitColumns)
+			bt.sp.Compute(input, true, y, bt.sp.InhibitColumns)
 			for j, winner := range y {
 				if winner {
 					bt.winningIteration[j] = bt.sp.IterationLearnNum
@@ -223,7 +223,7 @@ func phase3(t *testing.T, bt *boostTest) {
 	for i := 0; i < 2; i++ {
 		for idx, input := range bt.x {
 			utils.FillSliceBool(y, false)
-			bt.sp.Compute(input, true, y, bt.sp.inhibitColumns)
+			bt.sp.Compute(input, true, y, bt.sp.InhibitColumns)
 			for j, winner := range y {
 				if winner {
 					bt.winningIteration[j] = bt.sp.IterationLearnNum
@@ -266,7 +266,7 @@ func phase4(t *testing.T, bt *boostTest) {
 	y := make([]bool, bt.sp.numColumns)
 	for _, input := range bt.x {
 		utils.FillSliceBool(y, false)
-		bt.sp.Compute(input, false, y, bt.sp.inhibitColumns)
+		bt.sp.Compute(input, false, y, bt.sp.InhibitColumns)
 
 		// The boost factor for all columns that just won should be at 1.
 		assert.Equal(t, utils.SumSliceFloat64(boostAtBeg), utils.SumSliceFloat64(bt.sp.boostFactors), "Boost factors changed when learning is off")

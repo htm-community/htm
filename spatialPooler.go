@@ -227,6 +227,7 @@ func NewSpatialPooler(spParams SpParams) *SpatialPooler {
 		     each column is connected to enough input bits to allow it to be
 		     activated
 	*/
+
 	for i := 0; i < sp.numColumns; i++ {
 		potential := sp.mapPotential(i, true)
 		sp.potentialPools.ReplaceRow(i, potential)
@@ -258,6 +259,26 @@ func NewSpatialPooler(spParams SpParams) *SpatialPooler {
 	}
 
 	return &sp
+}
+
+//Returns number of inputs
+func (sp *SpatialPooler) NumInputs() int {
+	return sp.numInputs
+}
+
+//Returns number of columns
+func (sp *SpatialPooler) NumColumns() int {
+	return sp.numColumns
+}
+
+//Returns number of inputs
+func (ssp *SpParams) NumInputs() int {
+	return utils.ProdInt(ssp.InputDimensions)
+}
+
+//Returns number of columns
+func (ssp *SpParams) NumColumns() int {
+	return utils.ProdInt(ssp.ColumnDimensions)
 }
 
 /*
@@ -455,7 +476,6 @@ func (sp *SpatialPooler) raisePermanenceToThreshold(perm []float64, mask []int) 
 		for i := 0; i < len(mask); i++ {
 			perm[mask[i]] += sp.SynPermBelowStimulusInc
 		}
-
 	}
 
 }
@@ -826,7 +846,7 @@ that are connected to input bits which are turned on.
 
 */
 
-func (sp *SpatialPooler) inhibitColumns(overlaps []float64, inhibitColumnsGlobal, inhibitColumnsLocal inhibitColumnsFunc) []int {
+func (sp *SpatialPooler) InhibitColumns(overlaps []float64, inhibitColumnsGlobal, inhibitColumnsLocal inhibitColumnsFunc) []int {
 	/*
 			 determine how many columns should be selected in the inhibition phase.
 		     This can be specified by either setting the 'numActiveColumnsPerInhArea'

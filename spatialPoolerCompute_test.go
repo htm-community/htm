@@ -38,14 +38,14 @@ func basicComputeLoop(t *testing.T, spParams SpParams) {
 	y := make([]bool, sp.numColumns)
 	for _, input := range inputMatrix {
 		utils.FillSliceBool(y, false)
-		sp.Compute(input, false, y, sp.inhibitColumns)
+		sp.Compute(input, false, y, sp.InhibitColumns)
 		assert.Equal(t, 0, utils.CountTrue(y))
 	}
 
 	// With learning on we should get the requested number of winners
 	for _, input := range inputMatrix {
 		utils.FillSliceBool(y, false)
-		sp.Compute(input, true, y, sp.inhibitColumns)
+		sp.Compute(input, true, y, sp.InhibitColumns)
 		assert.Equal(t, sp.NumActiveColumnsPerInhArea, utils.CountTrue(y))
 
 	}
@@ -54,7 +54,7 @@ func basicComputeLoop(t *testing.T, spParams SpParams) {
 	// number of winners
 	for _, input := range inputMatrix {
 		utils.FillSliceBool(y, false)
-		sp.Compute(input, false, y, sp.inhibitColumns)
+		sp.Compute(input, false, y, sp.InhibitColumns)
 		assert.Equal(t, sp.NumActiveColumnsPerInhArea, utils.CountTrue(y))
 	}
 
