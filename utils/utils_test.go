@@ -37,3 +37,14 @@ func TestCartProductInt(t *testing.T) {
 	assert.Equal(t, 8, len(result))
 
 }
+
+func TestProdInt(t *testing.T) {
+
+	vals := []int{32, 32}
+	expected := 1024
+
+	actual := ProdInt(vals)
+
+	assert.Equal(t, expected, actual)
+
+}
