@@ -46,11 +46,11 @@ type SpatialPooler struct {
 	//random seed
 	Seed int
 
-	potentialPools *SparseBinaryMatrix
+	potentialPools *DenseBinaryMatrix
 	permanences    *matrix.SparseMatrix
 	tieBreaker     []float64
 
-	connectedSynapses *SparseBinaryMatrix
+	connectedSynapses *DenseBinaryMatrix
 	//redundant
 	connectedCounts []int
 
@@ -177,7 +177,7 @@ func NewSpatialPooler(spParams SpParams) *SpatialPooler {
 		     class, to reduce memory footprint and compuation time of algorithms that
 		     require iterating over the data strcuture.
 	*/
-	sp.potentialPools = NewSparseBinaryMatrix(sp.numColumns, sp.numInputs)
+	sp.potentialPools = NewDenseBinaryMatrix(sp.numColumns, sp.numInputs)
 
 	/*
 			 Initialize the permanences for each column. Similar to the
@@ -212,7 +212,7 @@ func NewSpatialPooler(spParams SpParams) *SpatialPooler {
 		     this information is readily available from the 'permanence' matrix,
 		     it is stored separately for efficiency purposes.
 	*/
-	sp.connectedSynapses = NewSparseBinaryMatrix(sp.numColumns, sp.numInputs)
+	sp.connectedSynapses = NewDenseBinaryMatrix(sp.numColumns, sp.numInputs)
 
 	/*
 			 Stores the number of connected synapses for each column. This is simply
