@@ -123,7 +123,7 @@ func TestRaisePermanenceThreshold(t *testing.T) {
 	}
 	AddDenseToSparseHelper(p, sp.permanences)
 
-	sp.connectedSynapses = NewSparseBinaryMatrixFromDense([][]bool{
+	sp.connectedSynapses = NewDenseBinaryMatrixFromDense([][]bool{
 		{false, true, false, false, false},
 		{true, true, false, true, false},
 		{true, false, false, false, true},
@@ -215,7 +215,7 @@ func TestAvgConnectedSpanForColumn2D(t *testing.T) {
 		{0, 0, 1, 0, 1, 0, 0, 0},
 		{1, 1, 1, 1, 1, 1, 1, 1}}
 
-	sp.connectedSynapses = NewSparseBinaryMatrixFromInts(ints)
+	sp.connectedSynapses = NewDenseBinaryMatrixFromInts(ints)
 
 	trueAvgConnectedSpan := []int{7, 5, 1, 5, 0, 2, 3, 3, 8}
 
@@ -233,7 +233,7 @@ func TestAvgConnectedSpanForColumnND(t *testing.T) {
 	sp.numColumns = 5
 	sp.ColumnDimensions = []int{0, 1, 2, 3, 4}
 
-	sp.connectedSynapses = NewSparseBinaryMatrix(sp.numColumns, sp.numInputs)
+	sp.connectedSynapses = NewDenseBinaryMatrix(sp.numColumns, sp.numInputs)
 
 	connected := make([]bool, sp.numInputs)
 	connected[(1*40)+(0*10)+(1*5)+(0*1)] = true
@@ -393,7 +393,7 @@ func TestCalculateOverlap(t *testing.T) {
 	sp.InputDimensions = []int{10}
 	sp.ColumnDimensions = []int{5}
 
-	sp.connectedSynapses = NewSparseBinaryMatrixFromDense([][]bool{
+	sp.connectedSynapses = NewDenseBinaryMatrixFromDense([][]bool{
 		{true, true, true, true, true, true, true, true, true, true},
 		{false, false, true, true, true, true, true, true, true, true},
 		{false, false, false, false, true, true, true, true, true, true},
@@ -435,7 +435,7 @@ func TestCalculateOverlap(t *testing.T) {
 	assert.Equal(t, trueOverlapsPct, overlapsPct)
 
 	//Zig-zag
-	sp.connectedSynapses = NewSparseBinaryMatrixFromDense([][]bool{
+	sp.connectedSynapses = NewDenseBinaryMatrixFromDense([][]bool{
 		{true, false, false, false, false, true, false, false, false, false},
 		{false, true, false, false, false, false, true, false, false, false},
 		{false, false, true, false, false, false, false, true, false, false},
@@ -752,7 +752,7 @@ func TestGetNeighborsND(t *testing.T) {
 		{0, 1, 1, 1, 0},
 		{0, 0, 0, 0, 0}}
 
-	layouth := NewSparseBinaryMatrixFromInts(ints)
+	layouth := NewDenseBinaryMatrixFromInts(ints)
 	t.Log(layouth.ToString())
 
 	columnIndex = 3*5 + 2
@@ -777,7 +777,7 @@ func TestGetNeighborsND(t *testing.T) {
 		{1, 1, 1, 1, 1},
 		{1, 1, 1, 1, 1}}
 
-	layoutj := NewSparseBinaryMatrixFromInts(ints)
+	layoutj := NewDenseBinaryMatrixFromInts(ints)
 	t.Log(layouth.ToString())
 
 	columnIndex = 3*5 + 2
@@ -802,7 +802,7 @@ func TestGetNeighborsND(t *testing.T) {
 		{1, 1, 1, 1, 1},
 		{1, 1, 1, 1, 1}}
 
-	layoutk := NewSparseBinaryMatrixFromInts(ints)
+	layoutk := NewDenseBinaryMatrixFromInts(ints)
 	t.Log(layouth.ToString())
 
 	columnIndex = 3*5 + 2
@@ -827,7 +827,7 @@ func TestGetNeighborsND(t *testing.T) {
 		{1, 0, 0, 1, 1},
 		{1, 0, 0, 1, 0}}
 
-	layoutl := NewSparseBinaryMatrixFromInts(ints)
+	layoutl := NewDenseBinaryMatrixFromInts(ints)
 	t.Log(layoutl.ToString())
 
 	columnIndex = 29
@@ -968,8 +968,8 @@ func TestUpdatePermanencesForColumn(t *testing.T) {
 	sp.connectedCounts = make([]int, sp.numColumns)
 	elms := make(map[int]float64, 25)
 	sp.permanences = matrix.MakeSparseMatrix(elms, sp.numColumns, sp.numInputs)
-	sp.potentialPools = NewSparseBinaryMatrix(sp.numColumns, sp.numInputs)
-	sp.connectedSynapses = NewSparseBinaryMatrix(sp.numColumns, sp.numInputs)
+	sp.potentialPools = NewDenseBinaryMatrix(sp.numColumns, sp.numInputs)
+	sp.connectedSynapses = NewDenseBinaryMatrix(sp.numColumns, sp.numInputs)
 	sp.SynPermMax = 1
 	sp.SynPermMin = 0
 
@@ -1022,7 +1022,7 @@ func TestAdaptSynapses(t *testing.T) {
 	sp.SynPermInactiveDec = 0.01
 	sp.SynPermActiveInc = 0.1
 	sp.SynPermTrimThreshold = 0.05
-	sp.connectedSynapses = NewSparseBinaryMatrix(sp.numColumns, sp.numInputs)
+	sp.connectedSynapses = NewDenseBinaryMatrix(sp.numColumns, sp.numInputs)
 	sp.connectedCounts = make([]int, sp.numColumns)
 	sp.SynPermMax = 1
 	sp.SynPermMin = 0
@@ -1031,7 +1031,7 @@ func TestAdaptSynapses(t *testing.T) {
 		{1, 0, 0, 0, 1, 1, 0, 1},
 		{0, 0, 1, 0, 0, 0, 1, 0},
 		{1, 0, 0, 0, 0, 0, 1, 0}}
-	sp.potentialPools = NewSparseBinaryMatrixFromInts(ints)
+	sp.potentialPools = NewDenseBinaryMatrixFromInts(ints)
 
 	inputVector := []bool{true, false, false, true, true, false, true, false}
 	activeColumns := []int{0, 1, 2}
@@ -1071,7 +1071,7 @@ func TestAdaptSynapses(t *testing.T) {
 		{0, 0, 1, 1, 1, 0, 0, 0},
 		{1, 0, 0, 0, 0, 0, 1, 0}}
 
-	sp.potentialPools = NewSparseBinaryMatrixFromInts(ints)
+	sp.potentialPools = NewDenseBinaryMatrixFromInts(ints)
 
 	inputVector = []bool{true, false, false, true, true, false, true, false}
 	activeColumns = []int{0, 1, 2}
@@ -1268,7 +1268,7 @@ func TestBumpUpWeakColumns(t *testing.T) {
 	sp.minOverlapDutyCycles = utils.MakeSliceFloat64(5, 0.01)
 	sp.SynPermInactiveDec = 0.01
 	sp.SynPermActiveInc = 0.1
-	sp.connectedSynapses = NewSparseBinaryMatrix(sp.numColumns, sp.numInputs)
+	sp.connectedSynapses = NewDenseBinaryMatrix(sp.numColumns, sp.numInputs)
 	sp.connectedCounts = make([]int, sp.numColumns)
 	sp.SynPermMax = 1
 	sp.SynPermMin = 0
@@ -1286,7 +1286,7 @@ func TestBumpUpWeakColumns(t *testing.T) {
 		{0, 0, 1, 0, 1, 1, 1, 0},
 		{1, 1, 1, 0, 0, 0, 1, 0},
 		{1, 1, 1, 1, 1, 1, 1, 1}}
-	sp.potentialPools = NewSparseBinaryMatrixFromInts(ints)
+	sp.potentialPools = NewDenseBinaryMatrixFromInts(ints)
 
 	floats := []float64{0.200, 0.120, 0.090, 0.040, 0.000, 0.000, 0.000, 0.000,
 		0.150, 0.000, 0.000, 0.000, 0.180, 0.120, 0.000, 0.450,
@@ -1398,7 +1398,7 @@ func TestCompute1(t *testing.T) {
 	spParams.MaxBoost = 10.0
 	sp := NewSpatialPooler(spParams)
 
-	sp.potentialPools = NewSparseBinaryMatrix(sp.numColumns, sp.numInputs)
+	sp.potentialPools = NewDenseBinaryMatrix(sp.numColumns, sp.numInputs)
 	for i := 0; i < sp.numColumns; i++ {
 		for j := 0; j < sp.numInputs; j++ {
 			sp.potentialPools.Set(i, j, true)
