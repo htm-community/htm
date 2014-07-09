@@ -4,10 +4,11 @@ htm
 Hierarchical Temporal Memory Implementation in Golang
 
 [![GoDoc](https://godoc.org/github.com/zacg/htm?status.png)](https://godoc.org/github.com/zacg/htm)
+[![Build Status](https://travis-ci.org/zacg/htm.svg?branch=master)](https://travis-ci.org/zacg/htm)
 
 This is a direct port of the spatial and temporal poolers as they currently exist in Numenta's Nupic Project. This project was done as a learning exercise, no effort has been made to optimize this implementation and it was not designed for production use.
 
-The Nupic project basically demonstrates a single stage of the cortical hierarchy. Eventually this same code can be extended to form a full HTM hierarchy. https://github.com/numenta/nupic
+The Nupic project basically demonstrates the CLA, a single stage of the cortical hierarchy. Eventually this same code can be extended to form a full HTM hierarchy. https://github.com/numenta/nupic
 
 ##Changes From Numentas Implementation
  * Temporal pooler ephemeral state is stored in strongly typed struct rather than a hashmap. t-1 vars have "last" appended to their names.
