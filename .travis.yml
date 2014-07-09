@@ -2,4 +2,9 @@ language: go
 
 install:
   - go get github.com/stretchr/testify/assert
-  
+  - go get github.com/cznic/mathutil
+  - go get github.com/gonum/floats
+  - go get github.com/skelterjohn/go.matrix
+  - go get github.com/zacg/floats
+  - go get github.com/zacg/go.matrix
+  - go get github.com/zacg/ints

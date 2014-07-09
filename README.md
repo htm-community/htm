@@ -27,6 +27,7 @@ The Nupic project basically demonstrates the CLA, a single stage of the cortical
 
 ##Examples
 
+###Temporal Pooler
 ```go
 package main
 
@@ -90,5 +91,45 @@ func boolRange(start int, end int, length int) []bool {
 	return result
 }
 
+
+```
+
+###Spatial Pooler
+```go
+package main
+
+import (
+	"fmt"
+	"github.com/davecheney/profile"
+	"github.com/zacg/htm"
+	"github.com/zacg/htm/utils"
+	"math/rand"
+)
+
+func main() {
+	
+	ssp := htm.NewSpParams()
+	ssp.ColumnDimensions = []int{64, 64}
+	ssp.InputDimensions = []int{32, 32}
+	ssp.PotentialRadius = ssp.NumInputs()
+	ssp.NumActiveColumnsPerInhArea = int(0.02 * float64(ssp.NumColumns()))
+	ssp.GlobalInhibition = true
+	ssp.SynPermActiveInc = 0.01
+	ssp.SpVerbosity = 10
+	sp := htm.NewSpatialPooler(ssp)
+	
+
+	activeArray := make([]bool, sp.NumColumns())
+	inputVector := make([]bool, sp.NumInputs())
+
+	for idx, _ := range inputVector {
+		inputVector[idx] = rand.Intn(5) >= 2
+	}
+
+	sp.Compute(inputVector, true, activeArray, sp.InhibitColumns)
+
+	fmt.Println("Active Indices:", utils.OnIndices(activeArray))
+
+}
 
 ```
