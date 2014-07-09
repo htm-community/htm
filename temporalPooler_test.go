@@ -24,7 +24,7 @@ func boolRange(start int, end int, length int) []bool {
 
 func TestLearnPredict(t *testing.T) {
 	tps := NewTemporalPoolerParams()
-	tps.Verbosity = 10
+	tps.Verbosity = 0
 	tps.NumberOfCols = 50
 	tps.CellsPerColumn = 2
 	tps.ActivationThreshold = 8
