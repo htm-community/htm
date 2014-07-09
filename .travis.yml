@@ -8,3 +8,4 @@ install:
   - go get github.com/zacg/floats
   - go get github.com/zacg/go.matrix
   - go get github.com/zacg/ints
+  - go get github.com/zacg/testify/assert
