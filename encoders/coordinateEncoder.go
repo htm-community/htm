@@ -63,7 +63,7 @@ func (e *CoordinateEncoder) GetName() string {
 
 //convert coord to hashable value
 func coordInt(coord []int) int {
-	v := 0
+	v := 1
 	for _, val := range coord {
 		v *= val
 	}
@@ -82,7 +82,7 @@ func order(coord []int) float64 {
 func (e *CoordinateEncoder) coordBit(coord []int) int {
 	v := coordInt(coord)
 	rand.Seed(int64(v))
-	return rand.Intn(e.ActiveBits)
+	return rand.Intn(e.Width)
 }
 
 func (e *CoordinateEncoder) Encode(input []string, output []bool) {
@@ -92,7 +92,8 @@ func (e *CoordinateEncoder) Encode(input []string, output []bool) {
 
 	//parse coordinates
 	cordstr := strings.Split(input[0], ",")
-	coords := make([]int, len(cordstr))
+	coords := make([]int, 0, len(cordstr))
+
 	for _, val := range cordstr {
 		i, err := strconv.Atoi(val)
 		if err != nil {
@@ -114,6 +115,7 @@ func (e *CoordinateEncoder) Encode(input []string, output []bool) {
 			ranges[idx] = append(ranges[idx], i)
 		}
 	}
+
 	neighbors := utils.CartProductInt(ranges)
 	//select random top w neighbors
 	orders := make([]float64, len(neighbors))
@@ -127,9 +129,15 @@ func (e *CoordinateEncoder) Encode(input []string, output []bool) {
 	//reset output
 	utils.FillSliceBool(output, false)
 
+	//winners
+	winners := make([][]int, e.ActiveBits)
+	for i := 0; i < e.ActiveBits; i++ {
+		winners[i] = neighbors[indices[i]]
+	}
+
 	//select top n winners and project bit positions on to result
-	for i := len(orders) - e.ActiveBits; i < len(orders); i++ {
-		output[e.coordBit(neighbors[indices[i]])] = true
+	for _, val := range winners {
+		output[e.coordBit(val)] = true
 	}
 
 }
