@@ -11,7 +11,7 @@ package htm
 // 	//"sort"
 // )
 
-type Synapse struct {
+type TmSynapse struct {
 	Segment    int
 	SourceCell int
 	Permanence float64
@@ -25,29 +25,52 @@ type TemporalMemoryConnections struct {
 	ColumnDimensions []int
 	CellsPerColumn   int
 
-	segments []Segment
-	synapses []Synapse
+	segments []*Segment
+	synapses []*TmSynapse
 
-	synapsesForSegment [][]int
+	synapsesForSegment    [][]int
+	synapsesForSourceCell [][]int
 
 	segmentIndex int
 	synIndex     int
+
+	maxSynapseCount int
 }
 
-func (tmc *TemporalMemoryConnections) nextSegmentIndex() int {
-	idx := tmc.segmentIndex
-	tmc.segmentIndex++
-	return idx
+func NewTemporalMemoryConnections(tmParams *TemporalMemoryParams) *TemporalMemoryConnections {
+	c := new(TemporalMemoryConnections)
+	c.maxSynapseCount = tmParams.MaxNewSynapseCount
+	c.CellsPerColumn = tmParams.CellsPerColumn
+	c.ColumnDimensions = tmParams.ColumnDimensions
+
+	c.synapses = make([]*TmSynapse, 0, c.maxSynapseCount)
+
+	return c
 }
 
-func (tmc *TemporalMemoryConnections) nextSynapseIndex() int {
-	idx := tmc.synIndex
-	tmc.synIndex++
-	return idx
-}
+// func (tmc *TemporalMemoryConnections) nextSegmentIndex() int {
+// 	idx := tmc.segmentIndex
+// 	tmc.segmentIndex++
+// 	return idx
+// }
 
-func (tmc *TemporalMemoryConnections) CreateSynapse(segment int, sourceCell int, permanence float64) {
-	syn = tmc.nextSynapseIndex()
-	tmc.synapses[syn] = Synapse{segment, sourceCell, permanence}
+// func (tmc *TemporalMemoryConnections) nextSynapseIndex() int {
+// 	idx := tmc.synIndex
+// 	tmc.synIndex++
+// 	return idx
+// }
 
+func (tmc *TemporalMemoryConnections) CreateSynapse(segment int, sourceCell int, permanence float64) *TmSynapse {
+	syn := len(tmc.synapses)
+	data := new(TmSynapse)
+	data.Segment = segment
+	data.SourceCell = sourceCell
+	data.Permanence = permanence
+	tmc.synapses = append(tmc.synapses, data)
+
+	//Update indexes
+	tmc.synapsesForSegment[segment] = append(tmc.synapsesForSegment[segment], syn)
+	tmc.synapsesForSourceCell[sourceCell] = append(tmc.synapsesForSourceCell[sourceCell], syn)
+
+	return data
 }
