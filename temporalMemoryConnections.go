@@ -31,6 +31,8 @@ type TemporalMemoryConnections struct {
 	synapsesForSegment    [][]int
 	synapsesForSourceCell [][]int
 
+	segmentsForCell [][]int
+
 	segmentIndex int
 	synIndex     int
 
@@ -73,4 +75,13 @@ func (tmc *TemporalMemoryConnections) CreateSynapse(segment int, sourceCell int,
 	tmc.synapsesForSourceCell[sourceCell] = append(tmc.synapsesForSourceCell[sourceCell], syn)
 
 	return data
+}
+
+//Creates a new segment on specified cell, returns segment index
+func (tmc *TemporalMemoryConnections) CreateSegment(cell int) int {
+	idx := len(tmc.segments)
+	// Add data
+	tmc.segments = append(tmc.segments, cell)
+	tmc.segmentsForCell[cell] = append(tmc.segmentsForCell[idx], idx)
+	return idx
 }
