@@ -5,9 +5,9 @@ import (
 	"github.com/cznic/mathutil"
 	// 	"github.com/zacg/floats"
 	// 	"github.com/zacg/go.matrix"
-	//"github.com/zacg/htm/utils"
+	"github.com/zacg/htm/utils"
 	//"github.com/zacg/ints"
-	//"math"
+	"math"
 	"math/rand"
 	// 	//"sort"
 )
@@ -63,6 +63,27 @@ func NewTemporalMemory(params *TemporalMemoryParams) *TemporalMemory {
 // func compute() {
 
 // }
+
+// Updates synapses on segment.
+// Strengthens active synapses; weakens inactive synapses.
+func (tm *TemporalMemory) adaptSegment(segment int, activeSynapses []int,
+	connections *TemporalMemoryConnections) {
+
+	for _, synIdx := range connections.SynapsesForSegment(segment) {
+		syn := connections.DataForSynapse(synIdx)
+		perm := syn.Permanence
+
+		if utils.ContainsInt(synIdx, activeSynapses) {
+			perm += tm.params.PermanenceIncrement
+		} else {
+			perm += tm.params.PermanenceDecrement
+		}
+		//enforce min/max bounds
+		perm = math.Max(0.0, math.Min(1.0, perm))
+		connections.UpdateSynapsePermanence(synIdx, perm)
+	}
+
+}
 
 //Pick cells to form distal connections to.
 func (tm *TemporalMemory) pickCellsToLearnOn(n int, segment int,
