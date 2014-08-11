@@ -64,6 +64,28 @@ func NewTemporalMemory(params *TemporalMemoryParams) *TemporalMemory {
 
 // }
 
+//Returns the synapses on a segment that are active due to lateral input
+//from active cells.
+func (tm *TemporalMemory) getConnectedActiveSynapsesForSegment(segment int,
+	activeSynapsesForSegment []int, permanenceThreshold float64, connections *TemporalMemoryConnections) []int {
+
+	if !utils.ContainsInt(segment, activeSynapsesForSegment) {
+		return []int{}
+	}
+
+	connectedSynapses := make([]int, 0, len(activeSynapsesForSegment))
+
+	//TODO: (optimization) Can skip this logic if permanenceThreshold = 0
+	for _, synIdx := range activeSynapsesForSegment {
+		perm := connections.DataForSynapse(synIdx).Permanence
+		if perm >= permanenceThreshold {
+			connectedSynapses = append(connectedSynapses, synIdx)
+		}
+	}
+
+	return connectedSynapses
+}
+
 // Updates synapses on segment.
 // Strengthens active synapses; weakens inactive synapses.
 func (tm *TemporalMemory) adaptSegment(segment int, activeSynapses []int,
