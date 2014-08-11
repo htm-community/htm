@@ -1,15 +1,16 @@
 package htm
 
-// import (
-// 	"fmt"
-// 	"github.com/cznic/mathutil"
-// 	"github.com/zacg/floats"
-// 	"github.com/zacg/go.matrix"
-// 	"github.com/zacg/htm/utils"
-// 	//"math"
-// 	"math/rand"
-// 	//"sort"
-// )
+import (
+	// 	"fmt"
+	"github.com/cznic/mathutil"
+	// 	"github.com/zacg/floats"
+	// 	"github.com/zacg/go.matrix"
+	//"github.com/zacg/htm/utils"
+	//"github.com/zacg/ints"
+	//"math"
+	"math/rand"
+	// 	//"sort"
+)
 
 /*
 Params for intializing temporal memory
@@ -51,4 +52,41 @@ func NewTemporalMemory(params *TemporalMemoryParams) *TemporalMemory {
 	tm := new(TemporalMemory)
 	tm.params = params
 	return tm
+}
+
+//Feeds input record through TM, performing inference and learning.
+//Updates member variables with new state.
+// func (tm *TemporalMemory) Compute(activeColumns []int, learn bool) {
+
+// }
+
+// func compute() {
+
+// }
+
+//Pick cells to form distal connections to.
+func (tm *TemporalMemory) pickCellsToLearnOn(n int, segment int,
+	winnerCells []int, connections *TemporalMemoryConnections) []int {
+
+	candidates := make([]int, len(winnerCells))
+	copy(candidates, winnerCells)
+
+	for _, val := range connections.SynapsesForSegment(segment) {
+		syn := connections.DataForSynapse(val)
+		for idx, val := range candidates {
+			if val == syn.SourceCell {
+				candidates = append(candidates[:idx], candidates[idx+1:]...)
+				break
+			}
+		}
+	}
+
+	//Shuffle candidates
+	for i := range candidates {
+		j := rand.Intn(i + 1)
+		candidates[i], candidates[j] = candidates[j], candidates[i]
+	}
+
+	n = mathutil.Min(n, len(candidates))
+	return candidates[:n]
 }
