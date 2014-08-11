@@ -64,6 +64,30 @@ func NewTemporalMemory(params *TemporalMemoryParams) *TemporalMemory {
 
 // }
 
+// Gets the segment on a cell with the largest number of activate synapses,
+// including all synapses with non-zero permanences.
+func (tm *TemporalMemory) getBestMatchingSegment(cell int, activeSynapsesForSegment []int,
+	connections *TemporalMemoryConnections) (bestSegment int, connectedActiveSynapses []int) {
+
+	maxSynapses := tm.params.MinThreshold
+
+	for _, segment := range connections.SegmentsForCell(cell) {
+		synapses := tm.getConnectedActiveSynapsesForSegment(segment,
+			activeSynapsesForSegment,
+			0,
+			connections)
+
+		if len(synapses) >= maxSynapses {
+			maxSynapses = len(synapses)
+			bestSegment = segment
+			connectedActiveSynapses = synapses
+		}
+
+	}
+
+	return bestSegment, connectedActiveSynapses
+}
+
 // Gets the cell with the smallest number of segments.
 // Break ties randomly.
 func (tm *TemporalMemory) getLeastUsedCell(column int, connections *TemporalMemoryConnections) int {
