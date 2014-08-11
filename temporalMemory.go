@@ -64,6 +64,30 @@ func NewTemporalMemory(params *TemporalMemoryParams) *TemporalMemory {
 
 // }
 
+// Gets the cell with the smallest number of segments.
+// Break ties randomly.
+func (tm *TemporalMemory) getLeastUsedCell(column int, connections *TemporalMemoryConnections) int {
+	cells := connections.CellsForColumn(column)
+	leastUsedCells := make([]int, 0, len(cells))
+	minNumSegments := math.MaxInt64
+
+	for _, cell := range cells {
+		numSegments := len(connections.SegmentsForCell(cell))
+
+		if numSegments < minNumSegments {
+			minNumSegments = numSegments
+			leastUsedCells = leastUsedCells[:0]
+		}
+
+		if numSegments == minNumSegments {
+			leastUsedCells = append(leastUsedCells, cell)
+		}
+	}
+
+	//pick random cell
+	return leastUsedCells[rand.Intn(len(leastUsedCells))]
+}
+
 //Returns the synapses on a segment that are active due to lateral input
 //from active cells.
 func (tm *TemporalMemory) getConnectedActiveSynapsesForSegment(segment int,
