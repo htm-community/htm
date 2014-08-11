@@ -26,7 +26,7 @@ type TemporalMemoryConnections struct {
 	ColumnDimensions []int
 	CellsPerColumn   int
 
-	segments []*Segment
+	segments []int
 	synapses []*TmSynapse
 
 	synapsesForSegment    [][]int
@@ -105,14 +105,14 @@ func (tmc *TemporalMemoryConnections) UpdateSynapsePermanence(synapse int, perma
 
 //Returns the index of the column that a cell belongs to.
 func (tmc *TemporalMemoryConnections) ColumnForCell(cell int) int {
-	return int(cell / tmc.cellsPerColumn)
+	return int(cell / tmc.CellsPerColumn)
 }
 
 //Returns the indices of cells that belong to a column.
 func (tmc *TemporalMemoryConnections) CellsForColumn(column int) []int {
 	start := tmc.CellsPerColumn * column
 	result := make([]int, tmc.CellsPerColumn)
-	for idx, val := range result {
+	for idx, _ := range result {
 		result[idx] = start + idx
 	}
 	return result
@@ -129,7 +129,7 @@ func (tmc *TemporalMemoryConnections) SegmentsForCell(cell int) []int {
 }
 
 //Returns synapse data for specified index
-func (tmc *TemporalMemoryConnections) DataForSynapse(synapse int) TmSynapse {
+func (tmc *TemporalMemoryConnections) DataForSynapse(synapse int) *TmSynapse {
 	return tmc.synapses[synapse]
 }
 
