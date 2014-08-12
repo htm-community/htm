@@ -64,6 +64,33 @@ func NewTemporalMemory(params *TemporalMemoryParams) *TemporalMemory {
 
 // }
 
+/*
+ Phase 4: Compute predictive cells due to lateral input
+on distal dendrites.
+
+Pseudocode:
+
+- for each distal dendrite segment with activity >= activationThreshold
+- mark the segment as active
+- mark the cell as predictive
+*/
+func (tm *TemporalMemory) computePredictiveCells(activeSynapsesForSegment map[int][]int,
+	connections *TemporalMemoryConnections) (activeSegments []int, predictiveCells []int) {
+
+	for segment, _ := range activeSynapsesForSegment {
+		synapses := tm.getConnectedActiveSynapsesForSegment(segment,
+			activeSynapsesForSegment,
+			tm.params.ConnectedPermanence,
+			connections)
+		if len(synapses) >= tm.params.ActivationThreshold {
+			activeSegments = append(activeSegments, segment)
+			predictiveCells = append(predictiveCells, connections.CellForSegment(segment))
+		}
+	}
+
+	return activeSegments, predictiveCells
+}
+
 // Forward propagates activity from active cells to the synapses that touch
 // them, to determine which synapses are active.
 func (tm *TemporalMemory) computeActiveSynapses(activeCells []int,
@@ -85,7 +112,7 @@ func (tm *TemporalMemory) computeActiveSynapses(activeCells []int,
 //(see `TM.getBestMatchingSegment`) that has the largest number of active
 //synapses of all best matching segments.
 //If none were found, pick the least used cell (see `TM.getLeastUsedCell`).
-func (tm *TemporalMemory) getBestMatchingCell(column int, activeSynapsesForSegment []int,
+func (tm *TemporalMemory) getBestMatchingCell(column int, activeSynapsesForSegment map[int][]int,
 	connections *TemporalMemoryConnections) (bestCell int, bestSegment int) {
 
 	maxSynapses := 0
@@ -112,7 +139,7 @@ func (tm *TemporalMemory) getBestMatchingCell(column int, activeSynapsesForSegme
 
 // Gets the segment on a cell with the largest number of activate synapses,
 // including all synapses with non-zero permanences.
-func (tm *TemporalMemory) getBestMatchingSegment(cell int, activeSynapsesForSegment []int,
+func (tm *TemporalMemory) getBestMatchingSegment(cell int, activeSynapsesForSegment map[int][]int,
 	connections *TemporalMemoryConnections) (bestSegment int, connectedActiveSynapses []int) {
 
 	maxSynapses := tm.params.MinThreshold
@@ -161,16 +188,16 @@ func (tm *TemporalMemory) getLeastUsedCell(column int, connections *TemporalMemo
 //Returns the synapses on a segment that are active due to lateral input
 //from active cells.
 func (tm *TemporalMemory) getConnectedActiveSynapsesForSegment(segment int,
-	activeSynapsesForSegment []int, permanenceThreshold float64, connections *TemporalMemoryConnections) []int {
+	activeSynapsesForSegment map[int][]int, permanenceThreshold float64, connections *TemporalMemoryConnections) []int {
 
-	if !utils.ContainsInt(segment, activeSynapsesForSegment) {
+	if _, ok := activeSynapsesForSegment[segment]; !ok {
 		return []int{}
 	}
 
 	connectedSynapses := make([]int, 0, len(activeSynapsesForSegment))
 
 	//TODO: (optimization) Can skip this logic if permanenceThreshold = 0
-	for _, synIdx := range activeSynapsesForSegment {
+	for _, synIdx := range activeSynapsesForSegment[segment] {
 		perm := connections.DataForSynapse(synIdx).Permanence
 		if perm >= permanenceThreshold {
 			connectedSynapses = append(connectedSynapses, synIdx)
