@@ -64,6 +64,23 @@ func NewTemporalMemory(params *TemporalMemoryParams) *TemporalMemory {
 
 // }
 
+// Forward propagates activity from active cells to the synapses that touch
+// them, to determine which synapses are active.
+func (tm *TemporalMemory) computeActiveSynapses(activeCells []int,
+	connections *TemporalMemoryConnections) map[int][]int {
+
+	activeSynapsesForSegment := make(map[int][]int)
+
+	for _, cell := range activeCells {
+		for synapse := range connections.SynapsesForSourceCell(cell) {
+			segment := connections.DataForSynapse(synapse).Segment
+			activeSynapsesForSegment[segment] = append(activeSynapsesForSegment[segment], synapse)
+		}
+	}
+
+	return activeSynapsesForSegment
+}
+
 // Gets the cell with the best matching segment
 //(see `TM.getBestMatchingSegment`) that has the largest number of active
 //synapses of all best matching segments.
