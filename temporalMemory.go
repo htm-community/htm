@@ -65,6 +65,62 @@ func NewTemporalMemory(params *TemporalMemoryParams) *TemporalMemory {
 // }
 
 /*
+Phase 3: Perform learning by adapting segments.
+Pseudocode:
+- (learning) for each prev active or learning segment
+- if learning segment or from winner cell
+- strengthen active synapses
+- weaken inactive synapses
+- if learning segment
+- add some synapses to the segment
+- subsample from prev winner cells
+*/
+func (tm *TemporalMemory) learnOnSegments(prevActiveSegments []int,
+	learningSegments []int,
+	prevActiveSynapsesForSegment map[int][]int,
+	winnerCells []int,
+	prevWinnerCells []int,
+	connections *TemporalMemoryConnections) {
+
+	tm.lrnOnSegments(prevActiveSegments, false, prevActiveSynapsesForSegment, winnerCells, prevWinnerCells, connections)
+	tm.lrnOnSegments(learningSegments, true, prevActiveSynapsesForSegment, winnerCells, prevWinnerCells, connections)
+
+}
+
+//helper
+func (tm *TemporalMemory) lrnOnSegments(segments []int,
+	isLearningSegments bool,
+	prevActiveSynapsesForSegment map[int][]int,
+	winnerCells []int,
+	prevWinnerCells []int,
+	connections *TemporalMemoryConnections) {
+
+	for _, segment := range segments {
+		isFromWinnerCell := utils.ContainsInt(connections.CellForSegment(segment), winnerCells)
+		activeSynapses := tm.getConnectedActiveSynapsesForSegment(segment,
+			prevActiveSynapsesForSegment,
+			0,
+			connections)
+
+		if isLearningSegments || isFromWinnerCell {
+			tm.adaptSegment(segment, activeSynapses, connections)
+		}
+
+		if isLearningSegments {
+			n := tm.params.MaxNewSynapseCount - len(activeSynapses)
+			for _, sourceCell := range tm.pickCellsToLearnOn(n,
+				segment,
+				winnerCells,
+				connections) {
+				connections.CreateSynapse(segment, sourceCell, tm.params.InitialPermanence)
+			}
+		}
+
+	}
+
+}
+
+/*
  Phase 4: Compute predictive cells due to lateral input
 on distal dendrites.
 
