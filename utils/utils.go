@@ -383,3 +383,33 @@ func OnIndices(s []bool) []int {
 	}
 	return result
 }
+
+// Returns complement of s and t
+func Complement(s []int, t []int) []int {
+	result := make([]int, 0, len(s))
+	for _, val := range s {
+		found := false
+		for _, v2 := range t {
+			if v2 == val {
+				found = true
+				break
+			}
+		}
+		if !found {
+			result = append(result, val)
+		}
+	}
+	return result
+}
+
+func Add(s []int, t []int) []int {
+	result := make([]int, 0, len(s)+len(t))
+	result = append(result, s...)
+
+	for _, val := range t {
+		if ContainsInt(val, s) {
+			result = append(result, val)
+		}
+	}
+	return result
+}
