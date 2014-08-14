@@ -65,6 +65,33 @@ func NewTemporalMemory(params *TemporalMemoryParams) *TemporalMemory {
 // }
 
 /*
+Phase 1: Activate the correctly predictive cells.
+Pseudocode:
+- for each prev predictive cell
+- if in active column
+- mark it as active
+- mark it as winner cell
+- mark column as predicted
+*/
+func (tm *TemporalMemory) activateCorrectlyPredictiveCells(prevPredictiveCells []int,
+	activeColumns []int,
+	connections *TemporalMemoryConnections) (activeCells []int,
+	winnerCells []int,
+	predictedColumns []int) {
+
+	for _, cell := range prevPredictiveCells {
+		column := connections.ColumnForCell(cell)
+		if utils.ContainsInt(column, activeColumns) {
+			activeCells = append(activeCells, cell)
+			winnerCells = append(winnerCells, cell)
+			predictedColumns = append(predictedColumns, column)
+		}
+	}
+
+	return activeCells, winnerCells, predictedColumns
+}
+
+/*
 Phase 2: Burst unpredicted columns.
 Pseudocode:
 - for each unpredicted active column
