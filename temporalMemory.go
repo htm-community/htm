@@ -65,6 +65,48 @@ func NewTemporalMemory(params *TemporalMemoryParams) *TemporalMemory {
 // }
 
 /*
+Phase 2: Burst unpredicted columns.
+Pseudocode:
+- for each unpredicted active column
+- mark all cells as active
+- mark the best matching cell as winner cell
+- (learning)
+- if it has no matching segment
+- (optimization) if there are prev winner cells
+- add a segment to it
+- mark the segment as learning
+*/
+func (tm *TemporalMemory) burstColumns(activeColumns []int,
+	predictedColumns []int,
+	prevActiveSynapsesForSegment map[int][]int,
+	connections *TemporalMemoryConnections) (activeCells []int,
+	winnerCells []int,
+	learningSegments []int) {
+
+	unpredictedColumns := utils.Complement(activeColumns, predictedColumns)
+
+	for _, column := range unpredictedColumns {
+		cells := connections.CellsForColumn(column)
+		activeCells = utils.Add(activeCells, cells)
+
+		bestCell, bestSegment := tm.getBestMatchingCell(column,
+			prevActiveSynapsesForSegment,
+			connections)
+
+		winnerCells = append(winnerCells, bestCell)
+
+		if bestSegment == -1 {
+			//TODO: (optimization) Only do this if there are prev winner cells
+			bestSegment = connections.CreateSegment(bestCell)
+		}
+
+		learningSegments = append(learningSegments, bestSegment)
+	}
+
+	return activeCells, winnerCells, learningSegments
+}
+
+/*
 Phase 3: Perform learning by adapting segments.
 Pseudocode:
 - (learning) for each prev active or learning segment
