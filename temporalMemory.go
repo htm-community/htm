@@ -44,7 +44,12 @@ type TemporalMemoryParams struct {
 Temporal memory
 */
 type TemporalMemory struct {
-	params *TemporalMemoryParams
+	params                   *TemporalMemoryParams
+	ActiveCells              []int
+	PredictiveCells          []int
+	ActiveSegments           []int
+	ActiveSynapsesForSegment map[int][]int
+	WinnerCells              []int
 }
 
 //Create new temporal memory
@@ -63,6 +68,14 @@ func NewTemporalMemory(params *TemporalMemoryParams) *TemporalMemory {
 // func compute() {
 
 // }
+
+//Indicates the start of a new sequence. Resets sequence state of the TM.
+func (tm *TemporalMemory) Reset() {
+	tm.ActiveCells = tm.ActiveCells[:0]
+	tm.PredictiveCells = tm.PredictiveCells[:0]
+	tm.ActiveSegments = tm.ActiveSegments[:0]
+	tm.WinnerCells = tm.WinnerCells[:0]
+}
 
 /*
 Phase 1: Activate the correctly predictive cells.
