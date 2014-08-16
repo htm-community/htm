@@ -69,6 +69,57 @@ func NewTemporalMemory(params *TemporalMemoryParams) *TemporalMemory {
 
 // }
 
+// helper for compute().
+//Returns new state
+func (tm *TemporalMemory) computeFn(activeColumns []int,
+	prevPredictiveCells []int,
+	prevActiveSegments []int,
+	prevActiveSynapsesForSegment map[int][]int,
+	prevWinnerCells []int,
+	connections *TemporalMemoryConnections,
+	learn bool) (activeCells []int,
+	winnerCells []int,
+	activeSynapsesForSegment map[int][]int,
+	activeSegments []int,
+	predictiveCells []int) {
+
+	var predictedColumns []int
+
+	activeCells, winnerCells, predictedColumns = tm.activateCorrectlyPredictiveCells(
+		prevPredictiveCells,
+		activeColumns,
+		connections)
+
+	_activeCells, _winnerCells, learningSegments := tm.burstColumns(activeColumns,
+		predictedColumns,
+		prevActiveSynapsesForSegment,
+		connections)
+
+	utils.Add(activeCells, _activeCells)
+	utils.Add(winnerCells, _winnerCells)
+
+	if learn {
+		tm.learnOnSegments(prevActiveSegments,
+			learningSegments,
+			prevActiveSynapsesForSegment,
+			winnerCells,
+			prevWinnerCells,
+			connections)
+	}
+
+	activeSynapsesForSegment = tm.computeActiveSynapses(activeCells, connections)
+
+	activeSegments, predictiveCells = tm.computePredictiveCells(activeSynapsesForSegment,
+		connections)
+
+	return activeCells,
+		winnerCells,
+		activeSynapsesForSegment,
+		activeSegments,
+		predictiveCells
+
+}
+
 //Indicates the start of a new sequence. Resets sequence state of the TM.
 func (tm *TemporalMemory) Reset() {
 	tm.ActiveCells = tm.ActiveCells[:0]
