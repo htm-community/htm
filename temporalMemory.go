@@ -50,6 +50,7 @@ type TemporalMemory struct {
 	ActiveSegments           []int
 	ActiveSynapsesForSegment map[int][]int
 	WinnerCells              []int
+	Connections              *TemporalMemoryConnections
 }
 
 //Create new temporal memory
@@ -61,13 +62,23 @@ func NewTemporalMemory(params *TemporalMemoryParams) *TemporalMemory {
 
 //Feeds input record through TM, performing inference and learning.
 //Updates member variables with new state.
-// func (tm *TemporalMemory) Compute(activeColumns []int, learn bool) {
+func (tm *TemporalMemory) Compute(activeColumns []int, learn bool) {
 
-// }
+	activeCells, winnerCells, activeSynapsesForSegment, activeSegments, predictiveCells := tm.computeFn(activeColumns,
+		tm.PredictiveCells,
+		tm.ActiveSegments,
+		tm.ActiveSynapsesForSegment,
+		tm.WinnerCells,
+		tm.Connections,
+		learn)
 
-// func compute() {
+	tm.ActiveCells = activeCells
+	tm.WinnerCells = winnerCells
+	tm.ActiveSynapsesForSegment = activeSynapsesForSegment
+	tm.ActiveSegments = activeSegments
+	tm.PredictiveCells = predictiveCells
 
-// }
+}
 
 // helper for compute().
 //Returns new state
