@@ -40,6 +40,25 @@ type TemporalMemoryParams struct {
 	Seed int
 }
 
+//Create default temporal memory params
+func NewTemporalMemoryParams() *TemporalMemoryParams {
+	p := new(TemporalMemoryParams)
+
+	p.ColumnDimensions = []int{2048}
+	p.CellsPerColumn = 32
+	p.ActivationThreshold = 13
+	p.LearningRadius = 2048
+	p.InitialPermanence = 0.21
+	p.ConnectedPermanence = 0.50
+	p.MinThreshold = 10
+	p.MaxNewSynapseCount = 20
+	p.PermanenceIncrement = 0.10
+	p.PermanenceDecrement = 0.10
+	p.Seed = 42
+
+	return p
+}
+
 /*
 Temporal memory
 */
