@@ -76,6 +76,8 @@ type TemporalMemory struct {
 func NewTemporalMemory(params *TemporalMemoryParams) *TemporalMemory {
 	tm := new(TemporalMemory)
 	tm.params = params
+	tm.Connections = NewTemporalMemoryConnections(params.MaxNewSynapseCount,
+		params.CellsPerColumn, params.ColumnDimensions)
 	return tm
 }
 
