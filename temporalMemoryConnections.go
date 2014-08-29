@@ -56,7 +56,11 @@ func NewTemporalMemoryConnections(maxSynCount int, cellsPerColumn int, colDimens
 	c.ColumnDimensions = colDimensions
 
 	c.synapses = make([]*TmSynapse, 0, c.maxSynapseCount)
-	//TODO: init segments
+	//TODO: calc better size
+	c.segments = make([]int, 0, 1000)
+	c.segmentsForCell = make([][]int, cap(c.segments))
+	c.synapsesForSegment = make([][]int, cap(c.segments))
+	c.synapsesForSourceCell = make([][]int, cap(c.segments))
 
 	return c
 }
@@ -93,7 +97,7 @@ func (tmc *TemporalMemoryConnections) CreateSegment(cell int) int {
 	idx := len(tmc.segments)
 	// Add data
 	tmc.segments = append(tmc.segments, cell)
-	tmc.segmentsForCell[cell] = append(tmc.segmentsForCell[idx], idx)
+	tmc.segmentsForCell[cell] = append(tmc.segmentsForCell[cell], idx)
 	return idx
 }
 
