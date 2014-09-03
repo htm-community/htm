@@ -37,3 +37,20 @@ func TestPickCellsToLearnOn(t *testing.T) {
 	assert.Equal(t, []int{}, tm.pickCellsToLearnOn(0, 0, winnerCells, connections))
 	assert.Equal(t, []int{4, 58}, tm.pickCellsToLearnOn(2, 0, winnerCells, connections))
 }
+
+func TestLeastUsedCell(t *testing.T) {
+	tmp := NewTemporalMemoryParams()
+	tmp.ColumnDimensions = []int{2}
+	tmp.CellsPerColumn = 2
+
+	tm := NewTemporalMemory(tmp)
+
+	connections := tm.Connections
+	connections.CreateSegment(0)
+	connections.CreateSynapse(0, 3, 0.3)
+
+	for i := 0; i < 100; i++ {
+		assert.Equal(t, 1, tm.getLeastUsedCell(0, connections))
+	}
+
+}
