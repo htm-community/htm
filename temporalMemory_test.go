@@ -195,3 +195,23 @@ func TestGetBestMatchingSegment(t *testing.T) {
 	assert.Equal(t, []int(nil), bestSegment)
 
 }
+
+func TestGetBestMatchingCellFewestSegments(t *testing.T) {
+	tmp := NewTemporalMemoryParams()
+	tmp.ColumnDimensions = []int{2}
+	tmp.CellsPerColumn = 2
+	tmp.MinThreshold = 1
+	tm := NewTemporalMemory(tmp)
+	connections := tm.Connections
+
+	connections.CreateSegment(0)
+	connections.CreateSynapse(0, 3, 0.3)
+	activeSynapsesForSegment := map[int][]int{}
+
+	for i := 0; i < 100; i++ {
+		// Never pick cell 0, always pick cell 1
+		cell, _ := tm.getBestMatchingCell(0, activeSynapsesForSegment, connections)
+		assert.Equal(t, 1, cell)
+	}
+
+}
