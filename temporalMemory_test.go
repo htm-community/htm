@@ -58,7 +58,6 @@ func TestAdaptSegmentToMax(t *testing.T) {
 	tmp := NewTemporalMemoryParams()
 	tm := NewTemporalMemory(tmp)
 	connections := tm.Connections
-	connections = tm.Connections
 	connections.CreateSegment(0)
 	connections.CreateSynapse(0, 23, 0.9)
 
@@ -85,5 +84,22 @@ func TestLeastUsedCell(t *testing.T) {
 	for i := 0; i < 100; i++ {
 		assert.Equal(t, 1, tm.getLeastUsedCell(0, connections))
 	}
+
+}
+
+func TestAdaptSegment(t *testing.T) {
+	tmp := NewTemporalMemoryParams()
+	tm := NewTemporalMemory(tmp)
+	connections := tm.Connections
+
+	connections.CreateSegment(0)
+	connections.CreateSynapse(0, 23, 0.6)
+	connections.CreateSynapse(0, 37, 0.4)
+	connections.CreateSynapse(0, 477, 0.9)
+	tm.adaptSegment(0, []int{0, 1}, connections)
+
+	assert.Equal(t, 0.7, connections.DataForSynapse(0).Permanence)
+	assert.Equal(t, 0.5, connections.DataForSynapse(1).Permanence)
+	assert.Equal(t, 0.8, connections.DataForSynapse(2).Permanence)
 
 }
