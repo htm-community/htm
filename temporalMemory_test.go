@@ -2,7 +2,7 @@ package htm
 
 import (
 	//"fmt"
-	"github.com/zacg/testify/assert"
+	"github.com/stretchr/testify/assert"
 	"sort"
 	"testing"
 )
@@ -36,6 +36,23 @@ func TestPickCellsToLearnOn(t *testing.T) {
 	assert.Equal(t, []int{4, 47, 58, 93}, result)
 	assert.Equal(t, []int{}, tm.pickCellsToLearnOn(0, 0, winnerCells, connections))
 	assert.Equal(t, []int{4, 58}, tm.pickCellsToLearnOn(2, 0, winnerCells, connections))
+}
+
+func TestAdaptSegmentToMax(t *testing.T) {
+	tmp := NewTemporalMemoryParams()
+	tm := NewTemporalMemory(tmp)
+	connections := tm.Connections
+	connections = tm.Connections
+	connections.CreateSegment(0)
+	connections.CreateSynapse(0, 23, 0.9)
+
+	tm.adaptSegment(0, []int{0}, connections)
+	assert.Equal(t, 1.0, connections.DataForSynapse(0).Permanence)
+
+	// Now permanence should be at max
+	tm.adaptSegment(0, []int{0}, connections)
+	assert.Equal(t, 1.0, connections.DataForSynapse(0).Permanence)
+
 }
 
 func TestLeastUsedCell(t *testing.T) {
