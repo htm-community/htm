@@ -134,3 +134,21 @@ func TestGetConnectedActiveSynapsesForSegment(t *testing.T) {
 		connections))
 
 }
+
+func TestComputeActiveSynapsesNoActivity(t *testing.T) {
+	tmp := NewTemporalMemoryParams()
+	tm := NewTemporalMemory(tmp)
+	connections := tm.Connections
+
+	connections.CreateSegment(0)
+	connections.CreateSynapse(0, 23, 0.6)
+	connections.CreateSynapse(0, 37, 0.4)
+	connections.CreateSynapse(0, 477, 0.9)
+	connections.CreateSegment(1)
+	connections.CreateSynapse(1, 733, 0.7)
+	connections.CreateSegment(8)
+	connections.CreateSynapse(2, 486, 0.9)
+	activeCells := []int{}
+	assert.Equal(t, map[int][]int{}, tm.computeActiveSynapses(activeCells, connections))
+
+}
