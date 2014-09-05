@@ -38,6 +38,22 @@ func TestPickCellsToLearnOn(t *testing.T) {
 	assert.Equal(t, []int{4, 58}, tm.pickCellsToLearnOn(2, 0, winnerCells, connections))
 }
 
+func TestAdaptSegmentToMin(t *testing.T) {
+	tmp := NewTemporalMemoryParams()
+	tm := NewTemporalMemory(tmp)
+	connections := tm.Connections
+	connections.CreateSegment(0)
+	connections.CreateSynapse(0, 23, 0.1)
+
+	tm.adaptSegment(0, []int{}, connections)
+	assert.Equal(t, 0.0, connections.DataForSynapse(0).Permanence)
+
+	// // Now permanence should be at min
+	tm.adaptSegment(0, []int{}, connections)
+	assert.Equal(t, 0.0, connections.DataForSynapse(0).Permanence)
+
+}
+
 func TestAdaptSegmentToMax(t *testing.T) {
 	tmp := NewTemporalMemoryParams()
 	tm := NewTemporalMemory(tmp)
