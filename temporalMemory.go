@@ -440,7 +440,7 @@ func (tm *TemporalMemory) adaptSegment(segment int, activeSynapses []int,
 		if utils.ContainsInt(synIdx, activeSynapses) {
 			perm += tm.params.PermanenceIncrement
 		} else {
-			perm += tm.params.PermanenceDecrement
+			perm -= tm.params.PermanenceDecrement
 		}
 		//enforce min/max bounds
 		perm = math.Max(0.0, math.Min(1.0, perm))
