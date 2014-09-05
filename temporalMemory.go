@@ -335,6 +335,7 @@ func (tm *TemporalMemory) computeActiveSynapses(activeCells []int,
 //If none were found, pick the least used cell (see `TM.getLeastUsedCell`).
 func (tm *TemporalMemory) getBestMatchingCell(column int, activeSynapsesForSegment map[int][]int,
 	connections *TemporalMemoryConnections) (bestCell int, bestSegment int) {
+	bestCell = -1
 
 	maxSynapses := 0
 	cells := connections.CellsForColumn(column)
@@ -351,7 +352,7 @@ func (tm *TemporalMemory) getBestMatchingCell(column int, activeSynapsesForSegme
 		}
 	}
 
-	if bestCell == 0 {
+	if bestCell == -1 {
 		bestCell = tm.getLeastUsedCell(column, connections)
 	}
 
@@ -362,8 +363,8 @@ func (tm *TemporalMemory) getBestMatchingCell(column int, activeSynapsesForSegme
 // including all synapses with non-zero permanences.
 func (tm *TemporalMemory) getBestMatchingSegment(cell int, activeSynapsesForSegment map[int][]int,
 	connections *TemporalMemoryConnections) (bestSegment int, connectedActiveSynapses []int) {
-
 	maxSynapses := tm.params.MinThreshold
+	bestSegment = -1
 
 	for _, segment := range connections.SegmentsForCell(cell) {
 		synapses := tm.getConnectedActiveSynapsesForSegment(segment,
