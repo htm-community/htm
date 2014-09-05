@@ -103,3 +103,34 @@ func TestAdaptSegment(t *testing.T) {
 	assert.Equal(t, 0.8, connections.DataForSynapse(2).Permanence)
 
 }
+
+func TestGetConnectedActiveSynapsesForSegment(t *testing.T) {
+	tmp := NewTemporalMemoryParams()
+	tm := NewTemporalMemory(tmp)
+	connections := tm.Connections
+
+	connections.CreateSegment(0)
+	connections.CreateSynapse(0, 23, 0.6)
+	connections.CreateSynapse(0, 37, 0.4)
+	connections.CreateSynapse(0, 477, 0.9)
+	connections.CreateSegment(1)
+	connections.CreateSynapse(1, 733, 0.7)
+	connections.CreateSegment(8)
+	connections.CreateSynapse(2, 486, 0.9)
+
+	activeSynapsesForSegment := map[int][]int{
+		0: {0, 1},
+		1: {3},
+	}
+
+	assert.Equal(t, []int{0}, tm.getConnectedActiveSynapsesForSegment(0,
+		activeSynapsesForSegment,
+		0.5,
+		connections))
+
+	assert.Equal(t, []int{3}, tm.getConnectedActiveSynapsesForSegment(1,
+		activeSynapsesForSegment,
+		0.5,
+		connections))
+
+}
