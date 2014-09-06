@@ -182,7 +182,10 @@ func (tm *TemporalMemory) activateCorrectlyPredictiveCells(prevPredictiveCells [
 		if utils.ContainsInt(column, activeColumns) {
 			activeCells = append(activeCells, cell)
 			winnerCells = append(winnerCells, cell)
-			predictedColumns = append(predictedColumns, column)
+			//TODO: change this to a set data structure
+			if !utils.ContainsInt(column, predictedColumns) {
+				predictedColumns = append(predictedColumns, column)
+			}
 		}
 	}
 
@@ -224,8 +227,10 @@ func (tm *TemporalMemory) burstColumns(activeColumns []int,
 			//TODO: (optimization) Only do this if there are prev winner cells
 			bestSegment = connections.CreateSegment(bestCell)
 		}
-
-		learningSegments = append(learningSegments, bestSegment)
+		//TODO: change to set data structure
+		if !utils.ContainsInt(bestSegment, learningSegments) {
+			learningSegments = append(learningSegments, bestSegment)
+		}
 	}
 
 	return activeCells, winnerCells, learningSegments
