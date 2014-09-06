@@ -178,21 +178,21 @@ func TestGetBestMatchingSegment(t *testing.T) {
 		2: []int{5},
 	}
 
-	bestCell, bestSegment := tm.getBestMatchingSegment(0, activeSynapsesForSegment, connections)
+	bestCell, connectedSyns := tm.getBestMatchingSegment(0, activeSynapsesForSegment, connections)
 	assert.Equal(t, 0, bestCell)
-	assert.Equal(t, []int{0, 1}, bestSegment)
+	assert.Equal(t, []int{0, 1}, connectedSyns)
 
-	bestCell, bestSegment = tm.getBestMatchingSegment(1, activeSynapsesForSegment, connections)
+	bestCell, connectedSyns = tm.getBestMatchingSegment(1, activeSynapsesForSegment, connections)
 	assert.Equal(t, 2, bestCell)
-	assert.Equal(t, []int{5}, bestSegment)
+	assert.Equal(t, []int{5}, connectedSyns)
 
-	bestCell, bestSegment = tm.getBestMatchingSegment(8, activeSynapsesForSegment, connections)
+	bestCell, connectedSyns = tm.getBestMatchingSegment(8, activeSynapsesForSegment, connections)
 	assert.Equal(t, -1, bestCell)
-	assert.Equal(t, []int(nil), bestSegment)
+	assert.Equal(t, []int(nil), connectedSyns)
 
-	bestCell, bestSegment = tm.getBestMatchingSegment(100, activeSynapsesForSegment, connections)
+	bestCell, connectedSyns = tm.getBestMatchingSegment(100, activeSynapsesForSegment, connections)
 	assert.Equal(t, -1, bestCell)
-	assert.Equal(t, []int(nil), bestSegment)
+	assert.Equal(t, []int(nil), connectedSyns)
 
 }
 
@@ -213,5 +213,45 @@ func TestGetBestMatchingCellFewestSegments(t *testing.T) {
 		cell, _ := tm.getBestMatchingCell(0, activeSynapsesForSegment, connections)
 		assert.Equal(t, 1, cell)
 	}
+
+}
+
+func TestGetBestMatchingCell(t *testing.T) {
+	tmp := NewTemporalMemoryParams()
+	tmp.MinThreshold = 1
+	tm := NewTemporalMemory(tmp)
+	connections := tm.Connections
+
+	connections.CreateSegment(0)
+	connections.CreateSynapse(0, 23, 0.6)
+	connections.CreateSynapse(0, 37, 0.4)
+	connections.CreateSynapse(0, 477, 0.9)
+	connections.CreateSegment(0)
+	connections.CreateSynapse(1, 49, 0.9)
+	connections.CreateSynapse(1, 3, 0.8)
+	connections.CreateSegment(1)
+	connections.CreateSynapse(2, 733, 0.7)
+	connections.CreateSegment(108)
+	connections.CreateSynapse(3, 486, 0.9)
+
+	activeSynapsesForSegment := map[int][]int{
+		0: []int{0, 1},
+		1: []int{3},
+		2: []int{5},
+	}
+
+	bestCell, bestSeg := tm.getBestMatchingCell(0, activeSynapsesForSegment, connections)
+	assert.Equal(t, 0, bestCell)
+	assert.Equal(t, 0, bestSeg)
+
+	//randomly picked
+	bestCell, bestSeg = tm.getBestMatchingCell(3, activeSynapsesForSegment, connections)
+	assert.Equal(t, 98, bestCell)
+	assert.Equal(t, -1, bestSeg)
+
+	//randomly picked
+	bestCell, bestSeg = tm.getBestMatchingCell(999, activeSynapsesForSegment, connections)
+	assert.Equal(t, 31970, bestCell)
+	assert.Equal(t, -1, bestSeg)
 
 }
