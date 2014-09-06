@@ -311,3 +311,54 @@ func TestComputePredictiveCells(t *testing.T) {
 	assert.Equal(t, []int(nil), predictiveCells)
 
 }
+
+func TestLearnOnSegments(t *testing.T) {
+	tmp := NewTemporalMemoryParams()
+	tm := NewTemporalMemory(tmp)
+	connections := tm.Connections
+	connections.CreateSegment(0)
+	connections.CreateSynapse(0, 23, 0.6)
+	connections.CreateSynapse(0, 37, 0.4)
+	connections.CreateSynapse(0, 477, 0.9)
+	connections.CreateSegment(1)
+	connections.CreateSynapse(1, 733, 0.7)
+	connections.CreateSegment(8)
+	connections.CreateSynapse(2, 486, 0.9)
+	connections.CreateSegment(100)
+
+	prevActiveSegments := []int{0, 2}
+	learningSegments := []int{1, 3}
+
+	prevActiveSynapsesForSegment := map[int][]int{
+		0: []int{0, 1},
+		1: []int{3},
+	}
+
+	winnerCells := []int{0}
+
+	prevWinnerCells := []int{10, 11, 12, 13, 14}
+
+	tm.learnOnSegments(prevActiveSegments,
+		learningSegments,
+		prevActiveSynapsesForSegment,
+		winnerCells,
+		prevWinnerCells,
+		connections)
+
+	//Check segment 0
+	assert.Equal(t, 0.7, connections.DataForSynapse(0).Permanence)
+	assert.Equal(t, 0.5, connections.DataForSynapse(1).Permanence)
+	assert.Equal(t, 0.8, connections.DataForSynapse(2).Permanence)
+
+	//Check segment 1
+	assert.InEpsilon(t, 0.8, connections.DataForSynapse(3).Permanence, 0.1)
+	assert.Equal(t, 2, len(connections.synapsesForSegment[1]))
+
+	//Check segment 2
+	assert.Equal(t, 0.9, connections.DataForSynapse(4).Permanence)
+	assert.Equal(t, 1, len(connections.synapsesForSegment[2]))
+
+	// Check segment 3
+	assert.Equal(t, 1, len(connections.synapsesForSegment[3]))
+
+}
