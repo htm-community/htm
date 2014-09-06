@@ -466,3 +466,20 @@ func TestActivateCorrectlyPredictiveCellsEmpty(t *testing.T) {
 	assert.Equal(t, []int(nil), predictedColumns)
 
 }
+
+func TestActivateCorrectlyPredictiveCells(t *testing.T) {
+	tmp := NewTemporalMemoryParams()
+	tm := NewTemporalMemory(tmp)
+	connections := tm.Connections
+	prevPredictiveCells := []int{0, 237, 1026, 26337, 26339, 55536}
+	activeColumns := []int{32, 47, 823}
+
+	activeCells, winnerCells, predictedColumns := tm.activateCorrectlyPredictiveCells(prevPredictiveCells,
+		activeColumns,
+		connections)
+
+	assert.Equal(t, []int{1026, 26337, 26339}, activeCells)
+	assert.Equal(t, []int{1026, 26337, 26339}, winnerCells)
+	assert.Equal(t, []int{32, 823}, predictedColumns)
+
+}
