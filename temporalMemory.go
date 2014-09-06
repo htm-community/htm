@@ -1,7 +1,7 @@
 package htm
 
 import (
-	// 	"fmt"
+	//"fmt"
 	"github.com/cznic/mathutil"
 	// 	"github.com/zacg/floats"
 	// 	"github.com/zacg/go.matrix"
@@ -336,6 +336,7 @@ func (tm *TemporalMemory) computeActiveSynapses(activeCells []int,
 func (tm *TemporalMemory) getBestMatchingCell(column int, activeSynapsesForSegment map[int][]int,
 	connections *TemporalMemoryConnections) (bestCell int, bestSegment int) {
 	bestCell = -1
+	bestSegment = -1
 
 	maxSynapses := 0
 	cells := connections.CellsForColumn(column)
