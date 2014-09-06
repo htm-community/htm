@@ -407,7 +407,7 @@ func Add(s []int, t []int) []int {
 	result = append(result, s...)
 
 	for _, val := range t {
-		if ContainsInt(val, s) {
+		if !ContainsInt(val, s) {
 			result = append(result, val)
 		}
 	}
