@@ -78,6 +78,8 @@ func NewTemporalMemory(params *TemporalMemoryParams) *TemporalMemory {
 	tm.params = params
 	tm.Connections = NewTemporalMemoryConnections(params.MaxNewSynapseCount,
 		params.CellsPerColumn, params.ColumnDimensions)
+	//TODO: refactor into encapsulated RNG
+	rand.Seed(int64(params.Seed))
 	return tm
 }
 
