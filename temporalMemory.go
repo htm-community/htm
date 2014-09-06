@@ -320,7 +320,7 @@ func (tm *TemporalMemory) computeActiveSynapses(activeCells []int,
 	activeSynapsesForSegment := make(map[int][]int)
 
 	for _, cell := range activeCells {
-		for synapse := range connections.SynapsesForSourceCell(cell) {
+		for _, synapse := range connections.SynapsesForSourceCell(cell) {
 			segment := connections.DataForSynapse(synapse).Segment
 			activeSynapsesForSegment[segment] = append(activeSynapsesForSegment[segment], synapse)
 		}
