@@ -22,3 +22,15 @@ func TestUpdateSynapsePermanence(t *testing.T) {
 	c.UpdateSynapsePermanence(0, 0.2496)
 	assert.Equal(t, 0.2496, c.DataForSynapse(0).Permanence)
 }
+
+func TestCellsForColumn1D(t *testing.T) {
+	c := NewTemporalMemoryConnections(1000, 5, []int{2048})
+	expectedCells := []int{5, 6, 7, 8, 9}
+	assert.Equal(t, expectedCells, c.CellsForColumn(1))
+}
+
+func TestCellsForColumn2D(t *testing.T) {
+	c := NewTemporalMemoryConnections(1000, 4, []int{64, 64})
+	expectedCells := []int{256, 257, 258, 259}
+	assert.Equal(t, expectedCells, c.CellsForColumn(64))
+}
