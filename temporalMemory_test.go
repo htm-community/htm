@@ -362,3 +362,22 @@ func TestLearnOnSegments(t *testing.T) {
 	assert.Equal(t, 1, len(connections.synapsesForSegment[3]))
 
 }
+
+func testBurstColumnsEmpty(t *testing.T) {
+	tmp := NewTemporalMemoryParams()
+	tm := NewTemporalMemory(tmp)
+	connections := tm.Connections
+	activeColumns := []int{}
+	predictedColumns := []int{}
+	prevActiveSynapsesForSegment := make(map[int][]int)
+
+	activeCells, winnerCells, learningSegments := tm.burstColumns(activeColumns,
+		predictedColumns,
+		prevActiveSynapsesForSegment,
+		connections)
+
+	assert.Equal(t, []int{}, activeCells)
+	assert.Equal(t, []int{}, winnerCells)
+	assert.Equal(t, []int{}, learningSegments)
+
+}
