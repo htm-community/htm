@@ -422,3 +422,47 @@ func TestBurstColumns(t *testing.T) {
 	assert.Equal(t, []int{4}, connections.segmentsForCell[5])
 
 }
+
+func TestActivateCorrectlyPredictiveCellsEmpty(t *testing.T) {
+	tmp := NewTemporalMemoryParams()
+	tmp.CellsPerColumn = 4
+	tmp.MinThreshold = 1
+	tm := NewTemporalMemory(tmp)
+	connections := tm.Connections
+
+	prevPredictiveCells := []int{}
+	activeColumns := []int{}
+
+	activeCells, winnerCells, predictedColumns := tm.activateCorrectlyPredictiveCells(prevPredictiveCells,
+		activeColumns,
+		connections)
+
+	assert.Equal(t, []int(nil), activeCells)
+	assert.Equal(t, []int(nil), winnerCells)
+	assert.Equal(t, []int(nil), predictedColumns)
+
+	// No previous predictive cells
+	prevPredictiveCells = []int{}
+	activeColumns = []int{32, 47, 823}
+
+	activeCells, winnerCells, predictedColumns = tm.activateCorrectlyPredictiveCells(prevPredictiveCells,
+		activeColumns,
+		connections)
+
+	assert.Equal(t, []int(nil), activeCells)
+	assert.Equal(t, []int(nil), winnerCells)
+	assert.Equal(t, []int(nil), predictedColumns)
+
+	// No active columns
+	prevPredictiveCells = []int{0, 237, 1026, 26337, 26339, 55536}
+	activeColumns = []int{}
+
+	activeCells, winnerCells, predictedColumns = tm.activateCorrectlyPredictiveCells(prevPredictiveCells,
+		activeColumns,
+		connections)
+
+	assert.Equal(t, []int(nil), activeCells)
+	assert.Equal(t, []int(nil), winnerCells)
+	assert.Equal(t, []int(nil), predictedColumns)
+
+}
