@@ -57,7 +57,7 @@ func NewTemporalMemoryConnections(maxSynCount int, cellsPerColumn int, colDimens
 
 	c.synapses = make([]*TmSynapse, 0, c.maxSynapseCount)
 	//TODO: calc better size
-	c.segments = make([]int, 0, 1000)
+	c.segments = make([]int, 0, 50000)
 	c.segmentsForCell = make([][]int, cap(c.segments))
 	c.synapsesForSegment = make([][]int, cap(c.segments))
 	c.synapsesForSourceCell = make([][]int, cap(c.segments))
