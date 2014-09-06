@@ -246,12 +246,12 @@ func TestGetBestMatchingCell(t *testing.T) {
 
 	//randomly picked
 	bestCell, bestSeg = tm.getBestMatchingCell(3, activeSynapsesForSegment, connections)
-	assert.Equal(t, 98, bestCell)
+	assert.Equal(t, 99, bestCell) //random
 	assert.Equal(t, -1, bestSeg)
 
 	//randomly picked
 	bestCell, bestSeg = tm.getBestMatchingCell(999, activeSynapsesForSegment, connections)
-	assert.Equal(t, 31970, bestCell)
+	assert.Equal(t, 31979, bestCell) //random
 	assert.Equal(t, -1, bestSeg)
 
 }
@@ -363,7 +363,7 @@ func TestLearnOnSegments(t *testing.T) {
 
 }
 
-func testBurstColumnsEmpty(t *testing.T) {
+func TestBurstColumnsEmpty(t *testing.T) {
 	tmp := NewTemporalMemoryParams()
 	tm := NewTemporalMemory(tmp)
 	connections := tm.Connections
@@ -376,8 +376,49 @@ func testBurstColumnsEmpty(t *testing.T) {
 		prevActiveSynapsesForSegment,
 		connections)
 
-	assert.Equal(t, []int{}, activeCells)
-	assert.Equal(t, []int{}, winnerCells)
-	assert.Equal(t, []int{}, learningSegments)
+	assert.Equal(t, []int(nil), activeCells)
+	assert.Equal(t, []int(nil), winnerCells)
+	assert.Equal(t, []int(nil), learningSegments)
+
+}
+
+func TestBurstColumns(t *testing.T) {
+	tmp := NewTemporalMemoryParams()
+	tmp.CellsPerColumn = 4
+	tmp.MinThreshold = 1
+	tm := NewTemporalMemory(tmp)
+	connections := tm.Connections
+
+	connections.CreateSegment(0)
+	connections.CreateSynapse(0, 23, 0.6)
+	connections.CreateSynapse(0, 37, 0.4)
+	connections.CreateSynapse(0, 477, 0.9)
+	connections.CreateSegment(0)
+	connections.CreateSynapse(1, 49, 0.9)
+	connections.CreateSynapse(1, 3, 0.8)
+	connections.CreateSegment(1)
+	connections.CreateSynapse(2, 733, 0.7)
+	connections.CreateSegment(108)
+	connections.CreateSynapse(3, 486, 0.9)
+
+	activeColumns := []int{0, 1, 26}
+	predictedColumns := []int{26}
+
+	prevActiveSynapsesForSegment := map[int][]int{
+		0: []int{0, 1},
+		1: []int{3},
+		2: []int{5},
+	}
+
+	activeCells, winnerCells, learningSegments := tm.burstColumns(activeColumns,
+		predictedColumns,
+		prevActiveSynapsesForSegment,
+		connections)
+
+	assert.Equal(t, []int{0, 1, 2, 3, 4, 5, 6, 7}, activeCells)
+	assert.Equal(t, []int{0, 5}, winnerCells)      //5 is randomly chosen cell
+	assert.Equal(t, []int{0, 4}, learningSegments) //4 is new segment created
+	//Check that new segment was added to winner cell (4) in column 1
+	assert.Equal(t, []int{4}, connections.segmentsForCell[5])
 
 }
