@@ -18,12 +18,13 @@ The Nupic project basically demonstrates the CLA, a single stage of the cortical
 
 ##Current State of Project
  * Temporal and Spatial poolers pass basic tests
+ * Temporal memory passes basic unit tests
 
 ##Todo
- * Finish temporal unit tests
+ ~~* Finish temporal unit tests~~
  * Implement a better sparse binary matrix structure with versions optimized for col or row heavy access.
  * Refactor to be more idiomatic Go. It is basically a line for line port of the python implementation, it could be refactored to make better use of Go's type system.
-
+ * Implement some of the common encoders
 
 ##Examples
 
