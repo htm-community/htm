@@ -128,6 +128,28 @@ func (se *ScalerEncoder) getFirstOnBit(input float64) int {
 	return minbin
 }
 
+/*
+ Returns bucket index for given input
+*/
+func (se *ScalerEncoder) getBucketIndices(input float64) []int {
+
+	minbin := se.getFirstOnBit(input)
+	var bucketIdx int
+
+	// For periodic encoders, the bucket index is the index of the center bit
+	if se.Periodic {
+		bucketIdx = minbin + se.halfWidth
+		if bucketIdx < 0 {
+			bucketIdx += se.n
+		}
+	} else {
+		// for non-periodic encoders, the bucket index is the index of the left bit
+		bucketIdx = minbin
+	}
+
+	return []int{bucketIdx}
+}
+
 // func (se *ScalerEncoder) Encode(input float64, learn bool) output []bool {
 
 // 	// if input is not None and not isinstance(input, numbers.Number):
