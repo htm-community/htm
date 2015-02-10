@@ -3,6 +3,7 @@ package encoders
 import (
 	"fmt"
 	//"math"
+	"github.com/zacg/htm/utils"
 )
 
 /*
@@ -150,18 +151,57 @@ func (se *ScalerEncoder) getBucketIndices(input float64) []int {
 	return []int{bucketIdx}
 }
 
-// func (se *ScalerEncoder) Encode(input float64, learn bool) output []bool {
+func (se *ScalerEncoder) Encode(input float64, learn bool) (output []bool) {
 
-// 	// if input is not None and not isinstance(input, numbers.Number):
-// 	// raise TypeError("Expected a scalar input but got input of type %s" % type(input))
+	// Get the bucket index to use
+	bucketIdx := se.getFirstOnBit(input)
 
-// 	// if type(input) is float and math.isnan(input):
-// 	// input = SENTINEL_VALUE_FOR_MISSING_DATA
-// 	// // Get the bucket index to use
-// 	// bucketIdx = self._getFirstOnBit(input)[0]
-// 	return []bool
-// }
+	//if len(bucketIdx) {
+	//This shouldn't get hit
+	//	panic("Missing input value")
+	//TODO output[0:self.n] = 0 TODO: should all 1s, or random SDR be returned instead?
+	//} else {
+	// The bucket index is the index of the first bit to set in the output
+	output = make([]bool, se.n)
+	minbin := bucketIdx
+	maxbin := minbin + 2*se.halfWidth
 
-// func (se *ScalerEncoder) GetWidth() int {
-// 	//return
-// }
+	if se.Periodic {
+
+		// Handle the edges by computing wrap-around
+		if maxbin >= se.n {
+			bottombins := maxbin - se.n + 1
+			utils.FillSliceRangeBool(output, true, 0, bottombins)
+			maxbin = se.n - 1
+		}
+		if minbin < 0 {
+			topbins := -minbin
+			//output = output[se.n - topbins:se.n]
+			utils.FillSliceRangeBool(output, true, se.n-topbins, se.n)
+			minbin = 0
+		}
+
+	}
+
+	if minbin < 0 {
+		panic("invalid minbin")
+	}
+	if maxbin >= se.n {
+		panic("invalid maxbin")
+	}
+
+	// set the output (except for periodic wraparound)
+	utils.FillSliceRangeBool(output, true, minbin, maxbin+1)
+
+	if se.Verbosity >= 2 {
+		fmt.Println("input:", input)
+		fmt.Printf("range: %v - %v \n", se.MinVal, se.MaxVal)
+		fmt.Printf("n: %v width: %v resolution: %v \n", se.n, se.Width, se.resolution)
+		fmt.Printf("radius: %v periodic: %v \n", se.Radius, se.Periodic)
+		fmt.Printf("output: %v \n", output)
+	}
+
+	//}
+
+	return output
+}
