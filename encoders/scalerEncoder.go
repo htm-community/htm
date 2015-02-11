@@ -2,8 +2,8 @@ package encoders
 
 import (
 	"fmt"
-	//"math"
 	"github.com/zacg/htm/utils"
+	"math"
 )
 
 /*
@@ -71,6 +71,70 @@ func NewScalerEncoder(width int) *ScalerEncoder {
 	}
 
 	return se
+}
+
+/*
+	helper used to inititalize the encoder
+*/
+func (se *ScalerEncoder) init(width int, minval float64, maxval float64, n int,
+	radius float64, resolution float64) {
+	//handle 3 diff ways of representation
+
+	if se.n != 0 {
+		//crutches ;(
+		if radius == 0 {
+			panic("radius is 0")
+		}
+		if resolution == 0 {
+			panic("radius is 0")
+		}
+		if n <= width {
+			panic("n less than width")
+		}
+
+		se.n = n
+
+		//if (minval is not None and maxval is not None){
+
+		if !se.Periodic {
+			se.resolution = se.rangeInternal / float64(se.n-se.Width)
+		} else {
+			se.resolution = se.rangeInternal / float64(se.n)
+		}
+
+		se.Radius = float64(se.Width) * se.resolution
+
+		if se.Periodic {
+			se.Range = se.rangeInternal
+		} else {
+			se.Range = se.rangeInternal + se.resolution
+		}
+
+	} else { //n == 0
+		if radius != 0 {
+			if resolution != 0 {
+				panic("resolution not 0")
+			}
+			se.Radius = radius
+			se.resolution = se.Radius / float64(width)
+		} else if resolution != 0 {
+			se.resolution = resolution
+			se.Radius = se.resolution * float64(se.Width)
+		} else {
+			panic("One of n, radius, resolution must be set")
+		}
+
+		if se.Periodic {
+			se.Range = se.rangeInternal
+		} else {
+			se.Range = se.rangeInternal + se.resolution
+		}
+
+		nfloat := float64(se.Width)*(se.Range/se.Radius) + 2*float64(se.padding)
+		se.n = int(math.Ceil(nfloat))
+
+	}
+
 }
 
 /*
