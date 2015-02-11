@@ -73,6 +73,30 @@ func NewScalerEncoder(width int) *ScalerEncoder {
 	return se
 }
 
+/*
+	recalculate encoder parameters and name
+*/
+func (se *ScalerEncoder) recalcParams(input float64) {
+	se.rangeInternal = se.MaxVal - se.MinVal
+
+	if !se.Periodic {
+		se.resolution = se.rangeInternal/float64(se.n) - float64(se.Width)
+	} else {
+		se.resolution = se.rangeInternal / float64(se.n)
+	}
+
+	se.Radius = float64(se.Width) * se.resolution
+
+	if se.Periodic {
+		se.Range = se.rangeInternal
+	} else {
+		se.Range = se.rangeInternal + se.resolution
+	}
+
+	se.Name = fmt.Sprintf("[%v:%v]", se.MinVal, se.MaxVal)
+
+}
+
 /* Return the bit offset of the first bit to be set in the encoder output.
 For periodic encoders, this can be a negative number when the encoded output
 wraps around. */
