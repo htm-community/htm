@@ -40,6 +40,22 @@ type ScalerEncoderParams struct {
 	N          int
 }
 
+func NewScalerEncoderParams(width int, minVal float64, maxVal float64) *ScalerEncoderParams {
+	p := new(ScalerEncoderParams)
+
+	p.Width = width
+	p.MinVal = minVal
+	p.MaxVal = maxVal
+	p.N = 0
+	p.Radius = 0
+	p.Resolution = 0
+	p.Name = ""
+	p.Verbosity = 0
+	p.ClipInput = false
+
+	return p
+}
+
 /*
  A scalar encoder encodes a numeric (floating point) value into an array
 of bits. The output is 0's except for a contiguous block of 1's. The
