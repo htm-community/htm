@@ -85,9 +85,38 @@ func NewScalerEncoder(params *ScalerEncoderParams) *ScalerEncoder {
 		panic("Width must be an odd number.")
 	}
 
-	se.halfWidth = params.Width / 2
+	se.halfWidth = (params.Width - 1) / 2
+
+	/* For non-periodic inputs, padding is the number of bits "outside" the range,
+	 on each side. I.e. the representation of minval is centered on some bit, and
+	there are "padding" bits to the left of that centered bit; similarly with
+	bits to the right of the center bit of maxval*/
 	if !params.Periodic {
 		se.padding = se.halfWidth
+	}
+
+	if params.MinVal >= params.MaxVal {
+		panic("MinVal must be less than MaxVal")
+	}
+
+	se.rangeInternal = float64(params.MaxVal - params.MinVal)
+
+	// There are three different ways of thinking about the representation. Handle
+	// each case here.
+	se.initEncoder(params.Width, params.MinVal, params.MaxVal, params.N,
+		params.Radius, params.Resolution)
+
+	// nInternal represents the output area excluding the possible padding on each
+	// side
+	se.nInternal = params.N - 2*se.padding
+
+	// Our name
+	if len(params.Name) == 0 {
+		params.Name = fmt.Sprintf("[%v:%v]", params.MinVal, params.MaxVal)
+	}
+
+	if params.Width < 21 {
+		panic("Number of bits in the SDR must be greater than 21")
 	}
 
 	return se
@@ -96,7 +125,7 @@ func NewScalerEncoder(params *ScalerEncoderParams) *ScalerEncoder {
 /*
 	helper used to inititalize the encoder
 */
-func (se *ScalerEncoder) init(width int, minval float64, maxval float64, n int,
+func (se *ScalerEncoder) initEncoder(width int, minval float64, maxval float64, n int,
 	radius float64, resolution float64) {
 	//handle 3 diff ways of representation
 
