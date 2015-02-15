@@ -81,6 +81,8 @@ type ScalerEncoder struct {
 
 func NewScalerEncoder(params *ScalerEncoderParams) *ScalerEncoder {
 	se := new(ScalerEncoder)
+	se.params = params
+
 	if params.Width%2 == 0 {
 		panic("Width must be an odd number.")
 	}
@@ -116,7 +118,7 @@ func NewScalerEncoder(params *ScalerEncoderParams) *ScalerEncoder {
 	}
 
 	if params.Width < 21 {
-		panic("Number of bits in the SDR must be greater than 21")
+		fmt.Println("Number of bits in the SDR must be greater than 21")
 	}
 
 	return se
@@ -131,11 +133,11 @@ func (se *ScalerEncoder) initEncoder(width int, minval float64, maxval float64, 
 
 	if n != 0 {
 		//crutches ;(
-		if radius == 0 {
-			panic("radius is 0")
+		if radius != 0 {
+			panic("radius is not 0")
 		}
-		if resolution == 0 {
-			panic("radius is 0")
+		if resolution != 0 {
+			panic("resolution is not 0")
 		}
 		if n <= width {
 			panic("n less than width")
@@ -313,7 +315,7 @@ func (se *ScalerEncoder) Encode(input float64, learn bool) (output []bool) {
 		}
 		if minbin < 0 {
 			topbins := -minbin
-			utils.FillSliceRangeBool(output, true, se.params.N-topbins, se.params.N)
+			utils.FillSliceRangeBool(output, true, se.params.N-topbins, (se.params.N - (se.params.N - topbins)))
 			minbin = 0
 		}
 
@@ -326,11 +328,14 @@ func (se *ScalerEncoder) Encode(input float64, learn bool) (output []bool) {
 		panic("invalid maxbin")
 	}
 
+	fmt.Println("prefill")
+	fmt.Println(utils.Bool2Int(output))
 	// set the output (except for periodic wraparound)
-	utils.FillSliceRangeBool(output, true, minbin, maxbin+1)
+	utils.FillSliceRangeBool(output, true, minbin, (maxbin+1)-minbin)
 
 	if se.params.Verbosity >= 2 {
 		fmt.Println("input:", input)
+		fmt.Printf("hafl width:%v \n", se.params.Width)
 		fmt.Printf("range: %v - %v \n", se.params.MinVal, se.params.MaxVal)
 		fmt.Printf("n: %v width: %v resolution: %v \n", se.params.N, se.params.Width, se.params.Resolution)
 		fmt.Printf("radius: %v periodic: %v \n", se.params.Radius, se.params.Periodic)
@@ -341,3 +346,7 @@ func (se *ScalerEncoder) Encode(input float64, learn bool) (output []bool) {
 
 	return output
 }
+
+// func (se *ScalerEncoder) Decode(encoded []bool) (output []bool) {
+
+// }
