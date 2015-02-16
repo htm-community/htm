@@ -2,6 +2,9 @@ package encoders
 
 import (
 	"fmt"
+	//"github.com/cznic/mathutil"
+	//"github.com/zacg/floats"
+	"github.com/zacg/htm"
 	"github.com/zacg/htm/utils"
 	"math"
 )
@@ -70,10 +73,12 @@ in the output. Instead, use a continuous transformation that scales
 the data (a piecewise transformation is fine).
 */
 type ScalerEncoder struct {
-	params        *ScalerEncoderParams
-	padding       int
-	halfWidth     int
-	rangeInternal float64
+	params          *ScalerEncoderParams
+	padding         int
+	halfWidth       int
+	rangeInternal   float64
+	topDownMappingM *htm.SparseBinaryMatrix
+	topDownValues   []float64
 
 	//nInternal represents the output area excluding the possible padding on each
 	nInternal int
@@ -347,6 +352,53 @@ func (se *ScalerEncoder) Encode(input float64, learn bool) (output []bool) {
 	return output
 }
 
-// func (se *ScalerEncoder) Decode(encoded []bool) (output []bool) {
+/*
+	Return the interal topDownMappingM matrix used for handling the
+	bucketInfo() and topDownCompute() methods. This is a matrix, one row per
+	category (bucket) where each row contains the encoded output for that
+	category.
+*/
+func (se *ScalerEncoder) getTopDownMappings(encoded []bool) *htm.SparseBinaryMatrix {
 
-// }
+	//if already calculated return
+	if se.topDownMappingM != nil {
+		return se.topDownMappingM
+	}
+
+	// The input scalar value corresponding to each possible output encoding
+	if se.params.Periodic {
+		se.topDownValues = make([]float64, 0, int(se.params.MaxVal-se.params.MinVal))
+		start := se.params.MinVal + se.params.Resolution/2.0
+		idx := 0
+		for i := start; i <= se.params.MaxVal; i += se.params.Resolution {
+			se.topDownValues[idx] = i
+			idx++
+		}
+	} else {
+		//Number of values is (max-min)/resolution
+		se.topDownValues = make([]float64, int(math.Ceil((se.params.MaxVal-se.params.MinVal)/se.params.Resolution)))
+		end := se.params.MaxVal + se.params.Resolution/2.0
+		idx := 0
+		for i := se.params.MinVal; i <= end; i += se.params.Resolution {
+			se.topDownValues[idx] = i
+			idx++
+		}
+	}
+
+	// Each row represents an encoded output pattern
+	numCategories := len(se.topDownValues)
+
+	se.topDownMappingM = htm.NewSparseBinaryMatrix(numCategories, se.params.N)
+
+	for i := 0; i < numCategories; i++ {
+		value := se.topDownValues[i]
+		value = math.Max(value, se.params.MinVal)
+		value = math.Min(value, se.params.MaxVal)
+
+		outputSpace := se.Encode(value, false)
+		se.topDownMappingM.SetRowFromDense(i, outputSpace)
+	}
+
+	return se.topDownMappingM
+
+}
