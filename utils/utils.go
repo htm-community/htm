@@ -327,6 +327,16 @@ func CountTrue(values []bool) int {
 	return count
 }
 
+//Returns number of on bits
+func AnyTrue(values []bool) bool {
+	for _, val := range values {
+		if val {
+			return true
+		}
+	}
+	return false
+}
+
 //Or's 2 bool slices
 func OrBool(a, b []bool) []bool {
 	result := make([]bool, len(a))
