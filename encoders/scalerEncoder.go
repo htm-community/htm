@@ -340,7 +340,7 @@ func (se *ScalerEncoder) Encode(input float64, learn bool) (output []bool) {
 
 	if se.params.Verbosity >= 2 {
 		fmt.Println("input:", input)
-		fmt.Printf("hafl width:%v \n", se.params.Width)
+		fmt.Printf("half width:%v \n", se.params.Width)
 		fmt.Printf("range: %v - %v \n", se.params.MinVal, se.params.MaxVal)
 		fmt.Printf("n: %v width: %v resolution: %v \n", se.params.N, se.params.Width, se.params.Resolution)
 		fmt.Printf("radius: %v periodic: %v \n", se.params.Radius, se.params.Periodic)
@@ -358,7 +358,7 @@ func (se *ScalerEncoder) Encode(input float64, learn bool) (output []bool) {
 	category (bucket) where each row contains the encoded output for that
 	category.
 */
-func (se *ScalerEncoder) getTopDownMappings(encoded []bool) *htm.SparseBinaryMatrix {
+func (se *ScalerEncoder) getTopDownMapping() *htm.SparseBinaryMatrix {
 
 	//if already calculated return
 	if se.topDownMappingM != nil {
@@ -400,5 +400,28 @@ func (se *ScalerEncoder) getTopDownMappings(encoded []bool) *htm.SparseBinaryMat
 	}
 
 	return se.topDownMappingM
+
+}
+
+/*
+	Returns input description for bucket. Numenta implementations iface returns
+	set of tuples to support diff encoder types.
+*/
+func (se *ScalerEncoder) getBucketInfo(buckets []int) (value float64, encoding []bool) {
+
+	//ensure topdownmapping matrix is calculated
+	se.getTopDownMapping()
+
+	// The "category" is simply the bucket index
+	category := buckets[0]
+	encoding = se.topDownMappingM.GetDenseRow(category)
+
+	if se.params.Periodic {
+		value = (se.params.MinVal + (se.params.Resolution / 2.0) + (float64(category) * se.params.Resolution))
+	} else {
+		value = se.params.MinVal + (float64(category) * se.params.Resolution)
+	}
+
+	return value, encoding
 
 }
