@@ -79,7 +79,7 @@ type ScalerEncoder struct {
 	rangeInternal   float64
 	topDownMappingM *htm.SparseBinaryMatrix
 	topDownValues   []float64
-
+	bucketValues    []float64
 	//nInternal represents the output area excluding the possible padding on each
 	nInternal int
 }
@@ -424,4 +424,22 @@ func (se *ScalerEncoder) getBucketInfo(buckets []int) (value float64, encoding [
 
 	return value, encoding
 
+}
+
+/*
+	Returns the value for each bucket defined by the encoder
+*/
+func (se *ScalerEncoder) getBucketValues() []float64 {
+
+	if se.bucketValues == nil {
+		topDownMappingM := se.getTopDownMapping()
+		numBuckets := topDownMappingM.Height
+		se.bucketValues = make([]float64, numBuckets)
+		for i := 0; i < numBuckets; i++ {
+			val, _ := se.getBucketInfo([]int{i})
+			se.bucketValues[i] = val
+		}
+	}
+
+	return se.bucketValues
 }
