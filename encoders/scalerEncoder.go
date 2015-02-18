@@ -6,6 +6,7 @@ import (
 	//"github.com/zacg/floats"
 	"github.com/zacg/htm"
 	"github.com/zacg/htm/utils"
+	"github.com/zacg/ints"
 	"math"
 )
 
@@ -442,4 +443,20 @@ func (se *ScalerEncoder) getBucketValues() []float64 {
 	}
 
 	return se.bucketValues
+}
+
+/*
+	top down compute
+*/
+func (se *ScalerEncoder) topDownCompute(encoded []bool) float64 {
+
+	topDownMappingM := se.getTopDownMapping()
+
+	//find "closest" match
+	comps := topDownMappingM.RowAndSum(encoded)
+	_, category := ints.Max(comps)
+
+	val, _ := se.getBucketInfo([]int{category})
+	return val
+
 }
