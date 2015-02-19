@@ -86,6 +86,37 @@ func SubsetSliceFloat64(values []float64, indices []int) []float64 {
 	return result
 }
 
+//returns a copy of specified indices
+func SubsetSliceBool(values []bool, indices []int) []bool {
+	result := make([]bool, len(indices))
+	for i, val := range indices {
+		result[i] = values[val]
+	}
+	return result
+}
+
+//sets the specified indexes of a bool slice to specified value
+func SetIdxBool(values []bool, indexes []int, value bool) {
+	for _, val := range indexes {
+		values[val] = value
+	}
+}
+
+//Compares 2 bool slices for equality
+func BoolEq(a, b []bool) bool {
+	if len(a) != len(b) {
+		return false
+	}
+
+	for idx, val := range a {
+		if val != b[idx] {
+			return false
+		}
+	}
+
+	return true
+}
+
 //Creates an integer slice with indices containing
 // the specified initial value
 func MakeSliceInt(size, initialValue int) []int {
