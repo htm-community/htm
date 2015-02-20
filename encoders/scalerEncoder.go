@@ -460,3 +460,24 @@ func (se *ScalerEncoder) topDownCompute(encoded []bool) float64 {
 	return val
 
 }
+
+/*
+	generates a text description of specified slice of ranges
+*/
+func (se *ScalerEncoder) generateRangeDescription(ranges []utils.TupleInt) string {
+
+	desc := ""
+	numRanges := len(ranges)
+	for idx, val := range ranges {
+		if val.A == val.B {
+			desc += fmt.Sprintf("%v-%v", val.A, val.B)
+		} else {
+			desc += fmt.Sprintf("%v", val.A)
+		}
+		if idx < numRanges-1 {
+			desc += ","
+		}
+	}
+	return desc
+
+}
