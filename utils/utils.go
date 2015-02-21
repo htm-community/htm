@@ -14,6 +14,11 @@ type TupleInt struct {
 	B int
 }
 
+type TupleFloat struct {
+	A float64
+	B float64
+}
+
 //Euclidean modulous
 func Mod(a, b int) int {
 	ab := big.NewInt(int64(a))
