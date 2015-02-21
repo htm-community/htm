@@ -464,7 +464,7 @@ func (se *ScalerEncoder) topDownCompute(encoded []bool) float64 {
 /*
 	generates a text description of specified slice of ranges
 */
-func (se *ScalerEncoder) generateRangeDescription(ranges []utils.TupleInt) string {
+func (se *ScalerEncoder) generateRangeDescription(ranges []utils.TupleFloat) string {
 
 	desc := ""
 	numRanges := len(ranges)
@@ -480,4 +480,167 @@ func (se *ScalerEncoder) generateRangeDescription(ranges []utils.TupleInt) strin
 	}
 	return desc
 
+}
+
+/*
+	Decode an encoded sequence. Returns range of values
+*/
+func (se *ScalerEncoder) Decode(encoded []bool) []utils.TupleFloat {
+
+	if !utils.AnyTrue(encoded) {
+		return []utils.TupleFloat{}
+	}
+
+	tmpOutput := encoded[:se.params.N]
+
+	// First, assume the input pool is not sampled 100%, and fill in the
+	// "holes" in the encoded representation (which are likely to be present
+	// if this is a coincidence that was learned by the SP).
+
+	// Search for portions of the output that have "holes"
+	maxZerosInARow := se.halfWidth
+
+	for i := 0; i < maxZerosInARow; i++ {
+		searchSeq := make([]bool, i+3)
+		subLen := len(searchSeq)
+		searchSeq[0] = true
+		searchSeq[subLen-1] = true
+
+		if se.params.Periodic {
+			for j := 0; j < se.params.N; j++ {
+				outputIndices := make([]int, subLen)
+
+				if utils.BoolEq(searchSeq, utils.SubsetSliceBool(tmpOutput, outputIndices)) {
+					utils.SetIdxBool(tmpOutput, outputIndices, true)
+				}
+			}
+
+		} else {
+
+			for j := 0; j < se.params.N-subLen+1; j++ {
+				if utils.BoolEq(searchSeq, tmpOutput[j:j+subLen]) {
+					utils.FillSliceRangeBool(tmpOutput, true, j, subLen)
+				}
+			}
+
+		}
+
+	}
+
+	if se.params.Verbosity >= 2 {
+		fmt.Println("raw output:", utils.Bool2Int(encoded[:se.params.N]))
+		fmt.Println("filtered output:", utils.Bool2Int(tmpOutput))
+	}
+
+	// ------------------------------------------------------------------------
+	// Find each run of 1's in sequence
+
+	nz := utils.OnIndices(tmpOutput)
+	//key = start index, value = run length
+	runs := make([]utils.TupleInt, 0, len(nz))
+
+	var t *utils.TupleInt
+
+	for idx, val := range tmpOutput {
+		if val {
+			//increment or new idx
+			if t == nil {
+				t = &utils.TupleInt{idx, 0}
+			}
+			t.B++
+		} else {
+			if t != nil {
+				runs = append(runs, *t)
+				t = nil
+			}
+
+		}
+	}
+
+	fmt.Println("runs", runs)
+
+	// If we have a periodic encoder, merge the first and last run if they
+	// both go all the way to the edges
+	if se.params.Periodic && len(runs) > 1 {
+		if runs[0].A == 0 && runs[len(runs)-1].A+runs[len(runs)-1].B == se.params.N {
+			runs[len(runs)-1].B += runs[0].B
+			runs = runs[1:]
+			fmt.Println("merging")
+		}
+	}
+
+	fmt.Println("N", se.params.N)
+
+	// ------------------------------------------------------------------------
+	// Now, for each group of 1's, determine the "left" and "right" edges, where
+	// the "left" edge is inset by halfwidth and the "right" edge is inset by
+	// halfwidth.
+	// For a group of width w or less, the "left" and "right" edge are both at
+	// the center position of the group.
+
+	ranges := make([]utils.TupleFloat, 0, len(runs))
+
+	for _, val := range runs {
+		var left, right int
+		start := val.A
+		length := val.B
+		if length <= se.params.Width {
+			right = start + length
+			left = right
+		} else {
+			left = start + se.halfWidth
+			right = start + length - 1 - se.halfWidth
+		}
+
+		var inMin, inMax float64
+		//var left, right float64
+
+		// Convert to input space.
+		if !se.params.Periodic {
+			inMin = float64(left-se.padding)*se.params.Resolution + se.params.MinVal
+			inMax = float64(right-se.padding)*se.params.Resolution + se.params.MinVal
+		} else {
+			inMin = float64(left-se.padding)*se.params.Range/float64(se.nInternal) + se.params.MinVal
+			inMax = float64(right-se.padding)*se.params.Range/float64(se.nInternal) + se.params.MinVal
+		}
+
+		// Handle wrap-around if periodic
+		if se.params.Periodic {
+			if inMin >= se.params.MaxVal {
+				fmt.Println("handling wrap")
+				inMin -= se.params.Range
+				inMax -= se.params.Range
+			}
+		}
+
+		// Clip low end
+		if inMin < se.params.MinVal {
+			inMin = se.params.MinVal
+		}
+		if inMax < se.params.MinVal {
+			inMax = se.params.MinVal
+		}
+
+		// If we have a periodic encoder, and the max is past the edge, break into
+		// 2 separate ranges
+
+		if se.params.Periodic && inMax >= se.params.MaxVal {
+			fmt.Println("breaking")
+			ranges = append(ranges, utils.TupleFloat{inMin, se.params.MaxVal})
+			ranges = append(ranges, utils.TupleFloat{se.params.MinVal, inMax - se.params.Range})
+		} else {
+			//clip high end
+			if inMax > se.params.MaxVal {
+				inMax = se.params.MaxVal
+			}
+			if inMin > se.params.MaxVal {
+				inMin = se.params.MaxVal
+			}
+			ranges = append(ranges, utils.TupleFloat{inMin, inMax})
+		}
+	}
+
+	//desc := se.generateRangeDescription(ranges)
+
+	return ranges
 }
