@@ -3,8 +3,8 @@ htm
 
 Hierarchical Temporal Memory Implementation in Golang
 
-[![GoDoc](https://godoc.org/github.com/zacg/htm?status.png)](https://godoc.org/github.com/zacg/htm)
-[![Build Status](https://travis-ci.org/zacg/htm.svg?branch=master)](https://travis-ci.org/zacg/htm)
+[![GoDoc](https://godoc.org/github.com/nupic-community/htm?status.png)](https://godoc.org/github.com/nupic-community/htm)
+[![Build Status](https://travis-ci.org/nupic-community/htm.svg?branch=master)](https://travis-ci.org/nupic-community/htm)
 
 This is a direct port of the spatial & temporal poolers, temporal memory, and encoders as they currently exist in Numenta's Nupic Project. This project was done as a learning exercise, no effort has been made to optimize this implementation and it was not designed for production use.
 
