@@ -107,7 +107,7 @@ func NewScalerEncoder(params *ScalerEncoderParams) *ScalerEncoder {
 		panic("MinVal must be less than MaxVal")
 	}
 
-	se.rangeInternal = float64(params.MaxVal - params.MinVal)
+	se.rangeInternal = params.MaxVal - params.MinVal
 
 	// There are three different ways of thinking about the representation. Handle
 	// each case here.
@@ -334,8 +334,6 @@ func (se *ScalerEncoder) Encode(input float64, learn bool) (output []bool) {
 		panic("invalid maxbin")
 	}
 
-	fmt.Println("prefill")
-	fmt.Println(utils.Bool2Int(output))
 	// set the output (except for periodic wraparound)
 	utils.FillSliceRangeBool(output, true, minbin, (maxbin+1)-minbin)
 
@@ -510,6 +508,10 @@ func (se *ScalerEncoder) Decode(encoded []bool) []utils.TupleFloat {
 			for j := 0; j < se.params.N; j++ {
 				outputIndices := make([]int, subLen)
 
+				for idx, _ := range outputIndices {
+					outputIndices[idx] = (j + idx) % se.params.N
+				}
+
 				if utils.BoolEq(searchSeq, utils.SubsetSliceBool(tmpOutput, outputIndices)) {
 					utils.SetIdxBool(tmpOutput, outputIndices, true)
 				}
@@ -539,25 +541,30 @@ func (se *ScalerEncoder) Decode(encoded []bool) []utils.TupleFloat {
 	//key = start index, value = run length
 	runs := make([]utils.TupleInt, 0, len(nz))
 
-	var t *utils.TupleInt
+	runStart := -1
+	runLen := 0
 
 	for idx, val := range tmpOutput {
 		if val {
 			//increment or new idx
-			if t == nil {
-				t = &utils.TupleInt{idx, 0}
+			if runStart == -1 {
+				runStart = idx
+				runLen = 0
 			}
-			t.B++
+			runLen++
 		} else {
-			if t != nil {
-				runs = append(runs, *t)
-				t = nil
+			if runStart != -1 {
+				runs = append(runs, utils.TupleInt{runStart, runLen})
+				runStart = -1
 			}
 
 		}
 	}
 
-	fmt.Println("runs", runs)
+	if runStart != -1 {
+		runs = append(runs, utils.TupleInt{runStart, runLen})
+		runStart = -1
+	}
 
 	// If we have a periodic encoder, merge the first and last run if they
 	// both go all the way to the edges
@@ -565,11 +572,8 @@ func (se *ScalerEncoder) Decode(encoded []bool) []utils.TupleFloat {
 		if runs[0].A == 0 && runs[len(runs)-1].A+runs[len(runs)-1].B == se.params.N {
 			runs[len(runs)-1].B += runs[0].B
 			runs = runs[1:]
-			fmt.Println("merging")
 		}
 	}
-
-	fmt.Println("N", se.params.N)
 
 	// ------------------------------------------------------------------------
 	// Now, for each group of 1's, determine the "left" and "right" edges, where
@@ -578,14 +582,15 @@ func (se *ScalerEncoder) Decode(encoded []bool) []utils.TupleFloat {
 	// For a group of width w or less, the "left" and "right" edge are both at
 	// the center position of the group.
 
-	ranges := make([]utils.TupleFloat, 0, len(runs))
+	ranges := make([]utils.TupleFloat, 0, len(runs)+2)
 
 	for _, val := range runs {
 		var left, right int
 		start := val.A
 		length := val.B
+
 		if length <= se.params.Width {
-			right = start + length
+			right = start + length/2
 			left = right
 		} else {
 			left = start + se.halfWidth
@@ -593,7 +598,6 @@ func (se *ScalerEncoder) Decode(encoded []bool) []utils.TupleFloat {
 		}
 
 		var inMin, inMax float64
-		//var left, right float64
 
 		// Convert to input space.
 		if !se.params.Periodic {
@@ -607,7 +611,6 @@ func (se *ScalerEncoder) Decode(encoded []bool) []utils.TupleFloat {
 		// Handle wrap-around if periodic
 		if se.params.Periodic {
 			if inMin >= se.params.MaxVal {
-				fmt.Println("handling wrap")
 				inMin -= se.params.Range
 				inMax -= se.params.Range
 			}
@@ -625,7 +628,6 @@ func (se *ScalerEncoder) Decode(encoded []bool) []utils.TupleFloat {
 		// 2 separate ranges
 
 		if se.params.Periodic && inMax >= se.params.MaxVal {
-			fmt.Println("breaking")
 			ranges = append(ranges, utils.TupleFloat{inMin, se.params.MaxVal})
 			ranges = append(ranges, utils.TupleFloat{se.params.MinVal, inMax - se.params.Range})
 		} else {
