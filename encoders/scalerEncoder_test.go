@@ -59,7 +59,7 @@ func TestSimpleDecoding(t *testing.T) {
 
 	// Test with something wider than w, and with a hole, and wrapped
 	encoded = utils.Make1DBool([]int{1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0})
-	expected = []utils.TupleFloat{utils.TupleFloat{7.5, 8}}
+	expected = []utils.TupleFloat{utils.TupleFloat{7.5, 8}, utils.TupleFloat{1, 1}}
 	actual = e.Decode(encoded)
 	assert.Equal(t, expected, actual)
 
