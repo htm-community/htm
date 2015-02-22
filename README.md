@@ -6,7 +6,7 @@ Hierarchical Temporal Memory Implementation in Golang
 [![GoDoc](https://godoc.org/github.com/zacg/htm?status.png)](https://godoc.org/github.com/zacg/htm)
 [![Build Status](https://travis-ci.org/zacg/htm.svg?branch=master)](https://travis-ci.org/zacg/htm)
 
-This is a direct port of the spatial and temporal poolers as they currently exist in Numenta's Nupic Project. This project was done as a learning exercise, no effort has been made to optimize this implementation and it was not designed for production use.
+This is a direct port of the spatial & temporal poolers, temporal memory, and encoders as they currently exist in Numenta's Nupic Project. This project was done as a learning exercise, no effort has been made to optimize this implementation and it was not designed for production use.
 
 The Nupic project basically demonstrates the CLA, a single stage of the cortical hierarchy. Eventually this same code can be extended to form a full HTM hierarchy. https://github.com/numenta/nupic
 
@@ -19,10 +19,12 @@ The Nupic project basically demonstrates the CLA, a single stage of the cortical
 ##Current State of Project
  * Temporal and Spatial poolers pass basic tests
  * Temporal memory passes basic unit tests
+ * Basic scaler encoder implemented
 
 ##Todo
  ~~* Finish temporal unit tests~~
  * Implement a better sparse binary matrix structure with versions optimized for col or row heavy access.
+ * Implement better binary datastructure
  * Refactor to be more idiomatic Go. It is basically a line for line port of the python implementation, it could be refactored to make better use of Go's type system.
  * Implement some of the common encoders
 
@@ -132,5 +134,32 @@ func main() {
 	fmt.Println("Active Indices:", utils.OnIndices(activeArray))
 
 }
+
+```
+
+###Temporal Memory
+```go
+
+	tmp := NewTemporalMemoryParams()
+	tmp.MaxNewSynapseCount = 1000
+
+	tm := NewTemporalMemory(tmp)
+
+```
+
+###Encoding
+```go
+
+	//Create new scaler encoder
+	p := NewScalerEncoderParams(3, 1, 8)
+	p.Radius = 1.5
+	p.Periodic = true
+	p.Verbosity = 5
+
+	//Encode "1"
+	encoded := e.Encode(1, false)
+
+	//Print results
+	fmt.Printfn("1 Encoded as: %v", utils.Bool2Int(encoded))
 
 ```
