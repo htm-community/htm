@@ -2,7 +2,7 @@ package htm
 
 import (
 	"bytes"
-	"github.com/nupic-community/htmutils"
+	"github.com/nupic-community/htm/utils"
 	//"math"
 )
 

@@ -2,8 +2,8 @@ package htm
 
 import (
 	//"fmt"
+	"github.com/nupic-community/htm/utils"
 	"github.com/skelterjohn/go.matrix"
-	"github.com/nupic-community/htmutils"
 	//"github.com/stretchr/testify/assert"
 	"github.com/zacg/testify/assert"
 	//"math/big"

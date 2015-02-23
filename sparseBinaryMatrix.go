@@ -3,7 +3,7 @@ package htm
 import (
 	//"math"
 	"bytes"
-	"github.com/nupic-community/htmutils"
+	"github.com/nupic-community/htm/utils"
 )
 
 //entries are positions of non-zero values

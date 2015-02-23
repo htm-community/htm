@@ -1,8 +1,8 @@
 package encoders
 
 import (
+	"github.com/nupic-community/htm/utils"
 	"github.com/stretchr/testify/assert"
-	"github.com/nupic-community/htmutils"
 	"testing"
 )
 

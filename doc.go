@@ -5,5 +5,5 @@ currently implemented in the Nupic framework.
 package htm
 
 import (
-	_ "github.com/nupic-community/htmutils"
+	_ "github.com/nupic-community/htm/utils"
 )

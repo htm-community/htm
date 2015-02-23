@@ -4,8 +4,8 @@ import (
 	"fmt"
 	//"github.com/cznic/mathutil"
 	//"github.com/zacg/floats"
-	"github.com/zacg/htm"
-	"github.com/nupic-community/htmutils"
+	"github.com/nupic-community/htm"
+	"github.com/nupic-community/htm/utils"
 	"github.com/zacg/ints"
 	"math"
 )

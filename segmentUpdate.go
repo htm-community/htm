@@ -2,13 +2,13 @@ package htm
 
 import (
 	"fmt"
-	"github.com/nupic-community/htmutils"
+	"github.com/nupic-community/htm/utils"
 
-//"github.com/cznic/mathutil"
-//"github.com/skelterjohn/go.matrix"
-//"math"
-//"math/rand"
-//"sort"
+	//"github.com/cznic/mathutil"
+	//"github.com/skelterjohn/go.matrix"
+	//"math"
+	//"math/rand"
+	//"sort"
 )
 
 type SynapseUpdateState struct {

@@ -3,8 +3,8 @@ package htm
 import (
 	"fmt"
 	"github.com/cznic/mathutil"
+	"github.com/nupic-community/htm/utils"
 	"github.com/skelterjohn/go.matrix"
-	"github.com/nupic-community/htmutils"
 	"math"
 	"math/rand"
 	"sort"
