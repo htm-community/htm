@@ -37,7 +37,7 @@ package main
 import (
 	"fmt"
 	"github.com/zacg/htm"
-	"github.com/zacg/htm/utils"
+	"github.com/nupic-community/htmutils"
 )
 
 func main() {
@@ -105,7 +105,7 @@ import (
 	"fmt"
 	"github.com/davecheney/profile"
 	"github.com/zacg/htm"
-	"github.com/zacg/htm/utils"
+	"github.com/nupic-community/htmutils"
 	"math/rand"
 )
 

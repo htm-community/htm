@@ -4,7 +4,7 @@ import (
 	//"fmt"
 	//"github.com/skelterjohn/go.matrix"
 	//"github.com/stretchr/testify/assert"
-	"github.com/zacg/htm/utils"
+	"github.com/nupic-community/htmutils"
 	"github.com/zacg/testify/assert"
 	//"math/big"
 	//"github.com/stretchr/testify/mock"

@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"github.com/cznic/mathutil"
 	"github.com/skelterjohn/go.matrix"
-	"github.com/zacg/htm/utils"
+	"github.com/nupic-community/htmutils"
 	"math"
 	"math/rand"
 	"sort"

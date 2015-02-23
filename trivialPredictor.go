@@ -3,7 +3,7 @@ package htm
 import (
 	"fmt"
 	"github.com/cznic/mathutil"
-	"github.com/zacg/htm/utils"
+	"github.com/nupic-community/htmutils"
 	//"github.com/skelterjohn/go.matrix"
 	//"math"
 	//"math/rand"

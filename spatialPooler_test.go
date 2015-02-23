@@ -3,7 +3,7 @@ package htm
 import (
 	//"fmt"
 	"github.com/skelterjohn/go.matrix"
-	"github.com/zacg/htm/utils"
+	"github.com/nupic-community/htmutils"
 	//"github.com/stretchr/testify/assert"
 	"github.com/zacg/testify/assert"
 	//"math/big"

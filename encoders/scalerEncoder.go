@@ -5,7 +5,7 @@ import (
 	//"github.com/cznic/mathutil"
 	//"github.com/zacg/floats"
 	"github.com/zacg/htm"
-	"github.com/zacg/htm/utils"
+	"github.com/nupic-community/htmutils"
 	"github.com/zacg/ints"
 	"math"
 )

@@ -13,7 +13,7 @@ import (
 	//"sort"
 	//"github.com/gonum/floats"
 	//"github.com/zacg/ints"
-	"github.com/zacg/htm/utils"
+	"github.com/nupic-community/htmutils"
 )
 
 type SegmentStats struct {

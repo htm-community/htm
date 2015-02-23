@@ -2,7 +2,7 @@ package htm
 
 import (
 	"fmt"
-	"github.com/zacg/htm/utils"
+	"github.com/nupic-community/htmutils"
 
 //"github.com/cznic/mathutil"
 //"github.com/skelterjohn/go.matrix"
