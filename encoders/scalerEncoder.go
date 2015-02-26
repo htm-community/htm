@@ -4,8 +4,8 @@ import (
 	"fmt"
 	//"github.com/cznic/mathutil"
 	//"github.com/zacg/floats"
-	"github.com/zacg/htm"
-	"github.com/zacg/htm/utils"
+	"github.com/nupic-community/htm"
+	"github.com/nupic-community/htm/utils"
 	"github.com/zacg/ints"
 	"math"
 )
@@ -74,7 +74,8 @@ in the output. Instead, use a continuous transformation that scales
 the data (a piecewise transformation is fine).
 */
 type ScalerEncoder struct {
-	params          *ScalerEncoderParams
+	ScalerEncoderParams
+
 	padding         int
 	halfWidth       int
 	rangeInternal   float64
@@ -87,7 +88,7 @@ type ScalerEncoder struct {
 
 func NewScalerEncoder(params *ScalerEncoderParams) *ScalerEncoder {
 	se := new(ScalerEncoder)
-	se.params = params
+	se.ScalerEncoderParams = *params
 
 	if params.Width%2 == 0 {
 		panic("Width must be an odd number.")
@@ -149,22 +150,22 @@ func (se *ScalerEncoder) initEncoder(width int, minval float64, maxval float64, 
 			panic("n less than width")
 		}
 
-		se.params.N = n
+		se.N = n
 
 		//if (minval is not None and maxval is not None){
 
-		if !se.params.Periodic {
-			se.params.Resolution = se.rangeInternal / float64(se.params.N-se.params.Width)
+		if !se.Periodic {
+			se.Resolution = se.rangeInternal / float64(se.N-se.Width)
 		} else {
-			se.params.Resolution = se.rangeInternal / float64(se.params.N)
+			se.Resolution = se.rangeInternal / float64(se.N)
 		}
 
-		se.params.Radius = float64(se.params.Width) * se.params.Resolution
+		se.Radius = float64(se.Width) * se.Resolution
 
-		if se.params.Periodic {
-			se.params.Range = se.rangeInternal
+		if se.Periodic {
+			se.Range = se.rangeInternal
 		} else {
-			se.params.Range = se.rangeInternal + se.params.Resolution
+			se.Range = se.rangeInternal + se.Resolution
 		}
 
 	} else { //n == 0
@@ -172,23 +173,23 @@ func (se *ScalerEncoder) initEncoder(width int, minval float64, maxval float64, 
 			if resolution != 0 {
 				panic("resolution not 0")
 			}
-			se.params.Radius = radius
-			se.params.Resolution = se.params.Radius / float64(width)
+			se.Radius = radius
+			se.Resolution = se.Radius / float64(width)
 		} else if resolution != 0 {
-			se.params.Resolution = resolution
-			se.params.Radius = se.params.Resolution * float64(se.params.Width)
+			se.Resolution = resolution
+			se.Radius = se.Resolution * float64(se.Width)
 		} else {
 			panic("One of n, radius, resolution must be set")
 		}
 
-		if se.params.Periodic {
-			se.params.Range = se.rangeInternal
+		if se.Periodic {
+			se.Range = se.rangeInternal
 		} else {
-			se.params.Range = se.rangeInternal + se.params.Resolution
+			se.Range = se.rangeInternal + se.Resolution
 		}
 
-		nfloat := float64(se.params.Width)*(se.params.Range/se.params.Radius) + 2*float64(se.padding)
-		se.params.N = int(math.Ceil(nfloat))
+		nfloat := float64(se.Width)*(se.Range/se.Radius) + 2*float64(se.padding)
+		se.N = int(math.Ceil(nfloat))
 
 	}
 
@@ -198,23 +199,23 @@ func (se *ScalerEncoder) initEncoder(width int, minval float64, maxval float64, 
 	recalculate encoder parameters and name
 */
 func (se *ScalerEncoder) recalcParams() {
-	se.rangeInternal = se.params.MaxVal - se.params.MinVal
+	se.rangeInternal = se.MaxVal - se.MinVal
 
-	if !se.params.Periodic {
-		se.params.Resolution = se.rangeInternal/float64(se.params.N) - float64(se.params.Width)
+	if !se.Periodic {
+		se.Resolution = se.rangeInternal/float64(se.N) - float64(se.Width)
 	} else {
-		se.params.Resolution = se.rangeInternal / float64(se.params.N)
+		se.Resolution = se.rangeInternal / float64(se.N)
 	}
 
-	se.params.Radius = float64(se.params.Width) * se.params.Resolution
+	se.Radius = float64(se.Width) * se.Resolution
 
-	if se.params.Periodic {
-		se.params.Range = se.rangeInternal
+	if se.Periodic {
+		se.Range = se.rangeInternal
 	} else {
-		se.params.Range = se.rangeInternal + se.params.Resolution
+		se.Range = se.rangeInternal + se.Resolution
 	}
 
-	se.params.Name = fmt.Sprintf("[%v:%v]", se.params.MinVal, se.params.MaxVal)
+	se.Name = fmt.Sprintf("[%v:%v]", se.MinVal, se.MaxVal)
 
 }
 
@@ -227,35 +228,35 @@ func (se *ScalerEncoder) getFirstOnBit(input float64) int {
 	//	return [None]
 	//else:
 
-	if input < se.params.MinVal {
+	if input < se.MinVal {
 		//Don't clip periodic inputs. Out-of-range input is always an error
-		if se.params.ClipInput && !se.params.Periodic {
+		if se.ClipInput && !se.Periodic {
 
-			if se.params.Verbosity > 0 {
-				fmt.Printf("Clipped input %v=%d to minval %d", se.params.Name, input, se.params.MinVal)
+			if se.Verbosity > 0 {
+				fmt.Printf("Clipped input %v=%d to minval %d", se.Name, input, se.MinVal)
 			}
-			input = se.params.MinVal
+			input = se.MinVal
 		} else {
-			panic(fmt.Sprintf("Input %v less than range %v - %v", input, se.params.MinVal, se.params.MaxVal))
+			panic(fmt.Sprintf("Input %v less than range %v - %v", input, se.MinVal, se.MaxVal))
 		}
 
-		if se.params.Periodic {
+		if se.Periodic {
 
 			// Don't clip periodic inputs. Out-of-range input is always an error
-			if input >= se.params.MaxVal {
-				panic(fmt.Sprintf("input %v greater than periodic range %v - %v", input, se.params.MinVal, se.params.MaxVal))
+			if input >= se.MaxVal {
+				panic(fmt.Sprintf("input %v greater than periodic range %v - %v", input, se.MinVal, se.MaxVal))
 			}
 
 		} else {
 
-			if input > se.params.MaxVal {
-				if se.params.ClipInput {
-					if se.params.Verbosity > 0 {
-						fmt.Printf("Clipped input %v=%v to maxval %v", se.params.Name, input, se.params.MaxVal)
+			if input > se.MaxVal {
+				if se.ClipInput {
+					if se.Verbosity > 0 {
+						fmt.Printf("Clipped input %v=%v to maxval %v", se.Name, input, se.MaxVal)
 					}
-					input = se.params.MaxVal
+					input = se.MaxVal
 				} else {
-					panic(fmt.Sprintf("input %v greater than range (%v - %v)", input, se.params.MinVal, se.params.MaxVal))
+					panic(fmt.Sprintf("input %v greater than range (%v - %v)", input, se.MinVal, se.MaxVal))
 				}
 			}
 		}
@@ -263,10 +264,10 @@ func (se *ScalerEncoder) getFirstOnBit(input float64) int {
 
 	centerbin := 0
 
-	if se.params.Periodic {
-		centerbin = int((input-se.params.MinVal)*float64(se.nInternal)/se.params.Range) + se.padding
+	if se.Periodic {
+		centerbin = int((input-se.MinVal)*float64(se.nInternal)/se.Range) + se.padding
 	} else {
-		centerbin = int(((input-se.params.MinVal)+se.params.Resolution/2)/se.params.Resolution) + se.padding
+		centerbin = int(((input-se.MinVal)+se.Resolution/2)/se.Resolution) + se.padding
 	}
 
 	// We use the first bit to be set in the encoded output as the bucket index
@@ -283,10 +284,10 @@ func (se *ScalerEncoder) getBucketIndices(input float64) []int {
 	var bucketIdx int
 
 	// For periodic encoders, the bucket index is the index of the center bit
-	if se.params.Periodic {
+	if se.Periodic {
 		bucketIdx = minbin + se.halfWidth
 		if bucketIdx < 0 {
-			bucketIdx += se.params.N
+			bucketIdx += se.N
 		}
 	} else {
 		// for non-periodic encoders, the bucket index is the index of the left bit
@@ -307,21 +308,21 @@ func (se *ScalerEncoder) Encode(input float64, learn bool) (output []bool) {
 	//TODO output[0:self.n] = 0 TODO: should all 1s, or random SDR be returned instead?
 	//} else {
 	// The bucket index is the index of the first bit to set in the output
-	output = make([]bool, se.params.N)
+	output = make([]bool, se.N)
 	minbin := bucketIdx
 	maxbin := minbin + 2*se.halfWidth
 
-	if se.params.Periodic {
+	if se.Periodic {
 
 		// Handle the edges by computing wrap-around
-		if maxbin >= se.params.N {
-			bottombins := maxbin - se.params.N + 1
+		if maxbin >= se.N {
+			bottombins := maxbin - se.N + 1
 			utils.FillSliceRangeBool(output, true, 0, bottombins)
-			maxbin = se.params.N - 1
+			maxbin = se.N - 1
 		}
 		if minbin < 0 {
 			topbins := -minbin
-			utils.FillSliceRangeBool(output, true, se.params.N-topbins, (se.params.N - (se.params.N - topbins)))
+			utils.FillSliceRangeBool(output, true, se.N-topbins, (se.N - (se.N - topbins)))
 			minbin = 0
 		}
 
@@ -330,19 +331,19 @@ func (se *ScalerEncoder) Encode(input float64, learn bool) (output []bool) {
 	if minbin < 0 {
 		panic("invalid minbin")
 	}
-	if maxbin >= se.params.N {
+	if maxbin >= se.N {
 		panic("invalid maxbin")
 	}
 
 	// set the output (except for periodic wraparound)
 	utils.FillSliceRangeBool(output, true, minbin, (maxbin+1)-minbin)
 
-	if se.params.Verbosity >= 2 {
+	if se.Verbosity >= 2 {
 		fmt.Println("input:", input)
-		fmt.Printf("half width:%v \n", se.params.Width)
-		fmt.Printf("range: %v - %v \n", se.params.MinVal, se.params.MaxVal)
-		fmt.Printf("n: %v width: %v resolution: %v \n", se.params.N, se.params.Width, se.params.Resolution)
-		fmt.Printf("radius: %v periodic: %v \n", se.params.Radius, se.params.Periodic)
+		fmt.Printf("half width:%v \n", se.Width)
+		fmt.Printf("range: %v - %v \n", se.MinVal, se.MaxVal)
+		fmt.Printf("n: %v width: %v resolution: %v \n", se.N, se.Width, se.Resolution)
+		fmt.Printf("radius: %v periodic: %v \n", se.Radius, se.Periodic)
 		fmt.Printf("output: %v \n", output)
 	}
 
@@ -365,20 +366,20 @@ func (se *ScalerEncoder) getTopDownMapping() *htm.SparseBinaryMatrix {
 	}
 
 	// The input scalar value corresponding to each possible output encoding
-	if se.params.Periodic {
-		se.topDownValues = make([]float64, 0, int(se.params.MaxVal-se.params.MinVal))
-		start := se.params.MinVal + se.params.Resolution/2.0
+	if se.Periodic {
+		se.topDownValues = make([]float64, 0, int(se.MaxVal-se.MinVal))
+		start := se.MinVal + se.Resolution/2.0
 		idx := 0
-		for i := start; i <= se.params.MaxVal; i += se.params.Resolution {
+		for i := start; i <= se.MaxVal; i += se.Resolution {
 			se.topDownValues[idx] = i
 			idx++
 		}
 	} else {
 		//Number of values is (max-min)/resolution
-		se.topDownValues = make([]float64, int(math.Ceil((se.params.MaxVal-se.params.MinVal)/se.params.Resolution)))
-		end := se.params.MaxVal + se.params.Resolution/2.0
+		se.topDownValues = make([]float64, int(math.Ceil((se.MaxVal-se.MinVal)/se.Resolution)))
+		end := se.MaxVal + se.Resolution/2.0
 		idx := 0
-		for i := se.params.MinVal; i <= end; i += se.params.Resolution {
+		for i := se.MinVal; i <= end; i += se.Resolution {
 			se.topDownValues[idx] = i
 			idx++
 		}
@@ -387,12 +388,12 @@ func (se *ScalerEncoder) getTopDownMapping() *htm.SparseBinaryMatrix {
 	// Each row represents an encoded output pattern
 	numCategories := len(se.topDownValues)
 
-	se.topDownMappingM = htm.NewSparseBinaryMatrix(numCategories, se.params.N)
+	se.topDownMappingM = htm.NewSparseBinaryMatrix(numCategories, se.N)
 
 	for i := 0; i < numCategories; i++ {
 		value := se.topDownValues[i]
-		value = math.Max(value, se.params.MinVal)
-		value = math.Min(value, se.params.MaxVal)
+		value = math.Max(value, se.MinVal)
+		value = math.Min(value, se.MaxVal)
 
 		outputSpace := se.Encode(value, false)
 		se.topDownMappingM.SetRowFromDense(i, outputSpace)
@@ -415,10 +416,10 @@ func (se *ScalerEncoder) getBucketInfo(buckets []int) (value float64, encoding [
 	category := buckets[0]
 	encoding = se.topDownMappingM.GetDenseRow(category)
 
-	if se.params.Periodic {
-		value = (se.params.MinVal + (se.params.Resolution / 2.0) + (float64(category) * se.params.Resolution))
+	if se.Periodic {
+		value = (se.MinVal + (se.Resolution / 2.0) + (float64(category) * se.Resolution))
 	} else {
-		value = se.params.MinVal + (float64(category) * se.params.Resolution)
+		value = se.MinVal + (float64(category) * se.Resolution)
 	}
 
 	return value, encoding
@@ -489,7 +490,7 @@ func (se *ScalerEncoder) Decode(encoded []bool) []utils.TupleFloat {
 		return []utils.TupleFloat{}
 	}
 
-	tmpOutput := encoded[:se.params.N]
+	tmpOutput := encoded[:se.N]
 
 	// First, assume the input pool is not sampled 100%, and fill in the
 	// "holes" in the encoded representation (which are likely to be present
@@ -504,12 +505,12 @@ func (se *ScalerEncoder) Decode(encoded []bool) []utils.TupleFloat {
 		searchSeq[0] = true
 		searchSeq[subLen-1] = true
 
-		if se.params.Periodic {
-			for j := 0; j < se.params.N; j++ {
+		if se.Periodic {
+			for j := 0; j < se.N; j++ {
 				outputIndices := make([]int, subLen)
 
 				for idx, _ := range outputIndices {
-					outputIndices[idx] = (j + idx) % se.params.N
+					outputIndices[idx] = (j + idx) % se.N
 				}
 
 				if utils.BoolEq(searchSeq, utils.SubsetSliceBool(tmpOutput, outputIndices)) {
@@ -519,7 +520,7 @@ func (se *ScalerEncoder) Decode(encoded []bool) []utils.TupleFloat {
 
 		} else {
 
-			for j := 0; j < se.params.N-subLen+1; j++ {
+			for j := 0; j < se.N-subLen+1; j++ {
 				if utils.BoolEq(searchSeq, tmpOutput[j:j+subLen]) {
 					utils.FillSliceRangeBool(tmpOutput, true, j, subLen)
 				}
@@ -529,8 +530,8 @@ func (se *ScalerEncoder) Decode(encoded []bool) []utils.TupleFloat {
 
 	}
 
-	if se.params.Verbosity >= 2 {
-		fmt.Println("raw output:", utils.Bool2Int(encoded[:se.params.N]))
+	if se.Verbosity >= 2 {
+		fmt.Println("raw output:", utils.Bool2Int(encoded[:se.N]))
 		fmt.Println("filtered output:", utils.Bool2Int(tmpOutput))
 	}
 
@@ -568,8 +569,8 @@ func (se *ScalerEncoder) Decode(encoded []bool) []utils.TupleFloat {
 
 	// If we have a periodic encoder, merge the first and last run if they
 	// both go all the way to the edges
-	if se.params.Periodic && len(runs) > 1 {
-		if runs[0].A == 0 && runs[len(runs)-1].A+runs[len(runs)-1].B == se.params.N {
+	if se.Periodic && len(runs) > 1 {
+		if runs[0].A == 0 && runs[len(runs)-1].A+runs[len(runs)-1].B == se.N {
 			runs[len(runs)-1].B += runs[0].B
 			runs = runs[1:]
 		}
@@ -589,7 +590,7 @@ func (se *ScalerEncoder) Decode(encoded []bool) []utils.TupleFloat {
 		start := val.A
 		length := val.B
 
-		if length <= se.params.Width {
+		if length <= se.Width {
 			right = start + length/2
 			left = right
 		} else {
@@ -600,43 +601,43 @@ func (se *ScalerEncoder) Decode(encoded []bool) []utils.TupleFloat {
 		var inMin, inMax float64
 
 		// Convert to input space.
-		if !se.params.Periodic {
-			inMin = float64(left-se.padding)*se.params.Resolution + se.params.MinVal
-			inMax = float64(right-se.padding)*se.params.Resolution + se.params.MinVal
+		if !se.Periodic {
+			inMin = float64(left-se.padding)*se.Resolution + se.MinVal
+			inMax = float64(right-se.padding)*se.Resolution + se.MinVal
 		} else {
-			inMin = float64(left-se.padding)*se.params.Range/float64(se.nInternal) + se.params.MinVal
-			inMax = float64(right-se.padding)*se.params.Range/float64(se.nInternal) + se.params.MinVal
+			inMin = float64(left-se.padding)*se.Range/float64(se.nInternal) + se.MinVal
+			inMax = float64(right-se.padding)*se.Range/float64(se.nInternal) + se.MinVal
 		}
 
 		// Handle wrap-around if periodic
-		if se.params.Periodic {
-			if inMin >= se.params.MaxVal {
-				inMin -= se.params.Range
-				inMax -= se.params.Range
+		if se.Periodic {
+			if inMin >= se.MaxVal {
+				inMin -= se.Range
+				inMax -= se.Range
 			}
 		}
 
 		// Clip low end
-		if inMin < se.params.MinVal {
-			inMin = se.params.MinVal
+		if inMin < se.MinVal {
+			inMin = se.MinVal
 		}
-		if inMax < se.params.MinVal {
-			inMax = se.params.MinVal
+		if inMax < se.MinVal {
+			inMax = se.MinVal
 		}
 
 		// If we have a periodic encoder, and the max is past the edge, break into
 		// 2 separate ranges
 
-		if se.params.Periodic && inMax >= se.params.MaxVal {
-			ranges = append(ranges, utils.TupleFloat{inMin, se.params.MaxVal})
-			ranges = append(ranges, utils.TupleFloat{se.params.MinVal, inMax - se.params.Range})
+		if se.Periodic && inMax >= se.MaxVal {
+			ranges = append(ranges, utils.TupleFloat{inMin, se.MaxVal})
+			ranges = append(ranges, utils.TupleFloat{se.MinVal, inMax - se.Range})
 		} else {
 			//clip high end
-			if inMax > se.params.MaxVal {
-				inMax = se.params.MaxVal
+			if inMax > se.MaxVal {
+				inMax = se.MaxVal
 			}
-			if inMin > se.params.MaxVal {
-				inMin = se.params.MaxVal
+			if inMin > se.MaxVal {
+				inMin = se.MaxVal
 			}
 			ranges = append(ranges, utils.TupleFloat{inMin, inMax})
 		}
