@@ -5,9 +5,10 @@ import (
 	//"github.com/cznic/mathutil"
 	//"github.com/zacg/floats"
 	//"github.com/nupic-community/htm"
-	//"github.com/nupic-community/htm/utils"
+	"github.com/nupic-community/htm/utils"
 	//"github.com/zacg/ints"
 	//"math"
+	"time"
 )
 
 /*
@@ -65,8 +66,10 @@ type DateEncoder struct {
 /*
 	Intializes a new date encoder
 */
-func NewDateEncoder(params *DateEncoderParams) *DateEncoderParams {
+func NewDateEncoder(params *DateEncoderParams) *DateEncoder {
 	se := new(DateEncoder)
+
+	se.DateEncoderParams = *params
 
 	se.width = 0
 
@@ -79,8 +82,8 @@ func NewDateEncoder(params *DateEncoderParams) *DateEncoderParams {
 		sep.Name = "Season"
 		sep.Periodic = true
 		se.seasonEncoder = NewScalerEncoder(sep)
-		se.seasonOffset = se.params.Width
-		se.width += se.seasonEncoder.params.Width
+		se.seasonOffset = se.seasonEncoder.Width
+		se.width += se.seasonEncoder.Width
 		se.Description += fmt.Sprintf("season %v", se.seasonOffset)
 	}
 
@@ -92,7 +95,7 @@ func NewDateEncoder(params *DateEncoderParams) *DateEncoderParams {
 		sep.Radius = params.DayOfWeekRadius
 		sep.Name = "day of week"
 		se.dayOfWeekEncoder = NewScalerEncoder(sep)
-		se.dayOfWeekOffset = se.dayOfWeekEncoder.getWidth()
+		se.dayOfWeekOffset = se.dayOfWeekEncoder.Width
 		se.Description += fmt.Sprintf(" day of week: %v", se.dayOfWeekOffset)
 		se.width += se.dayOfWeekEncoder.Width
 	}
@@ -106,8 +109,8 @@ func NewDateEncoder(params *DateEncoderParams) *DateEncoderParams {
 		sep.Name = "weekend"
 		sep.Radius = params.WeekendRadius
 		se.weekendEncoder = NewScalerEncoder(sep)
-		se.width += se.weekendEncoder.getWidth()
-		se.weekendOffset = se.weekendEncoder.getWidth()
+		se.width += se.weekendEncoder.Width
+		se.weekendOffset = se.weekendEncoder.Width
 		se.Description += fmt.Sprintf("weekend: %v", se.weekendOffset)
 
 	}
@@ -120,9 +123,9 @@ func NewDateEncoder(params *DateEncoderParams) *DateEncoderParams {
 		sep.Name = "holiday"
 		sep.Radius = params.HolidayRadius
 		se.holidayEncoder = NewScalerEncoder(sep)
-		se.width += se.holidaEncoder.getWidth()
-		se.holidayOffset = se.holidayEncoder.getWidth()
-		se.description += fmt.Sprintf(" holiday %v", se.holidayOffset)
+		se.width += se.holidayEncoder.Width
+		se.holidayOffset = se.holidayEncoder.Width
+		se.Description += fmt.Sprintf(" holiday %v", se.holidayOffset)
 	}
 
 	if params.TimeOfDayWidth > 0 {
@@ -135,10 +138,83 @@ func NewDateEncoder(params *DateEncoderParams) *DateEncoderParams {
 		sep.Radius = params.TimeOfDayRadius
 		sep.Periodic = true
 		se.timeOfDayEncoder = NewScalerEncoder(sep)
-		se.width += se.timeOfDayEncoder.getWidth()
+		se.width += se.timeOfDayEncoder.Width
 		se.timeOfDayOffset = se.timeOfDayEncoder.Width
 		se.Description += fmt.Sprintf(" time of day: %v ", se.timeOfDayOffset)
 	}
 
 	return se
+}
+
+/*
+	Get the scalar values for each subfield of the date encoder
+*/
+func (de *DateEncoder) getEncodedValues(date time.Time) []float64 {
+
+	values := make([]float64, 0, 5)
+
+	timeOfDay := date.Hour() + date.Minute()/60.0
+	dayOfWeek := date.Weekday()
+
+	if de.seasonEncoder != nil {
+		//make year 0 based
+		dayOfYear := float64(date.YearDay() - 1)
+		values = append(values, dayOfYear)
+	}
+
+	if de.dayOfWeekEncoder != nil {
+
+		values = append(values, float64(dayOfWeek))
+	}
+
+	if de.weekendEncoder != nil {
+		// saturday, sunday or friday evening
+		weekend := 0.0
+		if dayOfWeek == time.Saturday ||
+			dayOfWeek == time.Sunday ||
+			(dayOfWeek == time.Friday && timeOfDay > 18) {
+			weekend = 1.0
+		}
+		values = append(values, weekend)
+	}
+
+	if de.holidayEncoder != nil {
+		// A "continuous" binary value. = 1 on the holiday itself and smooth ramp
+		// 0->1 on the day before the holiday and 1->0 on the day after the holiday.
+		// Currently the only holiday we know about is December 25
+		// holidays is a list of holidays that occur on a fixed date every year
+		val := 0.0
+		holidays := []utils.TupleInt{{12, 25}}
+
+		for _, h := range holidays {
+			// hdate is midnight on the holiday
+			hDate := time.Date(date.Year(), time.Month(h.A), h.B, 0, 0, 0, 0, nil)
+			if date.After(hDate) {
+				diff := date.Sub(hDate)
+				if (diff/time.Hour)/24 == 0 {
+					val = 1
+					break
+				} else if (diff/time.Hour)/24 == 1 {
+					// ramp smoothly from 1 -> 0 on the next day
+					val = 1.0 - (float64(diff/time.Second) / (86400))
+					break
+				}
+			} else {
+				diff := hDate.Sub(date)
+				if (diff/time.Hour)/24 == 1 {
+					// ramp smoothly from 0 -> 1 on the previous day
+					val = 1.0 - (float64(diff/time.Second) / 86400)
+				}
+
+			}
+		}
+
+		values = append(values, val)
+	}
+
+	if de.timeOfDayEncoder != nil {
+		values = append(values, float64(timeOfDay))
+	}
+
+	return values
 }
