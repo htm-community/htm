@@ -297,7 +297,19 @@ func (se *ScalerEncoder) getBucketIndices(input float64) []int {
 	return []int{bucketIdx}
 }
 
+/*
+ Returns encoded input
+*/
 func (se *ScalerEncoder) Encode(input float64, learn bool) (output []bool) {
+	output = make([]bool, se.N)
+	se.EncodeToSlice(input, learn, output)
+	return output
+}
+
+/*
+	Encodes input to specified slice. Slice should be valid length
+*/
+func (se *ScalerEncoder) EncodeToSlice(input float64, learn bool, output []bool) {
 
 	// Get the bucket index to use
 	bucketIdx := se.getFirstOnBit(input)
@@ -308,7 +320,11 @@ func (se *ScalerEncoder) Encode(input float64, learn bool) (output []bool) {
 	//TODO output[0:self.n] = 0 TODO: should all 1s, or random SDR be returned instead?
 	//} else {
 	// The bucket index is the index of the first bit to set in the output
-	output = make([]bool, se.N)
+
+	if len(output) != se.N {
+		panic("invalid output length")
+	}
+
 	minbin := bucketIdx
 	maxbin := minbin + 2*se.halfWidth
 
@@ -349,7 +365,6 @@ func (se *ScalerEncoder) Encode(input float64, learn bool) (output []bool) {
 
 	//}
 
-	return output
 }
 
 /*
