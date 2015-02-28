@@ -67,11 +67,11 @@ type DateEncoder struct {
 	Intializes a new date encoder
 */
 func NewDateEncoder(params *DateEncoderParams) *DateEncoder {
-	se := new(DateEncoder)
+	de := new(DateEncoder)
 
-	se.DateEncoderParams = *params
+	de.DateEncoderParams = *params
 
-	se.width = 0
+	de.width = 0
 
 	if params.SeasonWidth != 0 {
 		// Ignore leapyear differences -- assume 366 days in a year
@@ -81,10 +81,11 @@ func NewDateEncoder(params *DateEncoderParams) *DateEncoder {
 		sep := NewScalerEncoderParams(params.SeasonWidth, 0, 366)
 		sep.Name = "Season"
 		sep.Periodic = true
-		se.seasonEncoder = NewScalerEncoder(sep)
-		se.seasonOffset = se.seasonEncoder.Width
-		se.width += se.seasonEncoder.Width
-		se.Description += fmt.Sprintf("season %v", se.seasonOffset)
+		sep.Radius = de.SeasonRadius
+		de.seasonEncoder = NewScalerEncoder(sep)
+		de.seasonOffset = de.seasonEncoder.Width
+		de.width += de.seasonEncoder.Width
+		de.Description += fmt.Sprintf("season %v", de.seasonOffset)
 	}
 
 	if params.DayOfWeekWidth != 0 {
@@ -94,10 +95,11 @@ func NewDateEncoder(params *DateEncoderParams) *DateEncoder {
 		sep := NewScalerEncoderParams(params.DayOfWeekWidth, 0, 7)
 		sep.Radius = params.DayOfWeekRadius
 		sep.Name = "day of week"
-		se.dayOfWeekEncoder = NewScalerEncoder(sep)
-		se.dayOfWeekOffset = se.dayOfWeekEncoder.Width
-		se.Description += fmt.Sprintf(" day of week: %v", se.dayOfWeekOffset)
-		se.width += se.dayOfWeekEncoder.Width
+		sep.Radius = de.DayOfWeekRadius
+		de.dayOfWeekEncoder = NewScalerEncoder(sep)
+		de.dayOfWeekOffset = de.dayOfWeekEncoder.Width
+		de.Description += fmt.Sprintf(" day of week: %v", de.dayOfWeekOffset)
+		de.width += de.dayOfWeekEncoder.Width
 	}
 
 	if params.WeekendWidth != 0 {
@@ -108,10 +110,10 @@ func NewDateEncoder(params *DateEncoderParams) *DateEncoder {
 		sep := NewScalerEncoderParams(params.WeekendWidth, 0, 1)
 		sep.Name = "weekend"
 		sep.Radius = params.WeekendRadius
-		se.weekendEncoder = NewScalerEncoder(sep)
-		se.width += se.weekendEncoder.Width
-		se.weekendOffset = se.weekendEncoder.Width
-		se.Description += fmt.Sprintf("weekend: %v", se.weekendOffset)
+		de.weekendEncoder = NewScalerEncoder(sep)
+		de.width += de.weekendEncoder.Width
+		de.weekendOffset = de.weekendEncoder.Width
+		de.Description += fmt.Sprintf("weekend: %v", de.weekendOffset)
 
 	}
 
@@ -122,10 +124,10 @@ func NewDateEncoder(params *DateEncoderParams) *DateEncoder {
 		sep := NewScalerEncoderParams(params.HolidayWidth, 0, 1)
 		sep.Name = "holiday"
 		sep.Radius = params.HolidayRadius
-		se.holidayEncoder = NewScalerEncoder(sep)
-		se.width += se.holidayEncoder.Width
-		se.holidayOffset = se.holidayEncoder.Width
-		se.Description += fmt.Sprintf(" holiday %v", se.holidayOffset)
+		de.holidayEncoder = NewScalerEncoder(sep)
+		de.width += de.holidayEncoder.Width
+		de.holidayOffset = de.holidayEncoder.Width
+		de.Description += fmt.Sprintf(" holiday %v", de.holidayOffset)
 	}
 
 	if params.TimeOfDayWidth > 0 {
@@ -137,13 +139,13 @@ func NewDateEncoder(params *DateEncoderParams) *DateEncoder {
 		sep.Name = "time of day"
 		sep.Radius = params.TimeOfDayRadius
 		sep.Periodic = true
-		se.timeOfDayEncoder = NewScalerEncoder(sep)
-		se.width += se.timeOfDayEncoder.Width
-		se.timeOfDayOffset = se.timeOfDayEncoder.Width
-		se.Description += fmt.Sprintf(" time of day: %v ", se.timeOfDayOffset)
+		de.timeOfDayEncoder = NewScalerEncoder(sep)
+		de.width += de.timeOfDayEncoder.Width
+		de.timeOfDayOffset = de.timeOfDayEncoder.Width
+		de.Description += fmt.Sprintf(" time of day: %v ", de.timeOfDayOffset)
 	}
 
-	return se
+	return de
 }
 
 /*
@@ -279,8 +281,10 @@ func (de *DateEncoder) EncodeToSlice(date time.Time, output []bool) {
 }
 
 /*
-
+	Returns encoded date/time
 */
-// func (de *DateEncoder) getScalers(time.Time) []bool {
-
-// }
+func (de *DateEncoder) Encode(date time.Time) []bool {
+	output := make([]bool, de.width)
+	de.EncodeToSlice(date, output)
+	return output
+}
