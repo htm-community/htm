@@ -147,74 +147,140 @@ func NewDateEncoder(params *DateEncoderParams) *DateEncoder {
 }
 
 /*
-	Get the scalar values for each subfield of the date encoder
+	get season scaler from time
 */
-func (de *DateEncoder) getEncodedValues(date time.Time) []float64 {
+func (de *DateEncoder) getSeasonScaler(date time.Time) float64 {
+	if de.seasonEncoder == nil {
+		return 0.0
+	}
 
-	values := make([]float64, 0, 5)
+	//make year 0 based
+	dayOfYear := float64(date.YearDay() - 1)
+	return dayOfYear
 
-	timeOfDay := date.Hour() + date.Minute()/60.0
+}
+
+/*
+	get day of week scaler from time
+*/
+func (de *DateEncoder) getDayOfWeekScaler(date time.Time) float64 {
+	if de.dayOfWeekEncoder == nil {
+		return 0.0
+	}
+	return float64(date.Weekday())
+}
+
+/*
+	get weekend scaler from time
+*/
+func (de *DateEncoder) getWeekendScaler(date time.Time) float64 {
+	if de.weekendEncoder == nil {
+		return 0.0
+	}
 	dayOfWeek := date.Weekday()
+	timeOfDay := date.Hour() + date.Minute()/60.0
 
-	if de.seasonEncoder != nil {
-		//make year 0 based
-		dayOfYear := float64(date.YearDay() - 1)
-		values = append(values, dayOfYear)
+	// saturday, sunday or friday evening
+	weekend := 0.0
+	if dayOfWeek == time.Saturday ||
+		dayOfWeek == time.Sunday ||
+		(dayOfWeek == time.Friday && timeOfDay > 18) {
+		weekend = 1.0
 	}
+	return weekend
+}
 
-	if de.dayOfWeekEncoder != nil {
-
-		values = append(values, float64(dayOfWeek))
+/*
+	get holiday scaler from time
+*/
+func (de *DateEncoder) getHolidayScaler(date time.Time) float64 {
+	if de.holidayEncoder == nil {
+		return 0.0
 	}
+	// A "continuous" binary value. = 1 on the holiday itself and smooth ramp
+	// 0->1 on the day before the holiday and 1->0 on the day after the holiday.
+	// Currently the only holiday we know about is December 25
+	// holidays is a list of holidays that occur on a fixed date every year
+	val := 0.0
+	holidays := []utils.TupleInt{{12, 25}}
 
-	if de.weekendEncoder != nil {
-		// saturday, sunday or friday evening
-		weekend := 0.0
-		if dayOfWeek == time.Saturday ||
-			dayOfWeek == time.Sunday ||
-			(dayOfWeek == time.Friday && timeOfDay > 18) {
-			weekend = 1.0
+	for _, h := range holidays {
+		// hdate is midnight on the holiday
+		hDate := time.Date(date.Year(), time.Month(h.A), h.B, 0, 0, 0, 0, nil)
+		if date.After(hDate) {
+			diff := date.Sub(hDate)
+			if (diff/time.Hour)/24 == 0 {
+				val = 1
+				break
+			} else if (diff/time.Hour)/24 == 1 {
+				// ramp smoothly from 1 -> 0 on the next day
+				val = 1.0 - (float64(diff/time.Second) / (86400))
+				break
+			}
+		} else {
+			diff := hDate.Sub(date)
+			if (diff/time.Hour)/24 == 1 {
+				// ramp smoothly from 0 -> 1 on the previous day
+				val = 1.0 - (float64(diff/time.Second) / 86400)
+			}
+
 		}
-		values = append(values, weekend)
+	}
+
+	return val
+
+}
+
+/*
+
+*/
+func (de *DateEncoder) getTimeOfDayScaler(date time.Time) float64 {
+	if de.timeOfDayEncoder == nil {
+		return 0.0
+	}
+	return float64(date.Hour()+date.Minute()) / 60.0
+
+}
+
+/*
+	Encodes input to specifed slice
+*/
+func (de *DateEncoder) EncodeToSlice(date time.Time, output []bool) {
+
+	learn := false
+
+	// Get a scaler value for each subfield and encode it with the
+	// appropriate encoder
+	if de.seasonEncoder != nil {
+		val := de.getSeasonScaler(date)
+		de.seasonEncoder.EncodeToSlice(val, learn, output[de.seasonOffset:])
 	}
 
 	if de.holidayEncoder != nil {
-		// A "continuous" binary value. = 1 on the holiday itself and smooth ramp
-		// 0->1 on the day before the holiday and 1->0 on the day after the holiday.
-		// Currently the only holiday we know about is December 25
-		// holidays is a list of holidays that occur on a fixed date every year
-		val := 0.0
-		holidays := []utils.TupleInt{{12, 25}}
+		val := de.getHolidayScaler(date)
+		de.holidayEncoder.EncodeToSlice(val, learn, output[de.holidayOffset:])
+	}
 
-		for _, h := range holidays {
-			// hdate is midnight on the holiday
-			hDate := time.Date(date.Year(), time.Month(h.A), h.B, 0, 0, 0, 0, nil)
-			if date.After(hDate) {
-				diff := date.Sub(hDate)
-				if (diff/time.Hour)/24 == 0 {
-					val = 1
-					break
-				} else if (diff/time.Hour)/24 == 1 {
-					// ramp smoothly from 1 -> 0 on the next day
-					val = 1.0 - (float64(diff/time.Second) / (86400))
-					break
-				}
-			} else {
-				diff := hDate.Sub(date)
-				if (diff/time.Hour)/24 == 1 {
-					// ramp smoothly from 0 -> 1 on the previous day
-					val = 1.0 - (float64(diff/time.Second) / 86400)
-				}
+	if de.dayOfWeekEncoder != nil {
+		val := de.getDayOfWeekScaler(date)
+		de.dayOfWeekEncoder.EncodeToSlice(val, learn, output[de.dayOfWeekOffset:])
+	}
 
-			}
-		}
-
-		values = append(values, val)
+	if de.weekendEncoder != nil {
+		val := de.getWeekendScaler(date)
+		de.weekendEncoder.EncodeToSlice(val, learn, output[de.weekendOffset:])
 	}
 
 	if de.timeOfDayEncoder != nil {
-		values = append(values, float64(timeOfDay))
+		val := de.getWeekendScaler(date)
+		de.timeOfDayEncoder.EncodeToSlice(val, learn, output[de.timeOfDayOffset:])
 	}
 
-	return values
 }
+
+/*
+
+*/
+// func (de *DateEncoder) getScalers(time.Time) []bool {
+
+// }
