@@ -86,45 +86,45 @@ type ScalerEncoder struct {
 	nInternal int
 }
 
-func NewScalerEncoder(params *ScalerEncoderParams) *ScalerEncoder {
+func NewScalerEncoder(p *ScalerEncoderParams) *ScalerEncoder {
 	se := new(ScalerEncoder)
-	se.ScalerEncoderParams = *params
+	se.ScalerEncoderParams = *p
 
-	if params.Width%2 == 0 {
+	if se.Width%2 == 0 {
 		panic("Width must be an odd number.")
 	}
 
-	se.halfWidth = (params.Width - 1) / 2
+	se.halfWidth = (se.Width - 1) / 2
 
 	/* For non-periodic inputs, padding is the number of bits "outside" the range,
 	 on each side. I.e. the representation of minval is centered on some bit, and
 	there are "padding" bits to the left of that centered bit; similarly with
 	bits to the right of the center bit of maxval*/
-	if !params.Periodic {
+	if !se.Periodic {
 		se.padding = se.halfWidth
 	}
 
-	if params.MinVal >= params.MaxVal {
+	if se.MinVal >= se.MaxVal {
 		panic("MinVal must be less than MaxVal")
 	}
 
-	se.rangeInternal = params.MaxVal - params.MinVal
+	se.rangeInternal = se.MaxVal - se.MinVal
 
 	// There are three different ways of thinking about the representation. Handle
 	// each case here.
-	se.initEncoder(params.Width, params.MinVal, params.MaxVal, params.N,
-		params.Radius, params.Resolution)
+	se.initEncoder(se.Width, se.MinVal, se.MaxVal, se.N,
+		se.Radius, se.Resolution)
 
 	// nInternal represents the output area excluding the possible padding on each
 	// side
-	se.nInternal = params.N - 2*se.padding
+	se.nInternal = se.N - 2*se.padding
 
 	// Our name
-	if len(params.Name) == 0 {
-		params.Name = fmt.Sprintf("[%v:%v]", params.MinVal, params.MaxVal)
+	if len(se.Name) == 0 {
+		se.Name = fmt.Sprintf("[%v:%v]", se.MinVal, se.MaxVal)
 	}
 
-	if params.Width < 21 {
+	if se.Width < 21 {
 		fmt.Println("Number of bits in the SDR must be greater than 21")
 	}
 
@@ -320,10 +320,7 @@ func (se *ScalerEncoder) EncodeToSlice(input float64, learn bool, output []bool)
 	//TODO output[0:self.n] = 0 TODO: should all 1s, or random SDR be returned instead?
 	//} else {
 	// The bucket index is the index of the first bit to set in the output
-
-	if len(output) != se.N {
-		panic("invalid output length")
-	}
+	output = output[:se.N]
 
 	minbin := bucketIdx
 	maxbin := minbin + 2*se.halfWidth
