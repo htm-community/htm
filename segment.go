@@ -8,7 +8,7 @@ import (
 	//"math/rand"
 	//"sort"
 	"github.com/gonum/floats"
-	"github.com/zacg/htm/utils"
+	"github.com/nupic-community/htm/utils"
 )
 
 var SegmentDutyCycleTiers = []int{0, 100, 320, 1000,
