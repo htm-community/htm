@@ -33,6 +33,11 @@ func NewDateEncoderParams() *DateEncoderParams {
 	p := new(DateEncoderParams)
 
 	//set defaults
+	p.SeasonWidth = 3
+	p.DayOfWeekWidth = 1
+	p.WeekendWidth = 3
+	p.TimeOfDayWidth = 5
+
 	p.SeasonRadius = 91.5 //days
 	p.DayOfWeekRadius = 1
 	p.TimeOfDayRadius = 4
