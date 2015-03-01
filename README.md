@@ -155,11 +155,31 @@ func main() {
 	p.Radius = 1.5
 	p.Periodic = true
 	p.Verbosity = 5
+	e := NewScalerEncoder(p)
 
 	//Encode "1"
 	encoded := e.Encode(1, false)
 
 	//Print results
 	fmt.Printfn("1 Encoded as: %v", utils.Bool2Int(encoded))
+
+```
+
+```go
+
+	//Create new date encoder
+	p := NewDateEncoderParams()
+	p.SeasonWidth = 3
+	p.DayOfWeekWidth = 1
+	p.WeekendWidth = 3
+	p.TimeOfDayWidth = 5
+	p.Verbosity = 5
+	de := NewDateEncoder(p)
+	
+	d := time.Date(2010, 11, 4, 14, 55, 0, 0, time.UTC)
+	encoded := de.Encode(d)
+
+	//Print results
+	fmt.Printfn("%v Encoded as: %v", d, utils.Bool2Int(encoded))
 
 ```
