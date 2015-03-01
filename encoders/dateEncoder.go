@@ -60,7 +60,6 @@ type DateEncoder struct {
 	dayOfWeekOffset int
 	holidayOffset   int
 	timeOfDayOffset int
-	Description     string
 }
 
 /*
@@ -85,7 +84,6 @@ func NewDateEncoder(params *DateEncoderParams) *DateEncoder {
 		de.seasonEncoder = NewScalerEncoder(sep)
 		de.seasonOffset = de.width
 		de.width += de.seasonEncoder.N
-		de.Description += fmt.Sprintf("season %v", de.seasonOffset)
 	}
 
 	if params.DayOfWeekWidth != 0 {
@@ -98,7 +96,6 @@ func NewDateEncoder(params *DateEncoderParams) *DateEncoder {
 		sep.Periodic = true
 		de.dayOfWeekEncoder = NewScalerEncoder(sep)
 		de.dayOfWeekOffset = de.width
-		de.Description += fmt.Sprintf(" day of week: %v", de.dayOfWeekOffset)
 		de.width += de.dayOfWeekEncoder.N
 	}
 
@@ -113,8 +110,6 @@ func NewDateEncoder(params *DateEncoderParams) *DateEncoder {
 		de.weekendEncoder = NewScalerEncoder(sep)
 		de.weekendOffset = de.width
 		de.width += de.weekendEncoder.N
-		de.Description += fmt.Sprintf("weekend: %v", de.weekendOffset)
-
 	}
 
 	if params.HolidayWidth > 0 {
@@ -127,7 +122,6 @@ func NewDateEncoder(params *DateEncoderParams) *DateEncoder {
 		de.holidayEncoder = NewScalerEncoder(sep)
 		de.holidayOffset = de.width
 		de.width += de.holidayEncoder.N
-		de.Description += fmt.Sprintf(" holiday %v", de.holidayOffset)
 	}
 
 	if params.TimeOfDayWidth > 0 {
@@ -142,7 +136,6 @@ func NewDateEncoder(params *DateEncoderParams) *DateEncoder {
 		de.timeOfDayEncoder = NewScalerEncoder(sep)
 		de.timeOfDayOffset = de.width
 		de.width += de.timeOfDayEncoder.N
-		de.Description += fmt.Sprintf(" time of day: %v ", de.timeOfDayOffset)
 
 	}
 
@@ -288,4 +281,15 @@ func (de *DateEncoder) Encode(date time.Time) []bool {
 	output := make([]bool, de.width)
 	de.EncodeToSlice(date, output)
 	return output
+}
+
+/*
+ Encoder description
+*/
+func (de *DateEncoder) Description(date time.Time) string {
+	return fmt.Sprintf("season %v ", de.seasonOffset) +
+		fmt.Sprintf(" day of week: %v", de.dayOfWeekOffset) +
+		fmt.Sprintf(" weekend: %v", de.weekendOffset) +
+		fmt.Sprintf(" holiday %v", de.holidayOffset) +
+		fmt.Sprintf(" time of day: %v ", de.timeOfDayOffset)
 }
