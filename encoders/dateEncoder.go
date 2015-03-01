@@ -83,8 +83,8 @@ func NewDateEncoder(params *DateEncoderParams) *DateEncoder {
 		sep.Periodic = true
 		sep.Radius = de.SeasonRadius
 		de.seasonEncoder = NewScalerEncoder(sep)
-		de.seasonOffset = de.seasonEncoder.Width
-		de.width += de.seasonEncoder.Width
+		de.seasonOffset = de.width
+		de.width += de.seasonEncoder.N
 		de.Description += fmt.Sprintf("season %v", de.seasonOffset)
 	}
 
@@ -93,13 +93,13 @@ func NewDateEncoder(params *DateEncoderParams) *DateEncoder {
 		// Radius is 1 day
 
 		sep := NewScalerEncoderParams(params.DayOfWeekWidth, 0, 7)
-		sep.Radius = params.DayOfWeekRadius
 		sep.Name = "day of week"
 		sep.Radius = de.DayOfWeekRadius
+		sep.Periodic = true
 		de.dayOfWeekEncoder = NewScalerEncoder(sep)
-		de.dayOfWeekOffset = de.dayOfWeekEncoder.Width
+		de.dayOfWeekOffset = de.width
 		de.Description += fmt.Sprintf(" day of week: %v", de.dayOfWeekOffset)
-		de.width += de.dayOfWeekEncoder.Width
+		de.width += de.dayOfWeekEncoder.N
 	}
 
 	if params.WeekendWidth != 0 {
@@ -111,8 +111,8 @@ func NewDateEncoder(params *DateEncoderParams) *DateEncoder {
 		sep.Name = "weekend"
 		sep.Radius = params.WeekendRadius
 		de.weekendEncoder = NewScalerEncoder(sep)
-		de.width += de.weekendEncoder.Width
-		de.weekendOffset = de.weekendEncoder.Width
+		de.weekendOffset = de.width
+		de.width += de.weekendEncoder.N
 		de.Description += fmt.Sprintf("weekend: %v", de.weekendOffset)
 
 	}
@@ -125,8 +125,8 @@ func NewDateEncoder(params *DateEncoderParams) *DateEncoder {
 		sep.Name = "holiday"
 		sep.Radius = params.HolidayRadius
 		de.holidayEncoder = NewScalerEncoder(sep)
-		de.width += de.holidayEncoder.Width
-		de.holidayOffset = de.holidayEncoder.Width
+		de.holidayOffset = de.width
+		de.width += de.holidayEncoder.N
 		de.Description += fmt.Sprintf(" holiday %v", de.holidayOffset)
 	}
 
@@ -140,9 +140,10 @@ func NewDateEncoder(params *DateEncoderParams) *DateEncoder {
 		sep.Radius = params.TimeOfDayRadius
 		sep.Periodic = true
 		de.timeOfDayEncoder = NewScalerEncoder(sep)
-		de.width += de.timeOfDayEncoder.Width
-		de.timeOfDayOffset = de.timeOfDayEncoder.Width
+		de.timeOfDayOffset = de.width
+		de.width += de.timeOfDayEncoder.N
 		de.Description += fmt.Sprintf(" time of day: %v ", de.timeOfDayOffset)
+
 	}
 
 	return de
@@ -208,7 +209,7 @@ func (de *DateEncoder) getHolidayScaler(date time.Time) float64 {
 
 	for _, h := range holidays {
 		// hdate is midnight on the holiday
-		hDate := time.Date(date.Year(), time.Month(h.A), h.B, 0, 0, 0, 0, nil)
+		hDate := time.Date(date.Year(), time.Month(h.A), h.B, 0, 0, 0, 0, time.UTC)
 		if date.After(hDate) {
 			diff := date.Sub(hDate)
 			if (diff/time.Hour)/24 == 0 {
@@ -240,7 +241,7 @@ func (de *DateEncoder) getTimeOfDayScaler(date time.Time) float64 {
 	if de.timeOfDayEncoder == nil {
 		return 0.0
 	}
-	return float64(date.Hour()+date.Minute()) / 60.0
+	return float64(date.Hour()) + (float64(date.Minute()) / 60.0)
 
 }
 
@@ -274,7 +275,7 @@ func (de *DateEncoder) EncodeToSlice(date time.Time, output []bool) {
 	}
 
 	if de.timeOfDayEncoder != nil {
-		val := de.getWeekendScaler(date)
+		val := de.getTimeOfDayScaler(date)
 		de.timeOfDayEncoder.EncodeToSlice(val, learn, output[de.timeOfDayOffset:])
 	}
 
