@@ -27,6 +27,8 @@ type DateEncoderParams struct {
 	TimeOfDayRadius float64
 	//CustomDays     int
 	Name string
+	//list of holidays stored as {mm,dd}
+	Holidays []utils.TupleInt
 }
 
 func NewDateEncoderParams() *DateEncoderParams {
@@ -43,6 +45,8 @@ func NewDateEncoderParams() *DateEncoderParams {
 	p.TimeOfDayRadius = 4
 	p.WeekendRadius = 1
 	p.HolidayRadius = 1
+
+	p.Holidays = []utils.TupleInt{{12, 25}}
 
 	return p
 }
@@ -203,9 +207,8 @@ func (de *DateEncoder) getHolidayScaler(date time.Time) float64 {
 	// Currently the only holiday we know about is December 25
 	// holidays is a list of holidays that occur on a fixed date every year
 	val := 0.0
-	holidays := []utils.TupleInt{{12, 25}}
 
-	for _, h := range holidays {
+	for _, h := range de.Holidays {
 		// hdate is midnight on the holiday
 		hDate := time.Date(date.Year(), time.Month(h.A), h.B, 0, 0, 0, 0, time.UTC)
 		if date.After(hDate) {
