@@ -39,6 +39,30 @@ func TestInitFromStr(t *testing.T) {
 
 }
 
+func TestSet(t *testing.T) {
+	seq := BinarySequence(5)
+
+	seq.Set(0, true)
+	seq.Set(4, true)
+	seq.Set(2, true)
+
+	assert.Equal(t, []bool{true, false, true, false, true}, seq.Slice())
+}
+
+func TestGet(t *testing.T) {
+	seq := BinarySequence(5)
+
+	seq.Set(0, true)
+	seq.Set(4, true)
+	seq.Set(2, true)
+
+	assert.True(t, seq.Get(0))
+	assert.True(t, seq.Get(4))
+	assert.True(t, seq.Get(2))
+	assert.False(t, seq.Get(1))
+	assert.False(t, seq.Get(3))
+}
+
 func TestEquals(t *testing.T) {
 
 	a := Ones(6)
@@ -65,5 +89,43 @@ func TestOnIndices(t *testing.T) {
 	seq = BinarySequence(5)
 
 	assert.Equal(t, 0, seq.OnIndices())
+
+}
+
+func TestOr(t *testing.T) {
+
+	a := Ones(5)
+	b := BinarySequence(5)
+
+	result := a.Or(b)
+
+	assert.True(t, Ones(5).Equals(result))
+
+	c := BinarySequence(5)
+	c.Set(2, 0)
+	c.Set(4, 0)
+
+	result = b.Or(c)
+
+	assert.Equal(t, []bool{false, false, true, false, true}, result.Slice())
+
+}
+
+func TestAnd(t *testing.T) {
+
+	a := Ones(5)
+	b := BinarySequence(5)
+
+	result := a.And(b)
+
+	assert.True(t, BinarySequence(5).Equals(result))
+
+	c := BinarySequence(5)
+	c.Set(2, false)
+	c.Set(4, false)
+
+	result = a.And(c)
+
+	assert.Equal(t, []bool{false, false, true, false, true}, result.Slice())
 
 }
