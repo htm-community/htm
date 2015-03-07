@@ -63,6 +63,18 @@ func TestGet(t *testing.T) {
 	assert.False(t, seq.Get(3))
 }
 
+func TestToSlice(t *testing.T) {
+	seq := BinarySequence(10)
+	s := seq.Slice()
+
+	assert.Equal(t, make([]bool, 10), s)
+
+	seq = Ones(5)
+	s = seq.Slice()
+
+	assert.Equal(t, []bool{true, true, true, true, true}, s)
+}
+
 func TestEquals(t *testing.T) {
 
 	a := Ones(6)
@@ -127,5 +139,41 @@ func TestAnd(t *testing.T) {
 	result = a.And(c)
 
 	assert.Equal(t, []bool{false, false, true, false, true}, result.Slice())
+
+}
+
+func TestToString(t *testing.T) {
+	str := "11000110101010"
+	seq := FromStr(str)
+
+	assert.Equal(t, str, seq.String())
+
+}
+
+func TestContains(t *testing.T) {
+
+	seq := BinarySequence(10)
+	subSeq := Ones(3)
+
+	assert.False(t, seq.Contains(subSeq))
+
+	seq.set(4, true)
+	assert.False(t, seq.Contains(subSeq))
+	seq.set(5, true)
+	assert.False(t, seq.Contains(subSeq))
+	seq.set(9, true)
+	assert.False(t, seq.Contains(subSeq))
+	seq.set(6, true)
+	assert.True(t, seq.Contains(subSeq))
+
+}
+
+func TestSetIndices(t *testing.T) {
+
+	seq := BinarySequence(10)
+
+	seq.SetIndices([]int{8, 7, 2}, true)
+
+	assert.Equal(t, "0010000110", seq.String())
 
 }
