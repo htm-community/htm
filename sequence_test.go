@@ -177,3 +177,17 @@ func TestSetIndices(t *testing.T) {
 	assert.Equal(t, "0010000110", seq.String())
 
 }
+
+func TestAppend(t *testing.T) {
+
+	x := "111001010101"
+	y := "1010101010010001"
+
+	a := FromStr(x)
+	b := FromStr(y)
+
+	result := a.Append(b)
+
+	assert.Equal(t, x+y, result.String())
+
+}
