@@ -39,6 +39,16 @@ func TestInitFromStr(t *testing.T) {
 
 }
 
+func TestLen(t *testing.T) {
+	seq := FromStr("0010010")
+
+	assert.Equal(t, 7, seq.Len())
+
+	seq = FromStr("0010010000001001000000100100000010010000001001000000100100000010010000000000000")
+
+	assert.Equal(t, 79, seq.Len())
+}
+
 func TestSet(t *testing.T) {
 	seq := BinarySequence(5)
 
