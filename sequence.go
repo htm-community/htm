@@ -14,6 +14,7 @@ import (
 type Sequence struct {
 	data []uint64
 	binaryLength int
+	onBits int
 }
 
 /* Intializers */
@@ -60,7 +61,8 @@ func Ones(int length) *Sequence {
 /* helpers */
 
 func (s *Sequence) init(size int) {
-	data = make([]uint64,s.idx(size)+1)
+	s.data = make([]uint64,s.idx(size)+1)
+	s.binaryLength = size
 }
 
 func (s *Sequence) idx(i index) int {
@@ -70,7 +72,17 @@ func (s *Sequence) idx(i index) int {
 /* exported functions */
 
 func (s *Sequence) Equals(other Sequence) bool {
+	if(s.Len() != other.Len()){
+		return false
+	}
 
+	for idx,val := range s.data {
+		if(val != other.data[idx]){
+			return false
+		}
+	}
+
+	return true
 }
 
 func (s *Sequence) Append(other Sequence) *Sequence {
@@ -86,11 +98,18 @@ func (s *Sequence) And(other Sequence) *Sequence {
 }
 
 func (s *Sequence) At(idx int) bool {
-
+	bitPos := idx % 64
+	return !(s.data[s.idx(idx)] & 1<<bitPos == 0)
 }
 
 func (s *Sequence) Set(idx int, val bool) {
-
+	bitPos := idx % 64
+	if(val){
+		s.data[s.idx(idx)] |= (1 << bitPos)
+		} else {
+			s.data[s.idx(idx)] &= ^(1<< bitPos)
+		}
+	
 }
 
 func (s *Sequence) Len() int {
