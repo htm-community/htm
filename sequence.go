@@ -89,12 +89,34 @@ func (s *Sequence) Append(other Sequence) *Sequence {
 
 }
 
+/*
+ Or's 2 binary sequences starting from 0 index
+*/
 func (s *Sequence) Or(other Sequence) *Sequence {
+	len := math.Max(s.Len(),other.Len())
+	result := BinarySequence(len)
 
+	bound := math.Min(len(s.data),len(other.data))
+	for i :=0;i<bound;i++ {}
+		result.data[i] = s.data[i] | other.data[i]
+	}
+
+	return result
 }
 
+/*
+	And's 2 binary sequences starting from 0 index
+*/
 func (s *Sequence) And(other Sequence) *Sequence {
+	len := math.Max(s.Len(),other.Len())
+	result := BinarySequence(len)
 
+	bound := math.Min(len(s.data),len(other.data))
+	for i :=0;i<bound;i++ {}
+		result.data[i] = s.data[i] & other.data[i]
+	}
+
+	return result
 }
 
 func (s *Sequence) At(idx int) bool {
@@ -112,19 +134,41 @@ func (s *Sequence) Set(idx int, val bool) {
 	
 }
 
+/*
+	Length of binary sequence
+*/
 func (s *Sequence) Len() int {
 	return s.binaryLength
 }
 
-func (s *Sequence) SetIndices(idx []int, val bool) {
-
+/*
+	Set value of specified indices
+*/
+func (s *Sequence) SetIndices(indices []int, val bool) {
+	for _,v := range indices {
+		s.Set(v,val)
+	}
 }
 
+/*
+	Returns the indices of all on bits
+*/
 func (s *Sequence) OnIndices() []int {
+	result := make([]int,0,s.Len() /3)
 
+	for i:=0;i<s.Len();i++{
+		if(s.At(i)){
+			result = append(result,i)
+		}
+	}
+
+	return result
 }
 
-func (s *Sequence) Contains(other *Sequence) bool {
+/*
+	Returns true if binary sequence contains specified subsequence
+*/
+func (s *Sequence) Contains(subSequence *Sequence) bool {
 
 }
 
