@@ -49,6 +49,16 @@ func TestLen(t *testing.T) {
 	assert.Equal(t, 79, seq.Len())
 }
 
+func TestOnBits(t *testing.T) {
+	seq := FromStr("0010010")
+
+	assert.Equal(t, 2, seq.OnBits())
+
+	seq = FromStr("0010010000001001000000100100000010010000001001000000100100000010010000000000000")
+
+	assert.Equal(t, 14, seq.OnBits())
+}
+
 func TestSet(t *testing.T) {
 	seq := BinarySequence(5)
 
