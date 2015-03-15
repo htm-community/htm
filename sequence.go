@@ -2,7 +2,6 @@ package htm
 
 import (
 	"bytes"
-	"fmt"
 	"github.com/cznic/mathutil"
 	"math"
 )
@@ -15,12 +14,18 @@ type Sequence struct {
 
 /* Intializers */
 
+/*
+	returns a binary sequence of specified size
+*/
 func BinarySequence(length int) *Sequence {
 	seq := new(Sequence)
 	seq.init(length)
 	return seq
 }
 
+/*
+	returns sequence based on specified int slice e.g. []int{0,1,1,0,1}
+*/
 func FromInts(ints []int) *Sequence {
 	seq := new(Sequence)
 	seq.init(len(ints))
@@ -32,6 +37,9 @@ func FromInts(ints []int) *Sequence {
 	return seq
 }
 
+/*
+	returns a sequence with values specified in binary string e.g. "1010101"
+*/
 func FromStr(str string) *Sequence {
 	seq := new(Sequence)
 	seq.init(len(str))
@@ -43,6 +51,9 @@ func FromStr(str string) *Sequence {
 	return seq
 }
 
+/*
+	returns sequence initialized with all bits on
+*/
 func Ones(length int) *Sequence {
 	seq := new(Sequence)
 	seq.init(length)
@@ -127,17 +138,23 @@ func (s *Sequence) And(other *Sequence) *Sequence {
 	return result
 }
 
+/*
+ Returns value at specified index
+*/
 func (s *Sequence) At(idx int) bool {
 	pos, bitPos := s.idx(idx)
-	return !(s.data[pos]&1<<uint(bitPos) == 0)
+	return (s.data[pos] & (1 << uint64(bitPos+1))) > 0
 }
 
+/*
+ Sets a value at specified index
+*/
 func (s *Sequence) Set(idx int, val bool) {
 	pos, bitPos := s.idx(idx)
 	if val {
-		s.data[pos] |= (1 << uint(bitPos))
+		s.data[pos] |= (1 << uint64(bitPos+1))
 	} else {
-		s.data[pos] &= ^(1 << uint(bitPos))
+		s.data[pos] &= ^(1 << uint64(bitPos+1))
 	}
 
 }
@@ -177,20 +194,21 @@ func (s *Sequence) OnIndices() []int {
 	Returns true if binary sequence contains specified subsequence
 */
 func (s *Sequence) Contains(subSequence *Sequence) bool {
-	if subSequence.Len() > s.Len() {
+	if s.Len() == 0 ||
+		subSequence.Len() == 0 ||
+		subSequence.Len() > s.Len() {
 		return false
 	}
 
 	idx := 0
 	subIdx := 0
 	for idx < s.Len() {
-		if s.data[idx] != subSequence.data[subIdx] {
+		if s.At(idx) != subSequence.At(subIdx) {
 			subIdx = 0
 		} else {
 			subIdx++
 		}
-
-		if subIdx >= len(subSequence.data) {
+		if subIdx >= subSequence.Len() {
 			return true
 		}
 
@@ -205,11 +223,16 @@ func (s *Sequence) Contains(subSequence *Sequence) bool {
 */
 func (s *Sequence) String() string {
 	var buffer bytes.Buffer
-	for _, val := range s.data {
-		buffer.WriteString(fmt.Sprintf("%b", val))
+
+	for i := 0; i < s.Len(); i++ {
+		if s.At(i) {
+			buffer.WriteString("1")
+		} else {
+			buffer.WriteString("0")
+		}
 	}
 
-	return buffer.String()[:s.binaryLength]
+	return buffer.String()
 }
 
 /*
@@ -218,7 +241,7 @@ func (s *Sequence) String() string {
 func (s *Sequence) ToSlice() []bool {
 	result := make([]bool, s.Len())
 	for bit := 0; bit < s.Len(); bit++ {
-		result = append(result, s.At(bit))
+		result[bit] = s.At(bit)
 	}
 	return result
 }

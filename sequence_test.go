@@ -1,17 +1,15 @@
 package htm
 
 import (
-	"github.com/nupic-community/htm/utils"
 	"github.com/stretchr/testify/assert"
 	"testing"
-	"time"
 )
 
 func TestInitOnes(t *testing.T) {
 	seq := Ones(5)
 
 	assert.Equal(t, 5, seq.Len())
-	assert.Equal(t, []bool{true, true, true, true, true}, seq.Slice())
+	assert.Equal(t, []bool{true, true, true, true, true}, seq.ToSlice())
 
 }
 
@@ -19,7 +17,7 @@ func TestInit(t *testing.T) {
 	seq := BinarySequence(5)
 
 	assert.Equal(t, 5, seq.Len())
-	assert.Equal(t, []bool{false, false, false, false, false}, seq.Slice())
+	assert.Equal(t, []bool{false, false, false, false, false}, seq.ToSlice())
 
 }
 
@@ -27,7 +25,9 @@ func TestInitFromInt(t *testing.T) {
 	seq := FromInts([]int{0, 0, 1, 0, 0, 1, 0})
 
 	assert.Equal(t, 7, seq.Len())
-	assert.Equal(t, []bool{false, false, true, false, false, true, false}, seq.Slice())
+	assert.Equal(t, "0010010", seq.String())
+	t.Log(seq.String())
+	assert.Equal(t, []bool{false, false, true, false, false, true, false}, seq.ToSlice())
 
 }
 
@@ -35,7 +35,7 @@ func TestInitFromStr(t *testing.T) {
 	seq := FromStr("0010010")
 
 	assert.Equal(t, 7, seq.Len())
-	assert.Equal(t, []bool{false, false, true, false, false, true, false}, seq.Slice())
+	assert.Equal(t, []bool{false, false, true, false, false, true, false}, seq.ToSlice())
 
 }
 
@@ -52,11 +52,11 @@ func TestLen(t *testing.T) {
 func TestOnBits(t *testing.T) {
 	seq := FromStr("0010010")
 
-	assert.Equal(t, 2, seq.OnBits())
+	assert.Equal(t, 2, len(seq.OnIndices()))
 
 	seq = FromStr("0010010000001001000000100100000010010000001001000000100100000010010000000000000")
 
-	assert.Equal(t, 14, seq.OnBits())
+	assert.Equal(t, 14, len(seq.OnIndices()))
 }
 
 func TestSet(t *testing.T) {
@@ -66,7 +66,7 @@ func TestSet(t *testing.T) {
 	seq.Set(4, true)
 	seq.Set(2, true)
 
-	assert.Equal(t, []bool{true, false, true, false, true}, seq.Slice())
+	assert.Equal(t, []bool{true, false, true, false, true}, seq.ToSlice())
 }
 
 func TestGet(t *testing.T) {
@@ -76,21 +76,21 @@ func TestGet(t *testing.T) {
 	seq.Set(4, true)
 	seq.Set(2, true)
 
-	assert.True(t, seq.Get(0))
-	assert.True(t, seq.Get(4))
-	assert.True(t, seq.Get(2))
-	assert.False(t, seq.Get(1))
-	assert.False(t, seq.Get(3))
+	assert.True(t, seq.At(0))
+	assert.True(t, seq.At(4))
+	assert.True(t, seq.At(2))
+	assert.False(t, seq.At(1))
+	assert.False(t, seq.At(3))
 }
 
 func TestToSlice(t *testing.T) {
 	seq := BinarySequence(10)
-	s := seq.Slice()
+	s := seq.ToSlice()
 
 	assert.Equal(t, make([]bool, 10), s)
 
 	seq = Ones(5)
-	s = seq.Slice()
+	s = seq.ToSlice()
 
 	assert.Equal(t, []bool{true, true, true, true, true}, s)
 }
@@ -105,22 +105,22 @@ func TestEquals(t *testing.T) {
 	c := BinarySequence(6)
 
 	assert.False(t, a.Equals(c))
-	assert.False(t, a.Equals(b))
+	assert.True(t, a.Equals(b))
 
 	b = Ones(3)
 
 	assert.False(t, a.Equals(b))
-
+	assert.False(t, c.Equals(b))
 }
 
 func TestOnIndices(t *testing.T) {
 	seq := Ones(5)
 
-	assert.Equal(t, 5, seq.OnIndices())
+	assert.Equal(t, 5, len(seq.OnIndices()))
 
 	seq = BinarySequence(5)
 
-	assert.Equal(t, 0, seq.OnIndices())
+	assert.Equal(t, 0, len(seq.OnIndices()))
 
 }
 
@@ -134,12 +134,12 @@ func TestOr(t *testing.T) {
 	assert.True(t, Ones(5).Equals(result))
 
 	c := BinarySequence(5)
-	c.Set(2, 0)
-	c.Set(4, 0)
+	c.Set(2, true)
+	c.Set(4, true)
 
 	result = b.Or(c)
 
-	assert.Equal(t, []bool{false, false, true, false, true}, result.Slice())
+	assert.Equal(t, []bool{false, false, true, false, true}, result.ToSlice())
 
 }
 
@@ -153,12 +153,12 @@ func TestAnd(t *testing.T) {
 	assert.True(t, BinarySequence(5).Equals(result))
 
 	c := BinarySequence(5)
-	c.Set(2, false)
-	c.Set(4, false)
+	c.Set(2, true)
+	c.Set(4, true)
 
 	result = a.And(c)
 
-	assert.Equal(t, []bool{false, false, true, false, true}, result.Slice())
+	assert.Equal(t, []bool{false, false, true, false, true}, result.ToSlice())
 
 }
 
@@ -177,13 +177,13 @@ func TestContains(t *testing.T) {
 
 	assert.False(t, seq.Contains(subSeq))
 
-	seq.set(4, true)
+	seq.Set(4, true)
 	assert.False(t, seq.Contains(subSeq))
-	seq.set(5, true)
+	seq.Set(5, true)
 	assert.False(t, seq.Contains(subSeq))
-	seq.set(9, true)
+	seq.Set(9, true)
 	assert.False(t, seq.Contains(subSeq))
-	seq.set(6, true)
+	seq.Set(6, true)
 	assert.True(t, seq.Contains(subSeq))
 
 }
@@ -206,8 +206,20 @@ func TestAppend(t *testing.T) {
 	a := FromStr(x)
 	b := FromStr(y)
 
-	result := a.Append(b)
+	a.Append(b)
 
-	assert.Equal(t, x+y, result.String())
+	assert.Equal(t, x+y, a.String())
+
+}
+
+func TestCopy(t *testing.T) {
+
+	str := "1010101010010001"
+
+	seq := FromStr(str)
+
+	result := seq.Copy()
+
+	assert.Equal(t, str, result.String())
 
 }
