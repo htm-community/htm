@@ -1354,7 +1354,7 @@ func (tp *TemporalPooler) getCellForNewSegment(colIdx int) int {
 
 	// Free up the least used segment
 	if tp.params.Verbosity >= 5 {
-		fmt.Printf("Deleting segment #%v for cell[%v,%v] to make room for new %v segment \n",
+		fmt.Printf("Deleting segment #%v for cell[%v] to make room for new %v segment \n",
 			candidateSegment.segId, colIdx, candidateCellIdx)
 		//fmt.Print(candidateSegment.ToString())
 	}

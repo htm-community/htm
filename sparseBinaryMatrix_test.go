@@ -131,7 +131,7 @@ func TestGetRowAndSum(t *testing.T) {
 	sm.SetRowFromDense(3, []bool{true, true, true, true, true})
 
 	t.Log(sm.ToString())
-	t.Log(sm.Entries)
+	t.Log(sm.Entries())
 	i := []bool{true, false, true, true, false}
 
 	result := sm.RowAndSum(i)

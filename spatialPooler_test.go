@@ -162,7 +162,7 @@ func TestStripNever(t *testing.T) {
 	activeColumns := []int{0, 1, 2, 4}
 	stripped := sp.stripNeverLearned(activeColumns)
 	trueStripped := []int{0, 1, 4}
-	t.Logf("stripped", stripped)
+	t.Logf("stripped %v", stripped)
 	for i := 0; i < len(trueStripped); i++ {
 		if stripped[i] != trueStripped[i] {
 			t.Errorf("stripped %v was %v expected %v", i, stripped[i], trueStripped[i])
@@ -407,7 +407,7 @@ func TestCalculateOverlap(t *testing.T) {
 	overlapsPct := sp.calculateOverlapPct(overlaps)
 	trueOverlaps := []int{0, 0, 0, 0, 0}
 	trueOverlapsPct := []float64{0, 0, 0, 0, 0}
-	t.Logf("pct", overlapsPct)
+	t.Logf("pct %v", overlapsPct)
 	assert.Equal(t, trueOverlaps, overlaps)
 	assert.Equal(t, overlapsPct, trueOverlapsPct)
 
@@ -419,18 +419,18 @@ func TestCalculateOverlap(t *testing.T) {
 	overlapsPct = sp.calculateOverlapPct(overlaps)
 	trueOverlaps = []int{10, 8, 6, 4, 2}
 	trueOverlapsPct = []float64{1, 1, 1, 1, 1}
-	t.Logf("pct", overlapsPct)
+	t.Logf("pct %v", overlapsPct)
 	assert.Equal(t, trueOverlaps, overlaps)
 	assert.Equal(t, overlapsPct, trueOverlapsPct)
 
 	inputVector = make([]bool, sp.numInputs)
 	inputVector[9] = true
-	t.Logf("input", inputVector)
+	t.Logf("input %v", inputVector)
 	overlaps = sp.calculateOverlap(inputVector)
 	overlapsPct = sp.calculateOverlapPct(overlaps)
 	trueOverlaps = []int{1, 1, 1, 1, 1}
 	trueOverlapsPct = []float64{0.1, 0.125, 1.0 / 6, 0.25, 0.5}
-	t.Logf("pct", overlapsPct)
+	t.Logf("pct %v", overlapsPct)
 	assert.Equal(t, trueOverlaps, overlaps)
 	assert.Equal(t, trueOverlapsPct, overlapsPct)
 
@@ -449,12 +449,12 @@ func TestCalculateOverlap(t *testing.T) {
 	inputVector[4] = true
 	inputVector[6] = true
 	inputVector[8] = true
-	t.Logf("input", inputVector)
+	t.Logf("input %v", inputVector)
 	overlaps = sp.calculateOverlap(inputVector)
 	overlapsPct = sp.calculateOverlapPct(overlaps)
 	trueOverlaps = []int{1, 1, 1, 1, 1}
 	trueOverlapsPct = []float64{0.5, 0.5, 0.5, 0.5, 0.5}
-	t.Logf("pct", overlapsPct)
+	t.Logf("pct %v", overlapsPct)
 	assert.Equal(t, trueOverlaps, overlaps)
 	assert.Equal(t, trueOverlapsPct, overlapsPct)
 
@@ -882,7 +882,7 @@ func TestUpdateBoostFactors(t *testing.T) {
 	sp.MaxBoost = 10.0
 	sp.numColumns = 6
 	sp.minActiveDutyCycles = make([]float64, sp.numColumns)
-	for i, _ := range sp.minActiveDutyCycles {
+	for i := range sp.minActiveDutyCycles {
 		sp.minActiveDutyCycles[i] = -0.0000001
 	}
 	sp.activeDutyCycles = []float64{0.1, 0.3, 0.02, 0.04, 0.7, 0.12}
@@ -890,7 +890,7 @@ func TestUpdateBoostFactors(t *testing.T) {
 	trueBoostFactors := []float64{1, 1, 1, 1, 1, 1}
 	sp.updateBoostFactors()
 
-	for i, _ := range sp.boostFactors {
+	for i := range sp.boostFactors {
 		assert.Equal(t, trueBoostFactors[i], sp.boostFactors[i])
 	}
 
@@ -901,7 +901,7 @@ func TestUpdateBoostFactors(t *testing.T) {
 	trueBoostFactors = []float64{1, 1, 1, 1, 1, 1}
 	sp.updateBoostFactors()
 
-	for i, _ := range sp.boostFactors {
+	for i := range sp.boostFactors {
 		diff := math.Abs(trueBoostFactors[i] - sp.boostFactors[i])
 		assert.True(t, diff <= 0.0000001)
 	}
@@ -912,7 +912,7 @@ func TestUpdateBoostFactors(t *testing.T) {
 	sp.activeDutyCycles = []float64{0.01, 0.02, 0.002, 0.003, 0.07, 0.012}
 	trueBoostFactors = []float64{9.1, 9.1, 9.1, 9.1, 9.1, 9.1}
 	sp.updateBoostFactors()
-	for i, _ := range sp.boostFactors {
+	for i := range sp.boostFactors {
 		diff := math.Abs(trueBoostFactors[i] - sp.boostFactors[i])
 		assert.True(t, diff <= 0.0000001)
 	}
@@ -923,7 +923,7 @@ func TestUpdateBoostFactors(t *testing.T) {
 	sp.activeDutyCycles = make([]float64, sp.numColumns)
 	trueBoostFactors = utils.MakeSliceFloat64(6, sp.MaxBoost)
 	sp.updateBoostFactors()
-	for i, _ := range sp.boostFactors {
+	for i := range sp.boostFactors {
 		diff := math.Abs(trueBoostFactors[i] - sp.boostFactors[i])
 		assert.True(t, diff <= 0.0000001)
 	}
@@ -1220,7 +1220,7 @@ func TestUpdateMinDutyCyclesLocal(t *testing.T) {
 	sp.updateMinDutyCyclesLocal(getNeighborsMock)
 
 	//assert.Equal(t, trueMinOverlapDutyCycles, sp.minOverlapDutyCycles)
-	for i, _ := range trueMinOverlapDutyCycles {
+	for i := range trueMinOverlapDutyCycles {
 		assert.AlmostEqualFloat(t, trueMinOverlapDutyCycles[i], sp.minOverlapDutyCycles[i])
 	}
 	assert.Equal(t, trueMinActiveDutyCycles, sp.minActiveDutyCycles)
