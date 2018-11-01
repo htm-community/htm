@@ -233,7 +233,7 @@ func (se *ScalerEncoder) getFirstOnBit(input float64) int {
 		if se.ClipInput && !se.Periodic {
 
 			if se.Verbosity > 0 {
-				fmt.Printf("Clipped input %v=%d to minval %d", se.Name, input, se.MinVal)
+				fmt.Printf("Clipped input %v=%v to minval %v", se.Name, input, se.MinVal)
 			}
 			input = se.MinVal
 		} else {
@@ -521,7 +521,7 @@ func (se *ScalerEncoder) Decode(encoded []bool) []utils.TupleFloat {
 			for j := 0; j < se.N; j++ {
 				outputIndices := make([]int, subLen)
 
-				for idx, _ := range outputIndices {
+				for idx := range outputIndices {
 					outputIndices[idx] = (j + idx) % se.N
 				}
 

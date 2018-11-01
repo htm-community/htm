@@ -118,7 +118,7 @@ func (tp *TemporalPooler) printActiveIndices(state *SparseBinaryMatrix, andValue
 		return
 	}
 
-	fmt.Println(state.Entries)
+	fmt.Println(state.Entries())
 
 }
 
@@ -162,7 +162,7 @@ func (tp *TemporalPooler) printCells(predictedOnly bool) {
 	fmt.Println("connected perm:", tp.params.ConnectedPerm)
 
 	for c, col := range tp.cells {
-		for i, _ := range col {
+		for i := range col {
 			if !predictedOnly || tp.DynamicState.InfPredictedState.Get(c, i) {
 				tp.printCell(c, i, predictedOnly)
 			}
